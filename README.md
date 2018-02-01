@@ -2,7 +2,7 @@
    <img src="https://github.com/NationalSecurityAgency/datawave-new/blob/master/datawave-readme.png" /> 
 </p>
 
-[![Apache License][li]][ll]
+[![Build Status](https://travis-ci.org/NationalSecurityAgency/datawave.svg?branch=master)](https://travis-ci.org/NationalSecurityAgency/datawave) [![Apache License][li]][ll]
 
 DataWave is a Java-based ingest and query framework that leverages [Apache Accumulo](http://accumulo.apache.org/) to provide fast, secure access to your data. DataWave supports a wide variety of use cases, including but not limited to...
 
