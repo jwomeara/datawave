@@ -5,6 +5,9 @@ import java.util.*;
 import java.util.Map.Entry;
 
 import com.google.common.collect.*;
+import datawave.data.type.OneToManyNormalizerType;
+import datawave.data.type.Type;
+import datawave.ingest.data.config.ingest.CompositeIngest;
 import datawave.marking.MarkingFunctions;
 import datawave.marking.MarkingFunctions.Exception;
 import datawave.query.attributes.Attribute;
@@ -89,7 +92,10 @@ public class ValueToAttributes implements Function<Entry<Key,String>,Iterable<En
             String compositeFieldMapKey = JexlASTHelper.deconstructIdentifier(composite, false);
             if (this.compositeToFieldMap.get(ingestDatatype).get(compositeFieldMapKey).size() == this.compositeAttributes.get(composite).size()) {
                 try {
-                    Attribute<? extends Comparable<?>> combined = this.joinAttributes(composite, this.compositeAttributes.get(composite));
+                    boolean isOverloadedComposite = CompositeIngest.isOverloadedCompositeField(
+                                    this.compositeToFieldMap.get(ingestDatatype).get(compositeFieldMapKey), compositeFieldMapKey);
+                    Attribute<? extends Comparable<?>> combined = this
+                                    .joinAttributes(composite, this.compositeAttributes.get(composite), isOverloadedComposite);
                     list.add(Maps.<String,Attribute<? extends Comparable<?>>> immutableEntry(composite, combined));
                     log.debug("will be removing " + composite + " from compositeAttributes:" + this.compositeAttributes);
                     goners.add(composite);
@@ -136,9 +142,9 @@ public class ValueToAttributes implements Function<Entry<Key,String>,Iterable<En
         }
     }
     
-    public Attribute<?> joinAttributes(String compositeName, Collection<Attribute<?>> in) throws Exception {
+    public Attribute<?> joinAttributes(String compositeName, Collection<Attribute<?>> in, boolean isOverloadedComposite) throws Exception {
         Collection<ColumnVisibility> columnVisibilities = Sets.newHashSet();
-        String[] dataList = new String[0];
+        List<String> dataList = new ArrayList<>();
         long timestamp = 0;
         boolean toKeep = false;
         // use the metadata from the first attribute being merged
@@ -149,77 +155,66 @@ public class ValueToAttributes implements Function<Entry<Key,String>,Iterable<En
             metadata = attribute.getMetadata();
         }
         for (Attribute<?> attr : in) {
-            if (attr.isToKeep()) {
+            if (attr.isToKeep() && !isOverloadedComposite) {
                 toKeep = true;
             }
             if (attr instanceof Attributes) {
                 Attributes attrs = (Attributes) attr;
                 int newAttributeCount = attrs.size();
-                int originalDataListSize = dataList.length;
+                int originalDataListSize = dataList.size();
                 if (newAttributeCount > 0) {
-                    if (dataList.length == 0) {
-                        dataList = new String[newAttributeCount];
-                        int i = 0;
+                    if (dataList.size() == 0) {
                         for (Attribute<?> a : attrs.getAttributes()) {
-                            dataList[i++] = attributeValue(a) + Composite.END_SEPARATOR;
+                            for (String value : attributeValues(attr))
+                                dataList.add(value + Composite.END_SEPARATOR);
                         }
                     } else {
-                        // resize the dataList array - dataList.length and newAttributeCount are each > 0
-                        String[] resizedDataList = new String[dataList.length * newAttributeCount];
-                        int count = resizedDataList.length / dataList.length;
-                        for (int i = 0; i < count; i++) {
-                            System.arraycopy(dataList, 0, resizedDataList, i * dataList.length, dataList.length);
-                        }
-                        dataList = resizedDataList;
-                        
-                        int attributeIndex = 0;
-                        List<Attribute<?>> attributeList = Lists.newArrayList(attrs.getAttributes());
-                        for (int i = 0; i < dataList.length; i++) {
-                            attributeIndex = i / originalDataListSize;
-                            
-                            Attribute<?> a = attributeList.get(attributeIndex);
-                            if (dataList[i] == null) {
-                                dataList[i] = attributeValue(a) + Composite.END_SEPARATOR;
-                            } else if (dataList[i].length() > 0) {
-                                dataList[i] += Composite.START_SEPARATOR + attributeValue(a) + Composite.END_SEPARATOR;
+                        for (int i = 0; i < originalDataListSize; i++) {
+                            String base = dataList.remove(0);
+                            if (base == null) {
+                                for (String value : attributeValues(attr))
+                                    dataList.add(value + Composite.END_SEPARATOR);
+                            } else if (base.length() > 0) {
+                                for (String value : attributeValues(attr))
+                                    dataList.add(base + Composite.START_SEPARATOR + value + Composite.END_SEPARATOR);
                             } else {
-                                dataList[i] += attributeValue(a) + Composite.END_SEPARATOR;
+                                for (String value : attributeValues(attr))
+                                    dataList.add(base + value + Composite.END_SEPARATOR);
                             }
                             timestamp = Math.max(timestamp, attr.getTimestamp());
                             columnVisibilities.add(attr.getColumnVisibility());
-                            
                         }
                     }
                 }
             } else {
-                
                 if (log.isTraceEnabled()) {
-                    log.trace("Join for data list size: " + dataList.length);
+                    log.trace("Join for data list size: " + dataList.size());
                 }
-                if (dataList.length == 0) {
-                    dataList = new String[] {""};
-                }
-                if (dataList.length == 0) {
-                    dataList = new String[] {""};
-                }
-                
-                for (int i = 0; i < dataList.length; i++) { // append to everything in the list
-                    if (dataList[i].length() > 0) {
-                        dataList[i] += Composite.START_SEPARATOR + attributeValue(attr) + Composite.END_SEPARATOR;
-                    } else {
-                        dataList[i] += attributeValue(attr);
+                if (dataList.size() == 0) {
+                    for (String value : attributeValues(attr))
+                        dataList.add(value + Composite.END_SEPARATOR);
+                } else {
+                    int originalDataListSize = dataList.size();
+                    for (int i = 0; i < originalDataListSize; i++) { // append to everything in the list
+                        String base = dataList.remove(0);
+                        if (base.length() > 0) {
+                            for (String value : attributeValues(attr))
+                                dataList.add(base + Composite.START_SEPARATOR + value + Composite.END_SEPARATOR);
+                        } else {
+                            for (String value : attributeValues(attr))
+                                dataList.add(base + value);
+                        }
                     }
-                    
                 }
                 timestamp = Math.max(timestamp, attr.getTimestamp());
                 columnVisibilities.add(attr.getColumnVisibility());
             }
         }
-        log.debug("dataList is " + Arrays.toString(dataList));
+        log.debug("dataList is " + dataList.toString());
         ColumnVisibility combinedColumnVisibility = this.markingFunctions.combine(columnVisibilities);
         metadata = new Key(metadata.getRow(), metadata.getColumnFamily(), new Text(), combinedColumnVisibility, timestamp);
-        if (dataList.length == 1) {
-            return this.attrFactory.create(compositeName, dataList[0], metadata, toKeep);
+        if (dataList.size() == 1) {
+            return this.attrFactory.create(compositeName, dataList.get(0), metadata, toKeep);
         } else {
             Attributes attributes = new Attributes(toKeep);
             for (String d : dataList) {
@@ -229,12 +224,14 @@ public class ValueToAttributes implements Function<Entry<Key,String>,Iterable<En
         }
     }
     
-    private String attributeValue(Attribute attr) {
+    private List<String> attributeValues(Attribute attr) {
         if (attr instanceof TypeAttribute) {
-            return ((TypeAttribute) attr).getType().getNormalizedValue();
+            Type type = ((TypeAttribute) attr).getType();
+            return (type instanceof OneToManyNormalizerType) ? ((OneToManyNormalizerType) type).getNormalizedValues() : Arrays
+                            .asList(type.getNormalizedValue());
         } else {
             new Exception().printStackTrace(System.err);
-            return String.valueOf(attr.getData());
+            return Arrays.asList(String.valueOf(attr.getData()));
         }
     }
     

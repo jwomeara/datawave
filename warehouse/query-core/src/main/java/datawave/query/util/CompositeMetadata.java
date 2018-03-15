@@ -175,7 +175,13 @@ public class CompositeMetadata {
                             if (gotList.size() < idx) {
                                 idx = gotList.size();
                             }
-                            gotList.add(idx, fieldName);
+                            if (idx < gotList.size()) {
+                                if (!gotList.get(idx).equals(fieldName))
+                                    gotList.add(idx, fieldName);
+                                else
+                                    gotList.set(idx, fieldName);
+                            } else
+                                gotList.add(idx, fieldName);
                         }
                     } else {
                         Matcher matcher = fieldAndIndexPattern.matcher(compositeNameAndIndex);
@@ -187,7 +193,13 @@ public class CompositeMetadata {
                             if (gotList.size() < idx) {
                                 idx = gotList.size();
                             }
-                            gotList.add(idx, fieldName);
+                            if (idx < gotList.size()) {
+                                if (!gotList.get(idx).equals(fieldName))
+                                    gotList.add(idx, fieldName);
+                                else
+                                    gotList.set(idx, fieldName);
+                            } else
+                                gotList.add(idx, fieldName);
                         }
                     }
                 }
@@ -272,11 +284,11 @@ public class CompositeMetadata {
                 for (String value : values) {
                     String[] vs = Iterables.toArray(Splitter.on(':').omitEmptyStrings().trimResults().split(value), String.class);
                     String[] rhs = Iterables.toArray(Splitter.on(',').omitEmptyStrings().trimResults().split(vs[1]), String.class);
-                    this.ingestTypes.add(vs[0]);
                     for (String r : rhs) {
                         mm.put(vs[0], r);
                     }
                 }
+                this.ingestTypes.add(entrySplits[0]);
                 compositeMetadata.put(entrySplits[0], mm);
             }
         }

@@ -89,6 +89,11 @@ public class CompositeFieldIngestHelper implements CompositeIngest {
         return map.containsKey(fieldName);
     }
     
+    @Override
+    public boolean isOverloadedCompositeField(String fieldName) {
+        return CompositeIngest.isOverloadedCompositeField(getCompositeFieldDefinitions(), fieldName);
+    }
+    
     /*
      * (non-Javadoc)
      * 

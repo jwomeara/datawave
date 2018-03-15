@@ -101,6 +101,8 @@ public interface IngestHelperInterface extends DataTypeHelper {
     
     boolean isCompositeField(String fieldName);
     
+    boolean isOverloadedCompositeField(String fieldName);
+    
     void addCompositeField(String fieldName);
     
     boolean isNormalizedField(String fieldName);

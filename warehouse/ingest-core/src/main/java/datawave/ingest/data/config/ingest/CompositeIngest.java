@@ -2,6 +2,7 @@ package datawave.ingest.data.config.ingest;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -56,9 +57,25 @@ public interface CompositeIngest {
     
     boolean isCompositeField(String fieldName);
     
+    boolean isOverloadedCompositeField(String fieldName);
+    
     Map<String,String[]> getCompositeNameAndIndex(String compositeFieldName);
     
     Multimap<String,NormalizedContentInterface> getCompositeFields(Multimap<String,NormalizedContentInterface> fields);
+    
+    static boolean isOverloadedCompositeField(Map<String,String[]> compositeFieldDefinitions, String compositeFieldName) {
+        return isOverloadedCompositeField(Arrays.asList(compositeFieldDefinitions.get(compositeFieldName)), compositeFieldName);
+    }
+    
+    static boolean isOverloadedCompositeField(Multimap<String,String> compositeFieldDefinitions, String compositeFieldName) {
+        return isOverloadedCompositeField(compositeFieldDefinitions.get(compositeFieldName), compositeFieldName);
+    }
+    
+    static boolean isOverloadedCompositeField(Collection<String> compFields, String compositeFieldName) {
+        if (compFields != null && compFields.size() > 0)
+            return compFields.stream().findFirst().get().equals(compositeFieldName);
+        return false;
+    }
     
     class CompositeFieldNormalizer {
         
@@ -350,8 +367,10 @@ public interface CompositeIngest {
                 for (Entry<String,String[]> vFields : this.compositeFieldDefinitions.entrySet()) {
                     tempResults.clear();
                     addCompositeFields(tempResults, eventFields, vFields.getKey(), null, null, grouping.get(vFields.getKey()),
-                                    allowMissing.get(vFields.getKey()), vFields.getValue(), 0, "", "", // separator is initially empty
-                                    new StringBuilder(), new StringBuilder(), null);
+                                    allowMissing.get(vFields.getKey()), vFields.getValue(), 0, "",
+                                    "", // separator is initially empty
+                                    new StringBuilder(), new StringBuilder(), null,
+                                    CompositeIngest.isOverloadedCompositeField(Arrays.asList(vFields.getValue()), vFields.getKey()));
                     for (NormalizedContentInterface value : tempResults) {
                         compositeFields.put(value.getIndexedFieldName(), value);
                     }
@@ -380,12 +399,13 @@ public interface CompositeIngest {
         public void addCompositeFields(List<NormalizedContentInterface> compositeFields, Multimap<String,NormalizedContentInterface> eventFields,
                         String compositeFieldName, String replacement, String[] grouping, GroupingPolicy groupingPolicy, boolean allowMissing, String[] fields,
                         int pos, String startSeparator, String endSeparator, StringBuilder originalValue, StringBuilder normalizedValue,
-                        Map<String,String> markings) {
+                        Map<String,String> markings, boolean isOverloadedField) {
             String separator = "";
             // append any constants that have been specified
             while (pos < fields.length && isConstant(fields[pos])) {
                 String constant = getConstant(fields[pos++]);
-                originalValue.append(constant);
+                if (!isOverloadedField || (isOverloadedField && pos == 0))
+                    originalValue.append(constant);
                 normalizedValue.append(constant);
                 // given we found a constant, drop the separator for this round
                 startSeparator = "";
@@ -422,9 +442,11 @@ public interface CompositeIngest {
                                     }
                                 }
                                 // ensure that we have a matching nesting level if required
-                                originalValue.append(startSeparator);
-                                originalValue.append(value.getEventFieldValue());
-                                originalValue.append(endSeparator);
+                                if (!isOverloadedField || (isOverloadedField && pos == 0)) {
+                                    originalValue.append(startSeparator);
+                                    originalValue.append(value.getEventFieldValue());
+                                    originalValue.append(endSeparator);
+                                }
                                 normalizedValue.append(startSeparator);
                                 normalizedValue.append(value.getIndexedFieldValue());
                                 normalizedValue.append(endSeparator);
@@ -432,7 +454,7 @@ public interface CompositeIngest {
                                     addCompositeFields(compositeFields, eventFields, compositeFieldName.replace("*", replacement), replacement,
                                                     (grouping == null ? newGrouping : grouping), groupingPolicy, allowMissing, fields, pos + 1,
                                                     this.defaultStartSeparator, this.defaultEndSeparator, originalValue, normalizedValue,
-                                                    mergeMarkings(markings, value.getMarkings()));
+                                                    mergeMarkings(markings, value.getMarkings()), isOverloadedField);
                                 }
                                 originalValue.setLength(oLen);
                                 normalizedValue.setLength(nLen);
@@ -441,7 +463,7 @@ public interface CompositeIngest {
                     }
                 } else if (!eventFields.containsKey(memberName) && allowMissing) {
                     addCompositeFields(compositeFields, eventFields, compositeFieldName, replacement, grouping, groupingPolicy, allowMissing, fields, pos + 1,
-                                    startSeparator, endSeparator, originalValue, normalizedValue, markings);
+                                    startSeparator, endSeparator, originalValue, normalizedValue, markings, isOverloadedField);
                 } else {
                     int oLen = originalValue.length();
                     int nLen = normalizedValue.length();
@@ -452,9 +474,11 @@ public interface CompositeIngest {
                                 continue;
                             }
                         }
-                        originalValue.append(startSeparator);
-                        originalValue.append(value.getEventFieldValue());
-                        originalValue.append(endSeparator);
+                        if (!isOverloadedField || (isOverloadedField && pos == 0)) {
+                            originalValue.append(startSeparator);
+                            originalValue.append(value.getEventFieldValue());
+                            originalValue.append(endSeparator);
+                        }
                         normalizedValue.append(startSeparator);
                         if (ignoreNormalizationForFields.contains(value.getIndexedFieldName())) {
                             normalizedValue.append(value.getEventFieldValue());
@@ -464,7 +488,7 @@ public interface CompositeIngest {
                         normalizedValue.append(endSeparator);
                         addCompositeFields(compositeFields, eventFields, compositeFieldName, replacement, (grouping == null ? newGrouping : grouping),
                                         groupingPolicy, allowMissing, fields, pos + 1, this.defaultStartSeparator, this.defaultEndSeparator, originalValue,
-                                        normalizedValue, mergeMarkings(markings, value.getMarkings()));
+                                        normalizedValue, mergeMarkings(markings, value.getMarkings()), isOverloadedField);
                         originalValue.setLength(oLen);
                         normalizedValue.setLength(nLen);
                     }

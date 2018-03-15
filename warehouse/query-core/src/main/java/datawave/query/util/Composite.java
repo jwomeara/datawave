@@ -12,8 +12,7 @@ import com.google.common.collect.Lists;
 public class Composite {
     public static final String START_SEPARATOR = Constants.MAX_UNICODE_STRING;
     public static final String END_SEPARATOR = "";
-    public static final Set<Class<?>> WILDCARD_NODE_CLASSES = Sets.<Class<?>> newHashSet(ASTNENode.class, ASTERNode.class, ASTGTNode.class, ASTGENode.class,
-                    ASTLTNode.class, ASTLENode.class);
+    public static final Set<Class<?>> WILDCARD_NODE_CLASSES = Sets.<Class<?>> newHashSet(ASTNENode.class, ASTERNode.class);
     public static final Set<Class<?>> LEAF_NODE_CLASSES = Sets.<Class<?>> newHashSet(ASTEQNode.class, ASTNENode.class, ASTERNode.class, ASTGTNode.class,
                     ASTGENode.class, ASTLTNode.class, ASTLENode.class);
     
@@ -78,7 +77,21 @@ public class Composite {
         return buf.toString();
     }
     
+    // this composite is invalid if:
+    // - it contains a mix of GT/GE and LT/LE nodes
+    // - it contains a 'regex' or 'not equals' node in any position other than the lsat position
+    // - it contains a 'regex' or 'not equals' node in the last position, and any of the preceeding nodes are not 'equals' nodes
+    // -- e.g. no unbounded ranges ending in a 'regex' or 'not equals' node
     public boolean isValid() {
+        boolean hasGTOrGENodes = false;
+        boolean hasLTOrLENodes = false;
+        for (JexlNode node : jexlNodeList) {
+            hasGTOrGENodes |= (node instanceof ASTGTNode || node instanceof ASTGENode);
+            hasLTOrLENodes |= (node instanceof ASTLTNode || node instanceof ASTLENode);
+            if (hasGTOrGENodes && hasLTOrLENodes)
+                return false;
+        }
+        
         return (this.jexlNodeList.size() >= 1 && !WILDCARD_NODE_CLASSES.contains(jexlNodeList.get(0).getClass()));
     }
     
