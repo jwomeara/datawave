@@ -576,6 +576,11 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
     }
     
     @Override
+    public boolean isOverloadedCompositeField(String fieldName) {
+        return CompositeIngest.isOverloadedCompositeField(getCompositeFieldDefinitions(), fieldName);
+    }
+    
+    @Override
     public boolean isCompositeField(String fieldName) {
         return this.compositeFields.contains(fieldName);
     }

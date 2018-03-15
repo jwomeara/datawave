@@ -209,7 +209,7 @@ public class EventMetadata implements RawRecordMetadata {
             return;
         }
         
-        if (helper.isCompositeField(fieldName)) {
+        if (helper.isCompositeField(fieldName) && !helper.isOverloadedCompositeField(fieldName)) {
             log.debug(fieldName + " is a composite, not adding to event");
             return;
         }

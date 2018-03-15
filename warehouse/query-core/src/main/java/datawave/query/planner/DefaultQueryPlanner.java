@@ -13,6 +13,7 @@ import com.google.common.collect.Sets;
 import datawave.core.iterators.querylock.QueryLock;
 import datawave.data.type.GeometryType;
 import datawave.data.type.Type;
+import datawave.ingest.data.config.ingest.CompositeIngest;
 import datawave.ingest.mapreduce.handler.dateindex.DateIndexUtil;
 import datawave.query.CloseableIterable;
 import datawave.query.Constants;
@@ -114,6 +115,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -129,6 +131,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.PatternSyntaxException;
+import java.util.stream.Collectors;
 
 public class DefaultQueryPlanner extends QueryPlanner {
     

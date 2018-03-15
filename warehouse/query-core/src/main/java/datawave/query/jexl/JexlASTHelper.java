@@ -601,6 +601,27 @@ public class JexlASTHelper {
     
     /**
      * Get the bounded ranges (index only terms).
+     *
+     * @param root
+     *            The root and node
+     * @param helper
+     *            The metadata helper
+     * @param otherNodes
+     *            If not null, then this is filled with all nodes not used to make the ranges (minimal node list, minimal tree depth)
+     * @param maxDepth
+     *            The maximum depth to traverse the tree. -1 represents unlimited depth.
+     * @return The ranges, all bounded.
+     */
+    @SuppressWarnings("rawtypes")
+    public static Map<LiteralRange<?>,List<JexlNode>> getBoundedRanges(JexlNode root, Set<String> datatypeFilterSet, MetadataHelper helper,
+                    List<JexlNode> otherNodes, boolean includeDelayed, int maxDepth) {
+        List<JexlNode> nonIndexedRangeNodes = new ArrayList<>();
+        List<JexlNode> rangeNodes = getIndexRangeOperatorNodes(root, datatypeFilterSet, helper, nonIndexedRangeNodes, otherNodes, includeDelayed, maxDepth);
+        return getBoundedRanges(rangeNodes, nonIndexedRangeNodes, otherNodes);
+    }
+    
+    /**
+     * Get the bounded ranges (index only terms).
      * 
      * @param root
      *            The root and node
@@ -614,8 +635,24 @@ public class JexlASTHelper {
     public static Map<LiteralRange<?>,List<JexlNode>> getBoundedRanges(JexlNode root, Set<String> datatypeFilterSet, MetadataHelper helper,
                     List<JexlNode> otherNodes, boolean includeDelayed) {
         List<JexlNode> nonIndexedRangeNodes = new ArrayList<>();
-        List<JexlNode> rangeNodes = getIndexRangeOperatorNodes(root, datatypeFilterSet, helper, nonIndexedRangeNodes, otherNodes, includeDelayed);
+        List<JexlNode> rangeNodes = getIndexRangeOperatorNodes(root, datatypeFilterSet, helper, nonIndexedRangeNodes, otherNodes, includeDelayed, -1);
         return getBoundedRanges(rangeNodes, nonIndexedRangeNodes, otherNodes);
+    }
+    
+    /**
+     * Get the bounded ranges.
+     *
+     * @param root
+     *            The root and node
+     * @param otherNodes
+     *            If not null, then this is filled with all nodes not used to make the ranges (minimal node list, minimal tree depth)
+     * @return The ranges, all bounded.
+     */
+    @SuppressWarnings("rawtypes")
+    public static Map<LiteralRange<?>,List<JexlNode>> getBoundedRangesIndexAgnostic(ASTAndNode root, List<JexlNode> otherNodes, boolean includeDelayed,
+                    int maxDepth) {
+        List<JexlNode> rangeNodes = getRangeOperatorNodes(root, otherNodes, includeDelayed, maxDepth);
+        return JexlASTHelper.getBoundedRanges(rangeNodes, null, otherNodes);
     }
     
     /**
@@ -629,8 +666,7 @@ public class JexlASTHelper {
      */
     @SuppressWarnings("rawtypes")
     public static Map<LiteralRange<?>,List<JexlNode>> getBoundedRangesIndexAgnostic(ASTAndNode root, List<JexlNode> otherNodes, boolean includeDelayed) {
-        List<JexlNode> rangeNodes = getRangeOperatorNodes(root, otherNodes, includeDelayed);
-        return JexlASTHelper.getBoundedRanges(rangeNodes, null, otherNodes);
+        return getBoundedRangesIndexAgnostic(root, otherNodes, includeDelayed, -1);
     }
     
     protected static Map<LiteralRange<?>,List<JexlNode>> getBoundedRanges(List<JexlNode> rangeNodes, List<JexlNode> nonIndexedRangeNodes,
@@ -959,25 +995,25 @@ public class JexlASTHelper {
     }
     
     protected static List<JexlNode> getIndexRangeOperatorNodes(JexlNode root, Set<String> datatypeFilterSet, MetadataHelper helper,
-                    List<JexlNode> nonIndexedRangeNodes, List<JexlNode> otherNodes, boolean includeDelayed) {
+                    List<JexlNode> nonIndexedRangeNodes, List<JexlNode> otherNodes, boolean includeDelayed, int maxDepth) {
         List<JexlNode> nodes = Lists.newArrayList();
         
         Class<?> clz = root.getClass();
         
         if (root.jjtGetNumChildren() > 0) {
-            getRangeOperatorNodes(root, clz, nodes, otherNodes, datatypeFilterSet, helper, nonIndexedRangeNodes, includeDelayed);
+            getRangeOperatorNodes(root, clz, nodes, otherNodes, datatypeFilterSet, helper, nonIndexedRangeNodes, includeDelayed, maxDepth);
         }
         
         return nodes;
     }
     
-    protected static List<JexlNode> getRangeOperatorNodes(JexlNode root, List<JexlNode> otherNodes, boolean includeDelayed) {
+    protected static List<JexlNode> getRangeOperatorNodes(JexlNode root, List<JexlNode> otherNodes, boolean includeDelayed, int maxDepth) {
         List<JexlNode> nodes = Lists.newArrayList();
         
         Class<?> clz = root.getClass();
         
         if (root.jjtGetNumChildren() > 0) {
-            getRangeOperatorNodes(root, clz, nodes, otherNodes, null, null, null, includeDelayed);
+            getRangeOperatorNodes(root, clz, nodes, otherNodes, null, null, null, includeDelayed, maxDepth);
         }
         
         return nodes;
@@ -1006,8 +1042,8 @@ public class JexlASTHelper {
      * @param nonIndexedRangeNodes
      */
     protected static void getRangeOperatorNodes(JexlNode root, Class<?> clz, List<JexlNode> nodes, List<JexlNode> otherNodes, Set<String> datatypeFilterSet,
-                    MetadataHelper helper, List<JexlNode> nonIndexedRangeNodes, boolean includeDelayed) {
-        if (!includeDelayed && isDelayedPredicate(root)) {
+                    MetadataHelper helper, List<JexlNode> nonIndexedRangeNodes, boolean includeDelayed, int maxDepth) {
+        if ((!includeDelayed && isDelayedPredicate(root)) || maxDepth == 0) {
             return;
         }
         for (int i = 0; i < root.jjtGetNumChildren(); i++) {
@@ -1017,7 +1053,7 @@ public class JexlASTHelper {
             if (child.getClass().equals(clz) || child.getClass().equals(ASTReferenceExpression.class) || child.getClass().equals(ASTReference.class)) {
                 // ignore getting range nodes out of delayed expressions as they have already been processed
                 if (includeDelayed || !isDelayedPredicate(child)) {
-                    getRangeOperatorNodes(child, clz, nodes, otherNodes, datatypeFilterSet, helper, nonIndexedRangeNodes, includeDelayed);
+                    getRangeOperatorNodes(child, clz, nodes, otherNodes, datatypeFilterSet, helper, nonIndexedRangeNodes, includeDelayed, maxDepth - 1);
                 } else if (otherNodes != null) {
                     otherNodes.add(child);
                 }

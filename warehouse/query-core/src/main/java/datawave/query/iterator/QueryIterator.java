@@ -7,6 +7,7 @@ import com.google.common.collect.*;
 import java.net.MalformedURLException;
 import datawave.data.type.Type;
 import datawave.data.type.util.NumericalEncoder;
+import datawave.ingest.data.config.ingest.CompositeIngest;
 import datawave.query.jexl.DatawaveJexlContext;
 import datawave.query.Constants;
 import datawave.query.DocumentSerialization.ReturnType;
@@ -969,9 +970,10 @@ public class QueryIterator extends QueryOptions implements SortedKeyValueIterato
     protected DocumentProjection getCompositeProjection() {
         DocumentProjection projection = new DocumentProjection(this.isIncludeGroupingContext(), this.isReducedResponse());
         Set<String> composites = Sets.newHashSet();
-        for (Multimap<String,String> val : this.compositeMetadata.getCompositeToFieldMap().values()) {
-            composites.addAll(val.asMap().keySet());
-        }
+        for (Multimap<String,String> val : this.compositeMetadata.getCompositeToFieldMap().values())
+            for (String compositeField : val.keySet())
+                if (!CompositeIngest.isOverloadedCompositeField(val.get(compositeField), compositeField))
+                    composites.add(compositeField);
         projection.initializeBlacklist(composites);
         return projection;
     }

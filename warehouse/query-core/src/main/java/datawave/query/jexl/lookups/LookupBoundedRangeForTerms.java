@@ -9,7 +9,9 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.concurrent.Callable;
 
+import datawave.core.iterators.CompositeRangeFilterIterator;
 import datawave.query.config.ShardQueryConfiguration;
+import datawave.query.util.Composite;
 import org.apache.accumulo.core.client.BatchScanner;
 import org.apache.accumulo.core.client.IteratorSetting;
 import org.apache.accumulo.core.client.TableNotFoundException;
@@ -128,6 +130,25 @@ public class LookupBoundedRangeForTerms extends IndexLookup {
             cfg.addOption(ColumnQualifierRangeIterator.RANGE_NAME, ColumnQualifierRangeIterator.encodeRange(new Range(startDay, end)));
             
             bs.addScanIterator(cfg);
+            
+            // If this is a composite range, we need to setup our query to filter based on each component of the composite range
+            IteratorSetting compositeIterator = null;
+            if (config.getCompositeToFieldMap().get(literalRange.getFieldName()) != null) {
+                String[] lowerTerms = lower.split(Composite.START_SEPARATOR);
+                String[] upperTerms = upper.split(Composite.START_SEPARATOR);
+                
+                if (lowerTerms.length > 1 && upperTerms.length > 1) {
+                    compositeIterator = new IteratorSetting(config.getBaseIteratorPriority() + 51, CompositeRangeFilterIterator.class);
+                    
+                    compositeIterator.addOption(CompositeRangeFilterIterator.LOWER_TERM, lower);
+                    compositeIterator.addOption(CompositeRangeFilterIterator.LOWER_TERM_INCLUSIVE, literalRange.isLowerInclusive().toString());
+                    compositeIterator.addOption(CompositeRangeFilterIterator.UPPER_TERM, upper);
+                    compositeIterator.addOption(CompositeRangeFilterIterator.UPPER_TERM_INCLUSIVE, literalRange.isUpperInclusive().toString());
+                }
+            }
+            
+            if (compositeIterator != null)
+                bs.addScanIterator(compositeIterator);
             
             if (null != fairnessIterator) {
                 cfg = new IteratorSetting(config.getBaseIteratorPriority() + 100, TimeoutExceptionIterator.class);
