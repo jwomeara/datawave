@@ -248,7 +248,21 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
         }
         return super.visit(node, data);
     }
-    
+
+    @Override
+    public Object visit(ASTGTNode node, Object data) {
+        if (data == null) {
+            String fieldName = JexlASTHelper.getIdentifier(node);
+            if (fieldName != null && config.getCompositeToFieldMap().containsKey(fieldName)) {
+                Object expression = JexlASTHelper.getLiteralValue(node);
+                if (expression != null && CompositeIngest.isOverloadedCompositeField(config.getCompositeToFieldMap(), fieldName)) {
+                    return JexlNodeFactory.buildNode((ASTGENode) null, fieldName, CompositeRange.getInclusiveLowerBound(expression.toString()));
+                }
+            }
+        }
+        return super.visit(node, data);
+    }
+
     @Override
     public Object visit(ASTLENode node, Object data) {
         if (data == null) {

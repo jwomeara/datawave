@@ -180,7 +180,7 @@ public class CompositeRange extends Composite {
             // we need to turn < into <=
             // if the next expression is null, then this is our last
             // node, so we don't need any special handling
-            String nextExpression = ((i + 1) < expressionListUpperBound.size()) ? expressionListUpperBound.get(i) : null;
+            String nextExpression = ((i + 1) < expressionListUpperBound.size()) ? expressionListUpperBound.get(i + 1) : null;
             if (node instanceof ASTLTNode && i != (expressionListUpperBound.size() - 1) && nextExpression != null) {
                 String inclusiveUpperBound = CompositeRange.getInclusiveUpperBound(expression);
                 

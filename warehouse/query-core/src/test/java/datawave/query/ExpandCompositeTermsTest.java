@@ -74,28 +74,28 @@ public class ExpandCompositeTermsTest {
     @Test
     public void test2() throws Exception {
         String query = "WINNER=='blue' && TEAM=='gold' && POINTS==11";
-        String expected = "(TEAM_POINTS == 'gold\uDBFF\uDFFF11' && WINNER == 'blue'";
+        String expected = "(TEAM_POINTS == 'gold\uDBFF\uDFFF11' && WINNER == 'blue')";
 
         runTestQuery(query, expected);
     }
 
     @Test
     public void test3() throws Exception {
-        String query = "WINNER=='blue' && TEAM=='gold' && NAME=='gold-8' && POINTS=11";
+        String query = "WINNER=='blue' && TEAM=='gold' && NAME=='gold-8' && POINTS==11";
         runTestQuery(query, "(TEAM_NAME_POINTS == 'gold\uDBFF\uDFFFgold-8\uDBFF\uDFFF11' && WINNER == 'blue')");
     }
 
     @Test
     public void test4a() throws Exception {
         String query = "WINNER=='blue' && TEAM=='gold' && NAME=='gold-8' && (POINTS > 10 && POINTS <= 11)";
-        String expected = "((TEAM_NAME_POINTS > 'gold\uDBFF\uDFFFgold-8\uDBFF\uDFFF10' && TEAM_NAME_POINTS <= 'gold\uDBFF\uDFFFgold-8\uDBFF\uDFFF11') && WINNER == 'blue'";
+        String expected = "((TEAM_NAME_POINTS > 'gold\uDBFF\uDFFFgold-8\uDBFF\uDFFF10' && TEAM_NAME_POINTS <= 'gold\uDBFF\uDFFFgold-8\uDBFF\uDFFF11') && WINNER == 'blue')";
         runTestQuery(query, expected);
     }
 
     @Test
     public void test4b() throws Exception {
         String query = "WINNER=='blue' && (TEAM=='gold') && (NAME=='gold-8') && (POINTS > 10 && POINTS <= 11)";
-        String expected = "((TEAM_NAME_POINTS > 'gold\uDBFF\uDFFFgold-8\uDBFF\uDFFF10' && TEAM_NAME_POINTS <= 'gold\uDBFF\uDFFFgold-8\uDBFF\uDFFF11') && WINNER == 'blue'";
+        String expected = "((TEAM_NAME_POINTS > 'gold\uDBFF\uDFFFgold-8\uDBFF\uDFFF10' && TEAM_NAME_POINTS <= 'gold\uDBFF\uDFFFgold-8\uDBFF\uDFFF11') && WINNER == 'blue')";
         runTestQuery(query, expected);
     }
 
@@ -115,21 +115,21 @@ public class ExpandCompositeTermsTest {
 
     @Test
     public void test7a() throws Exception {
-        String query = "WINNER == 'blue' && TEAM=='gold' && ( NAME=='gold-1' || NAME=='gold-2' && (POINTS > 10 POINTS <= 11))";
-        String expected = "(WINNER == 'blue' && TEAM == 'gold' && (NAME == 'gold-1' || (TEAM_NAME_POINTS > 'gold\uDBFF\uDFFFgold-2\uDBFF\uDFFF10' && TEAM_NAME_POINTS <= 'gold\uDBFF\uDFFFgold-2\uDBFF\uDFFF11)))";
+        String query = "WINNER == 'blue' && TEAM=='gold' && ( NAME=='gold-1' || NAME=='gold-2' && (POINTS > 10 && POINTS <= 11))";
+        String expected = "(WINNER == 'blue' && TEAM == 'gold' && (NAME == 'gold-1' || (TEAM_NAME_POINTS > 'gold\uDBFF\uDFFFgold-2\uDBFF\uDFFF10' && TEAM_NAME_POINTS <= 'gold\uDBFF\uDFFFgold-2\uDBFF\uDFFF11')))";
         runTestQuery(query, expected);
     }
 
     @Test
     public void test7b() throws Exception {
-        String query = "WINNER == 'blue' && (TEAM >= 'gold' && TEAM <= 'silver') && (NAME >= 'fold-1' && NAME <= 'gold-2') && (POINTS > 10 && POINTS <= 11)";
+        String query = "WINNER == 'blue' && (TEAM >= 'gold' && TEAM <= 'silver') && (NAME >= 'gold-1' && NAME <= 'gold-2') && (POINTS > 10 && POINTS <= 11)";
         String expected = "WINNER == 'blue' && (TEAM >= 'gold' && TEAM <= 'silver') && (NAME >= 'gold-1' && NAME <= 'gold-2') && (POINTS > 10 && POINTS <= 11)";
         runTestQuery(query, expected);
     }
 
     @Test
     public void test7c() throws Exception {
-        String query = "TEAM >= 'fold' && TEAM <= 'silver') && (POINTS > 10 && POINTS <= 11)";
+        String query = "(TEAM >= 'gold' && TEAM <= 'silver') && (POINTS > 10 && POINTS <= 11)";
         String expected = "(TEAM >= 'gold' && TEAM <= 'silver') && (POINTS > 10 && POINTS <= 11)";
         runTestQuery(query, expected);
     }
@@ -145,7 +145,7 @@ public class ExpandCompositeTermsTest {
     }
     @Test
     public void test8() throws Exception {
-        String query = "COLOR =~ '.*ed' && (WHEELS == '4' || WHEELS == '+aE4') && (MAKE_COLOR == 'honda' || MAKE == 'honda') && type == 'truck'";
+        String query = "COLOR =~ '.*ed' && (WHEELS == '4' || WHEELS == '+aE4') && (MAKE_COLOR == 'honda' || MAKE == 'honda') && TYPE == 'truck'";
         String expected = "((WHEELS == '4' || WHEELS == '+aE4') && COLOR =~ '.*ed' && TYPE == 'truck' && (MAKE_COLOR =~ 'honda\uDBFF\uDFFF.*ed' || MAKE_COLOR == 'honda'))";
         runTestQuery(query, expected);
     }
@@ -153,7 +153,7 @@ public class ExpandCompositeTermsTest {
     @Test
     public void test9() throws Exception {
         String query = "WINNER == 'blue' && TEAM == 'gold' && NAME != 'gold-1' && (POINTS > 4 && POINTS <= 5 || POINTS > 0 && POINTS < 2)";
-        String expected = "(WINNER == 'blue' && NAME ~= 'gold-1' && ((TEAM_POINTS > 'gold\uDBFF\uDFFF4' && TEAM_POINTS <= 'gold\uDBFF\uDFFF5') || (TEAM_POINTS > 'gold\uDBFF\uDFFF0' && TEAM_POINTS < 'gold\uDBFF\uDFFF2'";
+        String expected = "(WINNER == 'blue' && NAME != 'gold-1' && ((TEAM_POINTS > 'gold\uDBFF\uDFFF4' && TEAM_POINTS <= 'gold\uDBFF\uDFFF5') || (TEAM_POINTS > 'gold\uDBFF\uDFFF0' && TEAM_POINTS < 'gold\uDBFF\uDFFF2')))";
         runTestQuery(query, expected);
     }
 
@@ -166,8 +166,8 @@ public class ExpandCompositeTermsTest {
 
     @Test
     public void test11() throws Exception {
-        String query = "WINNER == 'blue' && TEAM == 'gold' && NAME ~= 'gold-1' && (POINTS > 4 && POINTS <= 5 || POINTS > 0 && POINTS < 2)";
-        String expected = "(WINNER == 'blue' && NAME ~= 'gold-1' && ((TEAM_POINTS > 'gold\uDBFF\uDFFF4' && TEAM_POINTS <= 'gold\uDBFF\uDFFF5') || (TEAM_POINTS > 'gold\uDBFF\uDFFF0' && TEAM_POINTS < 'gold\uDBFF\uDFFF2')))";
+        String query = "WINNER == 'blue' && TEAM == 'gold' && NAME != 'gold-1' && (POINTS > 4 && POINTS <= 5 || POINTS > 0 && POINTS < 2)";
+        String expected = "(WINNER == 'blue' && NAME != 'gold-1' && ((TEAM_POINTS > 'gold\uDBFF\uDFFF4' && TEAM_POINTS <= 'gold\uDBFF\uDFFF5') || (TEAM_POINTS > 'gold\uDBFF\uDFFF0' && TEAM_POINTS < 'gold\uDBFF\uDFFF2')))";
         runTestQuery(query, expected);
     }
 
@@ -193,7 +193,7 @@ public class ExpandCompositeTermsTest {
 
         String query = "((GEO >= '1f0155640000000000' && GEO <= '1f01556bffffffffff') || GEO == '00' || (GEO >= '0100' && GEO <= '0103')) && (WKT_BYTE_LENGTH >= '"
                 + Normalizer.NUMBER_NORMALIZER.normalize("0") + "' && WKT_BYTE_LENGTH <= '" + Normalizer.NUMBER_NORMALIZER.normalize("12345") + "')";
-        String expected = "((WKT_BYTE_LENGTH  >= '+AE0' && WKT_BYTE_LENGTH <= '" + Normalizer.NUMBER_NORMALIZER.normalize("12345") + "') && ((GEO >= '1f0155640000000000\uDBFF\uDFFF+AE0' && GEO <= '1f01556bffffffffff\uDBFF\uDFFF" + Normalizer.NUMBER_NORMALIZER.normalize("12345") + "') || (GEO >= '00\uDBFF\uDFFF+AE0' && GEO <= '00\uDBFF\uDFFF" + Normalizer.NUMBER_NORMALIZER.normalize("12345") + "') || (GEO >= '0100\uDBFF\uDFFF+AE0' && GEO <= '0103\uDBFF\uDFFF" + Normalizer.NUMBER_NORMALIZER.normalize("12345") + "')))";
+        String expected = "((WKT_BYTE_LENGTH >= '+AE0' && WKT_BYTE_LENGTH <= '" + Normalizer.NUMBER_NORMALIZER.normalize("12345") + "') && ((GEO >= '1f0155640000000000\uDBFF\uDFFF+AE0' && GEO <= '1f01556bffffffffff\uDBFF\uDFFF" + Normalizer.NUMBER_NORMALIZER.normalize("12345") + "') || (GEO >= '00\uDBFF\uDFFF+AE0' && GEO <= '00\uDBFF\uDFFF" + Normalizer.NUMBER_NORMALIZER.normalize("12345") + "') || (GEO >= '0100\uDBFF\uDFFF+AE0' && GEO <= '0103\uDBFF\uDFFF" + Normalizer.NUMBER_NORMALIZER.normalize("12345") + "')))";
 
         runTestQuery(query, expected, indexedFields, conf);
     }
@@ -245,7 +245,7 @@ public class ExpandCompositeTermsTest {
         conf.setFieldToCompositeMap(fieldToCompositeMap);
 
         String query = "(GEO >= '0100' && GEO <= '0103') && WKT_BYTE_LENGTH <= '" + Normalizer.NUMBER_NORMALIZER.normalize("12345") + "'";
-        String expected = "((GEO >= '0100\uDBFF\uDFFF+AE0' && GEO < '0104') && WKT_BYTE_LENGTH <= '" + Normalizer.NUMBER_NORMALIZER.normalize("12345") + "')";
+        String expected = "((GEO >= '0100' && GEO <= '0103\uDBFF\uDFFF" + Normalizer.NUMBER_NORMALIZER.normalize("12345") + "') && WKT_BYTE_LENGTH <= '" + Normalizer.NUMBER_NORMALIZER.normalize("12345") + "')";
 
         runTestQuery(query, expected, indexedFields, conf);
     }
@@ -407,12 +407,12 @@ public class ExpandCompositeTermsTest {
         // GE to GT, use GT
         // LE to LE, use LE
         query = "(GEO >= '0202' && GEO <= '020d') && (WKT > '+AE0' && WKT <= '" + upperBound + "')";
-        expected = "((GEO >= '0202\uDBFF\uDFFF+AE0' && GEO <= '020d\uDBFF\uDFFF" + upperBound + "') && (WKT > '+AE0' && WKT <= '" + upperBound + "'))";
+        expected = "((GEO > '0202\uDBFF\uDFFF+AE0' && GEO <= '020d\uDBFF\uDFFF" + upperBound + "') && (WKT > '+AE0' && WKT <= '" + upperBound + "'))";
         runTestQuery(query, expected, indexedFields, conf);
         // GT to GT, increment fixed term, use GT
         // LE to LE, use LE
         query = "(GEO > '0202' && GEO <= '020d') && (WKT > '+AE0' && WKT <= '" + upperBound + "')";
-        expected = "((GEO >= '0203\uDBFF\uDFFF+AE0' && GEO <= '020d\uDBFF\uDFFF" + upperBound + "') && (WKT > '+AE0' && WKT <= '" + upperBound + "'))";
+        expected = "((GEO > '0203\uDBFF\uDFFF+AE0' && GEO <= '020d\uDBFF\uDFFF" + upperBound + "') && (WKT > '+AE0' && WKT <= '" + upperBound + "'))";
         runTestQuery(query, expected, indexedFields, conf);
         // GE to GT, use GT
         // LT to LE, decrement fixed term, use LE
@@ -449,7 +449,7 @@ public class ExpandCompositeTermsTest {
         // GE to GT, use GT
         // LE to LT, use LT
         query = "(GEO >= '0202' && GEO <= '020d') && (WKT > '+AE0' && WKT < '" + upperBound + "')";
-        expected = "((GEO >= '0202\uDBFF\uDFFF+AE0' && GEO < '020d\uDBFF\uDFFF" + upperBound + "') && (WKT > '+AE0' && WKT < '" + upperBound + "'))";
+        expected = "((GEO > '0202\uDBFF\uDFFF+AE0' && GEO < '020d\uDBFF\uDFFF" + upperBound + "') && (WKT > '+AE0' && WKT < '" + upperBound + "'))";
         runTestQuery(query, expected, indexedFields, conf);
         // GT to GT, increment fixed term, use GT
         // LE to LT, use LT
@@ -485,29 +485,29 @@ public class ExpandCompositeTermsTest {
         // EQ to GT, use GT
         // EQ to LT, use LT
         query = "(GEO == '0202') && (WKT > '+AE0' && WKT < '" + upperBound + "')";
-        expected = "((GEO > '0202\uDBFF\uDFFF+AE0' && GEO < '0202\uDBFF\uDFFF" + upperBound + "'";
+        expected = "GEO > '0202\uDBFF\uDFFF+AE0' && GEO < '0202\uDBFF\uDFFF" + upperBound + "'";
         runTestQuery(query, expected, indexedFields, conf);
 
         // EQ, convert to range [keep base - use GE, increment base - use LT]
         query = "GEO == '0202'";
-        expected = "(GEO >= '0202' && GEO < '0203'";
+        expected = "(GEO >= '0202' && GEO < '0203')";
         runTestQuery(query, expected, indexedFields, conf);
 
         // Unbounded range w/ composite term
         query = "GEO >= '0202' && WKT < '" + upperBound + "'";
-        expected = "GEO >= '0202' && WKT < '" + upperBound + "'";
+        expected = "(GEO >= '0202' && WKT < '" + upperBound + "')";
         runTestQuery(query, expected, indexedFields, conf);
 
         query = "GEO >= '0202' && WKT > '" + upperBound + "'";
-        expected = "(GEO > '0202\uDBFF\uDFFF" + upperBound + "' && WKT > '" + upperBound + "'";
+        expected = "(GEO > '0202\uDBFF\uDFFF" + upperBound + "' && WKT > '" + upperBound + "')";
         runTestQuery(query, expected, indexedFields, conf);
 
         query = "GEO <= '0202' && WKT < '" + upperBound + "'";
-        expected = "(GEO < '0202\uDBFF\uDFFF" + upperBound + "' && WKT < '" + upperBound + "'";
+        expected = "(GEO < '0202\uDBFF\uDFFF" + upperBound + "' && WKT < '" + upperBound + "')";
         runTestQuery(query, expected, indexedFields, conf);
 
         query = "GEO <= '0202' && WKT > '" + upperBound + "'";
-        expected = "GEO <= '0202' && WKT > '" + upperBound + "'";
+        expected = "(GEO < '0203' && WKT > '" + upperBound + "')";
         runTestQuery(query, expected, indexedFields, conf);
 
         // Unbounded range w/out composite term
@@ -607,12 +607,12 @@ public class ExpandCompositeTermsTest {
         // GE to GT, use GT
         // LE to LE, use LE
         query = "(GEO >= '0202' && GEO <= '020d') && (WKT > '+AE0' && WKT <= '" + upperBound + "')";
-        expected = "((GEO_WKT >= '0202\uDBFF\uDFFF+AE0' && GEO_WKT <= '020d\uDBFF\uDFFF" + upperBound + "') && (WKT > '+AE0' && WKT <= '" + upperBound + "'))";
+        expected = "((GEO_WKT > '0202\uDBFF\uDFFF+AE0' && GEO_WKT <= '020d\uDBFF\uDFFF" + upperBound + "') && (WKT > '+AE0' && WKT <= '" + upperBound + "'))";
         runTestQuery(query, expected, indexedFields, conf);
         // GT to GT, increment fixed term, use GT
         // LE to LE, use LE
         query = "(GEO > '0202' && GEO <= '020d') && (WKT > '+AE0' && WKT <= '" + upperBound + "')";
-        expected = "((GEO_WKT >= '0203\uDBFF\uDFFF+AE0' && GEO_WKT <= '020d\uDBFF\uDFFF" + upperBound + "') && (WKT > '+AE0' && WKT <= '" + upperBound + "'))";
+        expected = "((GEO_WKT > '0203\uDBFF\uDFFF+AE0' && GEO_WKT <= '020d\uDBFF\uDFFF" + upperBound + "') && (WKT > '+AE0' && WKT <= '" + upperBound + "'))";
         runTestQuery(query, expected, indexedFields, conf);
         // GE to GT, use GT
         // LT to LE, decrement fixed term, use LE
@@ -649,7 +649,7 @@ public class ExpandCompositeTermsTest {
         // GE to GT, use GT
         // LE to LT, use LT
         query = "(GEO >= '0202' && GEO <= '020d') && (WKT > '+AE0' && WKT < '" + upperBound + "')";
-        expected = "((GEO_WKT >= '0202\uDBFF\uDFFF+AE0' && GEO_WKT < '020d\uDBFF\uDFFF" + upperBound + "') && (WKT > '+AE0' && WKT < '" + upperBound + "'))";
+        expected = "((GEO_WKT > '0202\uDBFF\uDFFF+AE0' && GEO_WKT < '020d\uDBFF\uDFFF" + upperBound + "') && (WKT > '+AE0' && WKT < '" + upperBound + "'))";
         runTestQuery(query, expected, indexedFields, conf);
         // GT to GT, increment fixed term, use GT
         // LE to LT, use LT
@@ -685,7 +685,7 @@ public class ExpandCompositeTermsTest {
         // EQ to GT, use GT
         // EQ to LT, use LT
         query = "(GEO == '0202') && (WKT > '+AE0' && WKT < '" + upperBound + "')";
-        expected = "((GEO_WKT > '0202\uDBFF\uDFFF+AE0' && GEO_WKT < '0202\uDBFF\uDFFF" + upperBound + "'";
+        expected = "GEO_WKT > '0202\uDBFF\uDFFF+AE0' && GEO_WKT < '0202\uDBFF\uDFFF" + upperBound + "'";
         runTestQuery(query, expected, indexedFields, conf);
 
         // EQ, convert to range [keep base - use GE, increment base - use LT]
@@ -699,11 +699,11 @@ public class ExpandCompositeTermsTest {
         runTestQuery(query, expected, indexedFields, conf);
 
         query = "GEO >= '0202' && WKT > '" + upperBound + "'";
-        expected = "(GEO_WKT > '0202\uDBFF\uDFFF" + upperBound + "' && WKT > '" + upperBound + "'";
+        expected = "(GEO_WKT > '0202\uDBFF\uDFFF" + upperBound + "' && WKT > '" + upperBound + "')";
         runTestQuery(query, expected, indexedFields, conf);
 
         query = "GEO <= '0202' && WKT < '" + upperBound + "'";
-        expected = "(GEO_WKT < '0202\uDBFF\uDFFF" + upperBound + "' && WKT < '" + upperBound + "'";
+        expected = "(GEO_WKT < '0202\uDBFF\uDFFF" + upperBound + "' && WKT < '" + upperBound + "')";
         runTestQuery(query, expected, indexedFields, conf);
 
         query = "GEO <= '0202' && WKT > '" + upperBound + "'";
@@ -749,7 +749,7 @@ public class ExpandCompositeTermsTest {
         conf.setFieldToCompositeMap(fieldToCompositeMap);
 
         String query = "((((GEO >= '0202' && GEO <= '020d'))) || (((GEO >= '030a' && GEO <= '0335'))) || (((GEO >= '0428' && GEO <= '0483'))) || (((GEO >= '0500aa' && GEO <= '050355'))) || (((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO <= '1f36c71c71c71c71c7'))))";
-        String expected = "((((GEO >= '0202' && GEO < '020e'))) || (((GEO >= '030a' && GEO < '0336'))) || (((GEO >= '0428' && GEO <= '0484'))) || (((GEO >= '0500aa' && GEO < '050356'))) || (((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO < '1f36c71c71c71c71c8'))))";
+        String expected = "((((GEO >= '0202' && GEO < '020e'))) || (((GEO >= '030a' && GEO < '0336'))) || (((GEO >= '0428' && GEO < '0484'))) || (((GEO >= '0500aa' && GEO < '050356'))) || (((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO < '1f36c71c71c71c71c8'))))";
 
         runTestQuery(query, expected, indexedFields, conf);
     }
@@ -775,7 +775,7 @@ public class ExpandCompositeTermsTest {
         conf.setFieldToCompositeMap(fieldToCompositeMap);
 
         String query = "((((GEO >= '0202' && GEO <= '020d'))) || (((GEO >= '030a' && GEO <= '0335'))) || (((GEO >= '0428' && GEO <= '0483'))) || (((GEO >= '0500aa' && GEO <= '050355'))) || (((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO <= '1f36c71c71c71c71c7')))) && ((WKT >= '+AE0' && WKT < '+bE4'))";
-        String expected = "((WKT >= '+AE0' && WKT < '+bE4') && ((GEO >= '0202\uDBFF\uDFFF+AE0' && GEO < '020e\uDBFF\uDFFF+bE4') || (GEO >= '030a\uDBFF\uDFFF+AE0' && GEO < '0336\uDBFF\uDFFF+bE4') || (GEO >= '0428\uDBFF\uDFFF+AE0' && GEO <= '0484\uDBFF\uDFFF+bE4') || (GEO >= '0500aa\uDBFF\uDFFF+AE0' && GEO < '050356\uDBFF\uDFFF+bE4') || (GEO >= '1f0aaaaaaaaaaaaaaa\uDBFF\uDFFF+AE0' && GEO < '1f36c71c71c71c71c8\uDBFF\uDFFF+bE4')))";
+        String expected = "((WKT >= '+AE0' && WKT < '+bE4') && ((GEO >= '0202\uDBFF\uDFFF+AE0' && GEO < '020d\uDBFF\uDFFF+bE4') || (GEO >= '030a\uDBFF\uDFFF+AE0' && GEO < '0335\uDBFF\uDFFF+bE4') || (GEO >= '0428\uDBFF\uDFFF+AE0' && GEO < '0483\uDBFF\uDFFF+bE4') || (GEO >= '0500aa\uDBFF\uDFFF+AE0' && GEO < '050355\uDBFF\uDFFF+bE4') || (GEO >= '1f0aaaaaaaaaaaaaaa\uDBFF\uDFFF+AE0' && GEO < '1f36c71c71c71c71c7\uDBFF\uDFFF+bE4')))";
 
         runTestQuery(query, expected, indexedFields, conf);
     }
@@ -799,7 +799,7 @@ public class ExpandCompositeTermsTest {
         conf.setFieldToCompositeMap(fieldToCompositeMap);
 
         String query = "((((GEO >= '0202' && GEO <= '020d'))) || (((GEO >= '030a' && GEO <= '0335'))) || (((GEO >= '0428' && GEO <= '0483'))) || (((GEO >= '0500aa' && GEO <= '050355'))) || (((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO <= '1f36c71c71c71c71c7')))) && ((WKT >= '+AE0' && WKT < '+bE4'))";
-        String expected = "((WKT >= '+AE0' && WKT < '+bE4') && ((GEO >= '0202' && GEO < '020e') || (GEO >= '030a' && GEO < '0336') || (GEO >= '0428' && GEO <= '0484') || (GEO >= '0500aa' && GEO < '050356') || (GEO >= '1f0aaaaaaaaaaaaaaa' && GEO < '1f36c71c71c71c71c8')))";
+        String expected = "((WKT >= '+AE0' && WKT < '+bE4') && ((GEO >= '0202' && GEO < '020e') || (GEO >= '030a' && GEO < '0336') || (GEO >= '0428' && GEO < '0484') || (GEO >= '0500aa' && GEO < '050356') || (GEO >= '1f0aaaaaaaaaaaaaaa' && GEO < '1f36c71c71c71c71c8')))";
 
         runTestQuery(query, expected, indexedFields, conf);
     }
@@ -824,7 +824,7 @@ public class ExpandCompositeTermsTest {
         conf.setFieldToCompositeMap(fieldToCompositeMap);
 
         String query = "((((GEO >= '0202' && GEO <= '020d'))) || (((GEO >= '030a' && GEO <= '0335'))) || (((GEO >= '0428' && GEO <= '0483'))) || (((GEO >= '0500aa' && GEO <= '050355'))) || (((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO <= '1f36c71c71c71c71c7')))) && ((WKT >= '+AE0' && WKT < '+bE4'))";
-        String expected = "((WKT >= '+AE0' && WKT < '+bE4') && ((GEO_WKT >= '0202\uDBFF\uDFFF+AE0' && GEO_WKT < '020d\uDBFF\uDFFF+bE4') || (GEO_WKT >= '030a\uDBFF\uDFFF+AE0' && GEO_WKT < '0335\uDBFF\uDFFF+bE4') || (GEO_WKT >= '0428\uDBFF\uDFFF+AE0' && GEO_WKT <= '0483\uDBFF\uDFFF+bE4') || (GEO_WKT >= '0500aa\uDBFF\uDFFF+AE0' && GEO_WKT < '050355\uDBFF\uDFFF+bE4') || (GEO_WKT >= '1f0aaaaaaaaaaaaaaa\uDBFF\uDFFF+AE0' && GEO_WKT < '1f36c71c71c71c71c7\uDBFF\uDFFF+bE4')))";
+        String expected = "((WKT >= '+AE0' && WKT < '+bE4') && ((GEO_WKT >= '0202\uDBFF\uDFFF+AE0' && GEO_WKT < '020d\uDBFF\uDFFF+bE4') || (GEO_WKT >= '030a\uDBFF\uDFFF+AE0' && GEO_WKT < '0335\uDBFF\uDFFF+bE4') || (GEO_WKT >= '0428\uDBFF\uDFFF+AE0' && GEO_WKT < '0483\uDBFF\uDFFF+bE4') || (GEO_WKT >= '0500aa\uDBFF\uDFFF+AE0' && GEO_WKT < '050355\uDBFF\uDFFF+bE4') || (GEO_WKT >= '1f0aaaaaaaaaaaaaaa\uDBFF\uDFFF+AE0' && GEO_WKT < '1f36c71c71c71c71c7\uDBFF\uDFFF+bE4')))";
 
         runTestQuery(query, expected, indexedFields, conf);
     }
