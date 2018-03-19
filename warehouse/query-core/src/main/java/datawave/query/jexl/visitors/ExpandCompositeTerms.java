@@ -248,7 +248,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
         }
         return super.visit(node, data);
     }
-
+    
     @Override
     public Object visit(ASTGTNode node, Object data) {
         if (data == null) {
@@ -262,7 +262,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
         }
         return super.visit(node, data);
     }
-
+    
     @Override
     public Object visit(ASTLENode node, Object data) {
         if (data == null) {

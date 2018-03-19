@@ -81,7 +81,7 @@ import static datawave.webservice.query.QueryParameters.QUERY_STRING;
 
 @RunWith(Arquillian.class)
 public class GeoCompositeIndexTest {
-
+    
     private static final int NUM_SHARDS = 241;
     private static final String SHARD_TABLE_NAME = "shard";
     private static final String KNOWLEDGE_SHARD_TABLE_NAME = "knowledgeShard";
@@ -91,27 +91,27 @@ public class GeoCompositeIndexTest {
     private static final String METADATA_TABLE_NAME = "DatawaveMetadata";
     private static final String DATA_TYPE_NAME = "wkt";
     private static final String INGEST_HELPER_CLASS = TestIngestHelper.class.getName();
-
+    
     private static final String GEO_FIELD = "GEO";
     private static final String WKT_BYTE_LENGTH_FIELD = "WKT_BYTE_LENGTH";
-
+    
     private static final String PASSWORD = "";
     private static final String AUTHS = "ALL";
-
+    
     private static final String formatPattern = "yyyyMMdd HHmmss.SSS";
     private static final SimpleDateFormat formatter = new SimpleDateFormat(formatPattern);
-
+    
     private static final String LEGACY_BEGIN_DATE = "20000101 000000.000";
     private static final String COMPOSITE_BEGIN_DATE = "20010101 000000.000";
-
+    
     private static final String BEGIN_DATE = "20000101 000000.000";
     private static final String END_DATE = "20020101 000000.000";
-
+    
     private static final String USER = "testcorp";
     private static final String USER_DN = "cn=test.testcorp.com, ou=datawave, ou=development, o=testcorp, c=us";
-
+    
     private static final Configuration conf = new Configuration();
-
+    
     // @formatter:off
     private static final String[] wktLegacyData = {
             "POINT(0 0)",
@@ -173,52 +173,52 @@ public class GeoCompositeIndexTest {
             0,
             TimeUnit.DAYS.toMillis(90)};
     // @formatter:on
-
+    
     private static final String QUERY_WKT = "POLYGON((-180 -90, 180 -90, 180 90, -180 90, -180 -90))";
-
+    
     @Inject
     @SpringBean(name = "EventQuery")
     ShardQueryLogic logic;
-
+    
     private static InMemoryInstance instance;
-
+    
     @Deployment
     public static JavaArchive createDeployment() throws Exception {
         return ShrinkWrap
-                .create(JavaArchive.class)
-                .addPackages(true, "org.apache.deltaspike", "io.astefanutti.metrics.cdi", "datawave.query", "datawave.webservice.query.result.event")
-                .addClass(TestDatawaveEdgeDictionaryImpl.class)
-                .deleteClass(datawave.query.metrics.QueryMetricQueryLogic.class)
-                .deleteClass(datawave.query.metrics.ShardTableQueryMetricHandler.class)
-                .addAsManifestResource(
-                        new StringAsset("<alternatives>" + "<stereotype>datawave.query.tables.edge.MockAlternative</stereotype>"
-                                + "</alternatives>"), "beans.xml");
+                        .create(JavaArchive.class)
+                        .addPackages(true, "org.apache.deltaspike", "io.astefanutti.metrics.cdi", "datawave.query", "datawave.webservice.query.result.event")
+                        .addClass(TestDatawaveEdgeDictionaryImpl.class)
+                        .deleteClass(datawave.query.metrics.QueryMetricQueryLogic.class)
+                        .deleteClass(datawave.query.metrics.ShardTableQueryMetricHandler.class)
+                        .addAsManifestResource(
+                                        new StringAsset("<alternatives>" + "<stereotype>datawave.query.tables.edge.MockAlternative</stereotype>"
+                                                        + "</alternatives>"), "beans.xml");
     }
-
+    
     @BeforeClass
     public static void setupClass() throws Exception {
         System.setProperty("subject.dn.pattern", "(?:^|,)\\s*OU\\s*=\\s*My Department\\s*(?:,|$)");
-
+        
         setupConfiguration(conf);
-
+        
         AbstractColumnBasedHandler<Text> dataTypeHandler = new AbstractColumnBasedHandler<Text>();
         dataTypeHandler.setup(new TaskAttemptContextImpl(conf, new TaskAttemptID()));
-
+        
         TestIngestHelper ingestHelper = new TestIngestHelper();
         ingestHelper.setup(conf);
-
+        
         // create and process events with WKT data
         RawRecordContainer record = new RawRecordContainerImpl();
         Multimap<BulkIngestKey,Value> keyValues = HashMultimap.create();
         int recNum = 1;
         for (int dataIdx = 0; dataIdx < 2; dataIdx++) {
-
+            
             String beginDate;
             String[] wktData;
             Integer[] wktByteLengthData;
             long[] dates;
             boolean useCompositeIngest;
-
+            
             if (dataIdx == 0) {
                 beginDate = LEGACY_BEGIN_DATE;
                 wktData = wktLegacyData;
@@ -232,19 +232,19 @@ public class GeoCompositeIndexTest {
                 dates = compositeDates;
                 useCompositeIngest = true;
             }
-
+            
             for (int i = 0; i < wktData.length; i++) {
                 record.clear();
                 record.setDataType(new Type(DATA_TYPE_NAME, GeoSortedQueryDataTest.TestIngestHelper.class, (Class) null, (String[]) null, 1, (String[]) null));
                 record.setRawFileName("geodata_" + recNum + ".dat");
                 record.setRawRecordNumber(recNum++);
                 record.setDate(formatter.parse(beginDate).getTime() + dates[i]);
-                record.setRawData((wktData[i] + "|" + ((wktByteLengthData[i]!= null) ? Integer.toString(wktByteLengthData[i]) : "")).getBytes("UTF8"));
+                record.setRawData((wktData[i] + "|" + ((wktByteLengthData[i] != null) ? Integer.toString(wktByteLengthData[i]) : "")).getBytes("UTF8"));
                 record.generateId(null);
                 record.setVisibility(new ColumnVisibility(AUTHS));
-
-                final Multimap<String, NormalizedContentInterface> fields = ingestHelper.getEventFields(record);
-
+                
+                final Multimap<String,NormalizedContentInterface> fields = ingestHelper.getEventFields(record);
+                
                 if (useCompositeIngest && ingestHelper instanceof CompositeIngest) {
                     CompositeIngest vHelper = (CompositeIngest) ingestHelper;
                     Multimap<String,NormalizedContentInterface> compositeFields = vHelper.getCompositeFields(fields);
@@ -255,39 +255,39 @@ public class GeoCompositeIndexTest {
                         fields.putAll(fieldName, compositeFields.get(fieldName));
                     }
                 }
-
+                
                 Multimap kvPairs = dataTypeHandler.processBulk(new Text(), record, fields, new MockStatusReporter());
-
+                
                 keyValues.putAll(kvPairs);
-
+                
                 dataTypeHandler.getMetadata().addEvent(ingestHelper, record, fields);
             }
         }
         keyValues.putAll(dataTypeHandler.getMetadata().getBulkMetadata());
-
+        
         // write these values to their respective tables
         instance = new InMemoryInstance();
         Connector connector = instance.getConnector("root", PASSWORD);
         connector.securityOperations().changeUserAuthorizations("root", new Authorizations(AUTHS));
-
+        
         writeKeyValues(connector, keyValues);
     }
-
+    
     public static void setupConfiguration(Configuration conf) {
         String compositeFieldName = GEO_FIELD;// + "_" + WKT_BYTE_LENGTH_FIELD;
         conf.set(DATA_TYPE_NAME + BaseIngestHelper.COMPOSITE_FIELD_NAMES, compositeFieldName);
         conf.set(DATA_TYPE_NAME + BaseIngestHelper.COMPOSITE_FIELD_MEMBERS, GEO_FIELD + "." + WKT_BYTE_LENGTH_FIELD);
         conf.set(DATA_TYPE_NAME + BaseIngestHelper.COMPOSITE_FIELD_VALUE_SEPARATOR, Constants.MAX_UNICODE_STRING);
-
+        
         conf.set(DATA_TYPE_NAME + BaseIngestHelper.INDEX_FIELDS, GEO_FIELD + ((!compositeFieldName.equals(GEO_FIELD)) ? "," + compositeFieldName : ""));
         conf.set(DATA_TYPE_NAME + "." + GEO_FIELD + BaseIngestHelper.FIELD_TYPE, GeometryType.class.getName());
         conf.set(DATA_TYPE_NAME + "." + WKT_BYTE_LENGTH_FIELD + BaseIngestHelper.FIELD_TYPE, NumberType.class.getName());
-
+        
         conf.set(DATA_TYPE_NAME + DataTypeHelper.Properties.INGEST_POLICY_ENFORCER_CLASS, IngestPolicyEnforcer.NoOpIngestPolicyEnforcer.class.getName());
         conf.set(DataTypeHelper.Properties.DATA_NAME, DATA_TYPE_NAME);
         conf.set(TypeRegistry.INGEST_DATA_TYPES, DATA_TYPE_NAME);
         conf.set(DATA_TYPE_NAME + TypeRegistry.INGEST_HELPER, INGEST_HELPER_CLASS);
-
+        
         conf.set(ShardedDataTypeHandler.METADATA_TABLE_NAME, METADATA_TABLE_NAME);
         conf.set(ShardedDataTypeHandler.NUM_SHARDS, Integer.toString(NUM_SHARDS));
         conf.set(ShardedDataTypeHandler.SHARDED_TNAMES, SHARD_TABLE_NAME + "," + KNOWLEDGE_SHARD_TABLE_NAME + "," + ERROR_SHARD_TABLE_NAME);
@@ -305,7 +305,7 @@ public class GeoCompositeIndexTest {
         conf.set("partitioner.category.shardedTables", BalancedShardPartitioner.class.getName());
         conf.set("partitioner.category.member." + SHARD_TABLE_NAME, "shardedTables");
     }
-
+    
     private static void writeKeyValues(Connector connector, Multimap<BulkIngestKey,Value> keyValues) throws Exception {
         final TableOperations tops = connector.tableOperations();
         final Set<BulkIngestKey> biKeys = keyValues.keySet();
@@ -313,17 +313,18 @@ public class GeoCompositeIndexTest {
             final String tableName = biKey.getTableName().toString();
             if (!tops.exists(tableName))
                 tops.create(tableName);
-
+            
             final BatchWriter writer = connector.createBatchWriter(tableName, new BatchWriterConfig());
             for (final Value val : keyValues.get(biKey)) {
                 final Mutation mutation = new Mutation(biKey.getKey().getRow());
-                mutation.put(biKey.getKey().getColumnFamily(), biKey.getKey().getColumnQualifier(), biKey.getKey().getColumnVisibilityParsed(), biKey.getKey().getTimestamp(), val);
+                mutation.put(biKey.getKey().getColumnFamily(), biKey.getKey().getColumnQualifier(), biKey.getKey().getColumnVisibilityParsed(), biKey.getKey()
+                                .getTimestamp(), val);
                 writer.addMutation(mutation);
             }
             writer.close();
         }
     }
-
+    
     @Test
     public void compositeTest() throws Exception {
         // @formatter:off
@@ -332,13 +333,13 @@ public class GeoCompositeIndexTest {
                 "(" + GEO_FIELD + " >= '0428' && " + GEO_FIELD + " <= '0483') || " +
                 "(" + GEO_FIELD + " >= '0500aa' && " + GEO_FIELD + " <= '050355') || " +
                 "(" + GEO_FIELD + " >= '1f0aaaaaaaaaaaaaaa' && " + GEO_FIELD + " <= '1f36c71c71c71c71c7')) && " +
-                "(" + WKT_BYTE_LENGTH_FIELD + " >= 0 && " + WKT_BYTE_LENGTH_FIELD + " < 80) || ";
+                "(" + WKT_BYTE_LENGTH_FIELD + " >= 0 && " + WKT_BYTE_LENGTH_FIELD + " < 80)";
         // @formatter:on
-
+        
         List<QueryData> queries = getQueryRanges(query);
         List<DefaultEvent> events = getQueryResults(query);
-
-        System.out.println(events.size() +" Events Returned");
+        
+        System.out.println(events.size() + " Events Returned");
         for (DefaultEvent event : events) {
             System.out.println("\n Event: " + event.getMetadata().getInternalId());
             List<String> fieldValues = new ArrayList<>();
@@ -348,30 +349,30 @@ public class GeoCompositeIndexTest {
             for (String fieldValue : fieldValues)
                 System.out.println(fieldValue);
         }
-
+        
         System.out.println("done!");
     }
-
+    
     private List<QueryData> getQueryRanges(String queryString) throws Exception {
         ShardQueryLogic logic = getShardQueryLogic();
-
+        
         Iterator iter = getQueryRangesIterator(queryString, logic);
         List<QueryData> queryData = new ArrayList<>();
         while (iter.hasNext())
             queryData.add((QueryData) iter.next());
         return queryData;
     }
-
+    
     private List<DefaultEvent> getQueryResults(String queryString) throws Exception {
         ShardQueryLogic logic = getShardQueryLogic();
-
+        
         Iterator iter = getResultsIterator(queryString, logic);
         List<DefaultEvent> events = new ArrayList<>();
-        while(iter.hasNext())
+        while (iter.hasNext())
             events.add((DefaultEvent) iter.next());
         return events;
     }
-
+    
     private Iterator getQueryRangesIterator(String queryString, ShardQueryLogic logic) throws Exception {
         MultivaluedMap<String,String> params = new MultivaluedMapImpl<>();
         params.putSingle(QUERY_STRING, queryString);
@@ -381,27 +382,27 @@ public class GeoCompositeIndexTest {
         params.putSingle(QUERY_EXPIRATION, "20200101 000000.000");
         params.putSingle(QUERY_BEGIN, BEGIN_DATE);
         params.putSingle(QUERY_END, END_DATE);
-
+        
         QueryParameters queryParams = new QueryParametersImpl();
         queryParams.validate(params);
-
+        
         Set<Authorizations> auths = new HashSet<>();
         auths.add(new Authorizations(AUTHS));
-
+        
         Query query = new QueryImpl();
         query.initialize(USER, Arrays.asList(USER_DN), null, queryParams, null);
-
+        
         ShardQueryConfiguration config = ShardQueryConfigurationFactory.createShardQueryConfigurationFromConfiguredLogic(logic, query);
-
+        
         config.setFixedLengthFields(Arrays.asList(GEO_FIELD));
-
+        
         logic.initialize(config, instance.getConnector("root", PASSWORD), query, auths);
-
+        
         logic.setupQuery(config);
-
+        
         return config.getQueries();
     }
-
+    
     private Iterator getResultsIterator(String queryString, ShardQueryLogic logic) throws Exception {
         MultivaluedMap<String,String> params = new MultivaluedMapImpl<>();
         params.putSingle(QUERY_STRING, queryString);
@@ -411,60 +412,60 @@ public class GeoCompositeIndexTest {
         params.putSingle(QUERY_EXPIRATION, "20200101 000000.000");
         params.putSingle(QUERY_BEGIN, BEGIN_DATE);
         params.putSingle(QUERY_END, END_DATE);
-
+        
         QueryParameters queryParams = new QueryParametersImpl();
         queryParams.validate(params);
-
+        
         Set<Authorizations> auths = new HashSet<>();
         auths.add(new Authorizations(AUTHS));
-
+        
         Query query = new QueryImpl();
         query.initialize(USER, Arrays.asList(USER_DN), null, queryParams, null);
-
+        
         ShardQueryConfiguration config = ShardQueryConfigurationFactory.createShardQueryConfigurationFromConfiguredLogic(logic, query);
-
+        
         config.setFixedLengthFields(Arrays.asList(GEO_FIELD));
-
+        
         logic.initialize(config, instance.getConnector("root", PASSWORD), query, auths);
-
+        
         logic.setupQuery(config);
-
+        
         return logic.getTransformIterator(query);
     }
-
+    
     private ShardQueryLogic getShardQueryLogic() {
         ShardQueryLogic logic = new ShardQueryLogic(this.logic);
-
+        
         // increase the depth threshold
         logic.setMaxDepthThreshold(10);
-
+        
         // set the pushdown threshold really high to avoid collapsing uids into shards (overrides setCollapseUids if #terms is greater than this threshold)
         ((DefaultQueryPlanner) (logic.getQueryPlanner())).setPushdownThreshold(1000000);
-
+        
         // lets avoid condensing uids to ensure that shard ranges are not collapsed into day ranges
         ((DefaultQueryPlanner) (logic.getQueryPlanner())).setCondenseUidsInRangeStream(false);
-
+        
         URL hdfsSiteConfig = this.getClass().getResource("/testhadoop.config");
         logic.setHdfsSiteConfigURLs(hdfsSiteConfig.toExternalForm());
-
+        
         return logic;
     }
-
+    
     public static class TestIngestHelper extends ContentBaseIngestHelper {
         @Override
         public Multimap<String,NormalizedContentInterface> getEventFields(RawRecordContainer record) {
             Multimap<String,NormalizedContentInterface> eventFields = HashMultimap.create();
-
+            
             String[] values = new String(record.getRawData()).split("\\|");
-
+            
             NormalizedContentInterface geo_nci = new NormalizedFieldAndValue(GEO_FIELD, values[0]);
             eventFields.put(GEO_FIELD, geo_nci);
-
+            
             if (values.length > 1) {
                 NormalizedContentInterface wktByteLength_nci = new NormalizedFieldAndValue(WKT_BYTE_LENGTH_FIELD, values[1]);
                 eventFields.put(WKT_BYTE_LENGTH_FIELD, wktByteLength_nci);
             }
-
+            
             return normalizeMap(eventFields);
         }
     }
