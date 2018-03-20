@@ -235,7 +235,7 @@ public class GeoCompositeIndexTest {
             
             for (int i = 0; i < wktData.length; i++) {
                 record.clear();
-                record.setDataType(new Type(DATA_TYPE_NAME, GeoSortedQueryDataTest.TestIngestHelper.class, (Class) null, (String[]) null, 1, (String[]) null));
+                record.setDataType(new Type(DATA_TYPE_NAME, TestIngestHelper.class, (Class) null, (String[]) null, 1, (String[]) null));
                 record.setRawFileName("geodata_" + recNum + ".dat");
                 record.setRawRecordNumber(recNum++);
                 record.setDate(formatter.parse(beginDate).getTime() + dates[i]);
@@ -246,11 +246,10 @@ public class GeoCompositeIndexTest {
                 final Multimap<String,NormalizedContentInterface> fields = ingestHelper.getEventFields(record);
                 
                 if (useCompositeIngest && ingestHelper instanceof CompositeIngest) {
-                    CompositeIngest vHelper = (CompositeIngest) ingestHelper;
-                    Multimap<String,NormalizedContentInterface> compositeFields = vHelper.getCompositeFields(fields);
+                    Multimap<String,NormalizedContentInterface> compositeFields = ingestHelper.getCompositeFields(fields);
                     for (String fieldName : compositeFields.keySet()) {
                         // if this is an overloaded event field, we are replacing the existing data
-                        if (vHelper.isOverloadedCompositeField(fieldName))
+                        if (ingestHelper.isOverloadedCompositeField(fieldName))
                             fields.removeAll(fieldName);
                         fields.putAll(fieldName, compositeFields.get(fieldName));
                     }
