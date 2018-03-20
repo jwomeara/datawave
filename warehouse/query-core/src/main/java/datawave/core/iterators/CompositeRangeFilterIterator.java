@@ -68,7 +68,7 @@ public class CompositeRangeFilterIterator extends Filter {
         if (this.lowerTerms != null) {
             int numTerms = Math.min(terms.length, lowerTerms.length);
             // don't need to check the first term, as it was included in the initial range scan
-            for (int i = 0; i < numTerms; i++)
+            for (int i = 1; i < numTerms; i++)
                 if (!((!lowerTermInclusive && terms[i].compareTo(lowerTerms[i]) > 0) || (lowerTermInclusive && terms[i].compareTo(lowerTerms[i]) >= 0)))
                     return false;
         }
@@ -76,8 +76,8 @@ public class CompositeRangeFilterIterator extends Filter {
         if (this.upperTerms != null) {
             int numTerms = Math.min(terms.length, upperTerms.length);
             // don't need to check the first term, as it was included in the initial range scan
-            for (int i = 0; i < numTerms; i++)
-                if (!((!upperTermInclusive && terms[i].compareTo(upperTerms[i]) > 0) || (upperTermInclusive && terms[i].compareTo(upperTerms[i]) >= 0)))
+            for (int i = 1; i < numTerms; i++)
+                if (!((!upperTermInclusive && terms[i].compareTo(upperTerms[i]) < 0) || (upperTermInclusive && terms[i].compareTo(upperTerms[i]) <= 0)))
                     return false;
         }
         
