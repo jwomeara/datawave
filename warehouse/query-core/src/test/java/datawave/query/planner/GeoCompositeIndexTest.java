@@ -436,7 +436,7 @@ public class GeoCompositeIndexTest {
         ShardQueryLogic logic = new ShardQueryLogic(this.logic);
         
         // increase the depth threshold
-        logic.setMaxDepthThreshold(10);
+        logic.setMaxDepthThreshold(20);
         
         // set the pushdown threshold really high to avoid collapsing uids into shards (overrides setCollapseUids if #terms is greater than this threshold)
         ((DefaultQueryPlanner) (logic.getQueryPlanner())).setPushdownThreshold(1000000);
@@ -447,7 +447,18 @@ public class GeoCompositeIndexTest {
         URL hdfsSiteConfig = this.getClass().getResource("/testhadoop.config");
         logic.setHdfsSiteConfigURLs(hdfsSiteConfig.toExternalForm());
         
+//        setupIvarator(logic);
+        
         return logic;
+    }
+    
+    private void setupIvarator(ShardQueryLogic logic) {
+        // Set these to ensure ivarator runs
+        logic.setMaxUnfieldedExpansionThreshold(1);
+        logic.setMaxValueExpansionThreshold(1);
+        logic.setMaxOrExpansionThreshold(1);
+        logic.setMaxOrExpansionFstThreshold(1);
+        logic.setIvaratorCacheScanPersistThreshold(1);
     }
     
     public static class TestIngestHelper extends ContentBaseIngestHelper {

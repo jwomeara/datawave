@@ -11,6 +11,7 @@ import java.util.concurrent.Callable;
 
 import datawave.core.iterators.CompositeRangeFilterIterator;
 import datawave.query.config.ShardQueryConfiguration;
+import datawave.query.jexl.visitors.JexlStringBuildingVisitor;
 import datawave.query.util.Composite;
 import org.apache.accumulo.core.client.BatchScanner;
 import org.apache.accumulo.core.client.IteratorSetting;
@@ -19,6 +20,8 @@ import org.apache.accumulo.core.data.Key;
 import org.apache.accumulo.core.data.Range;
 import org.apache.accumulo.core.data.Value;
 import org.apache.accumulo.core.iterators.user.WholeRowIterator;
+import org.apache.commons.jexl2.parser.ASTDelayedCompositePredicate;
+import org.apache.commons.jexl2.parser.ASTDelayedPredicate;
 import org.apache.hadoop.io.Text;
 import org.apache.log4j.Logger;
 
@@ -38,6 +41,7 @@ import datawave.webservice.common.logging.ThreadConfigurableLogger;
 import datawave.webservice.query.exception.DatawaveErrorCode;
 import datawave.webservice.query.exception.NotFoundQueryException;
 import datawave.webservice.query.exception.QueryException;
+import org.springframework.util.StringUtils;
 
 public class LookupBoundedRangeForTerms extends IndexLookup {
     private static final Logger log = ThreadConfigurableLogger.getLogger(LookupBoundedRangeForTerms.class);
@@ -45,9 +49,15 @@ public class LookupBoundedRangeForTerms extends IndexLookup {
     protected Set<String> datatypeFilter;
     protected Set<Text> fields;
     private final LiteralRange<?> literalRange;
-    
+    private final ASTDelayedPredicate compositePredicate;
+
     public LookupBoundedRangeForTerms(LiteralRange<?> literalRange) {
+        this(literalRange, null);
+    }
+
+    public LookupBoundedRangeForTerms(LiteralRange<?> literalRange, ASTDelayedPredicate compositePredicate) {
         this.literalRange = literalRange;
+        this.compositePredicate = compositePredicate;
         datatypeFilter = Sets.newHashSet();
         fields = Sets.newHashSet();
     }
@@ -132,23 +142,14 @@ public class LookupBoundedRangeForTerms extends IndexLookup {
             bs.addScanIterator(cfg);
             
             // If this is a composite range, we need to setup our query to filter based on each component of the composite range
-            IteratorSetting compositeIterator = null;
-            if (config.getCompositeToFieldMap().get(literalRange.getFieldName()) != null) {
-                String[] lowerTerms = lower.split(Composite.START_SEPARATOR);
-                String[] upperTerms = upper.split(Composite.START_SEPARATOR);
-                
-                if (lowerTerms.length > 1 && upperTerms.length > 1) {
-                    compositeIterator = new IteratorSetting(config.getBaseIteratorPriority() + 51, CompositeRangeFilterIterator.class);
-                    
-                    compositeIterator.addOption(CompositeRangeFilterIterator.LOWER_TERM, lower);
-                    compositeIterator.addOption(CompositeRangeFilterIterator.LOWER_TERM_INCLUSIVE, literalRange.isLowerInclusive().toString());
-                    compositeIterator.addOption(CompositeRangeFilterIterator.UPPER_TERM, upper);
-                    compositeIterator.addOption(CompositeRangeFilterIterator.UPPER_TERM_INCLUSIVE, literalRange.isUpperInclusive().toString());
-                }
-            }
-            
-            if (compositeIterator != null)
+            if (config.getCompositeToFieldMap().get(literalRange.getFieldName()) != null && compositePredicate != null) {
+                IteratorSetting compositeIterator = new IteratorSetting(config.getBaseIteratorPriority() + 51, CompositeRangeFilterIterator.class);
+
+                compositeIterator.addOption(CompositeRangeFilterIterator.COMPOSITE_FIELDS, StringUtils.collectionToCommaDelimitedString(config.getCompositeToFieldMap().get(literalRange.getFieldName())));
+                compositeIterator.addOption(CompositeRangeFilterIterator.COMPOSITE_PREDICATE, JexlStringBuildingVisitor.buildQuery(compositePredicate));
+
                 bs.addScanIterator(compositeIterator);
+            }
             
             if (null != fairnessIterator) {
                 cfg = new IteratorSetting(config.getBaseIteratorPriority() + 100, TimeoutExceptionIterator.class);

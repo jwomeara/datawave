@@ -1,11 +1,19 @@
 package datawave.core.iterators;
 
+import datawave.query.jexl.ArithmeticJexlEngines;
+import datawave.query.jexl.DatawaveJexlContext;
+import datawave.query.jexl.DatawaveJexlEngine;
+import datawave.query.jexl.DefaultArithmetic;
+import datawave.query.jexl.NormalizedValueArithmetic;
 import datawave.query.util.Composite;
 import org.apache.accumulo.core.data.Key;
 import org.apache.accumulo.core.data.Value;
 import org.apache.accumulo.core.iterators.Filter;
 import org.apache.accumulo.core.iterators.IteratorEnvironment;
 import org.apache.accumulo.core.iterators.SortedKeyValueIterator;
+import org.apache.commons.jexl2.JexlEngine;
+import org.apache.commons.jexl2.MapContext;
+import org.apache.commons.jexl2.Script;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
@@ -18,69 +26,77 @@ import java.util.Map;
 public class CompositeRangeFilterIterator extends Filter {
     
     private static final Logger log = Logger.getLogger(CompositeRangeFilterIterator.class);
-    
-    public static final String LOWER_TERM = "lower.term";
-    public static final String LOWER_TERM_INCLUSIVE = "lower.term.inclusive";
-    public static final String UPPER_TERM = "upper.term";
-    public static final String UPPER_TERM_INCLUSIVE = "upper.term.inclusive";
-    
-    protected String[] lowerTerms = null;
-    protected String[] upperTerms = null;
-    protected boolean lowerTermInclusive = false;
-    protected boolean upperTermInclusive = false;
+
+    public static final String COMPOSITE_FIELDS = "composite.fields";
+    public static final String COMPOSITE_PREDICATE = "composite.predicate";
+
+    protected String[] fieldNames = null;
+    protected String compositePredicate = null;
+    protected Script compositePredicateScript = null;
     
     @Override
     public SortedKeyValueIterator<Key,Value> deepCopy(IteratorEnvironment env) {
         CompositeRangeFilterIterator to = new CompositeRangeFilterIterator();
         to.setSource(getSource().deepCopy(env));
-        to.lowerTerms = lowerTerms;
-        to.upperTerms = upperTerms;
-        to.lowerTermInclusive = lowerTermInclusive;
-        to.upperTermInclusive = upperTermInclusive;
+
+        to.fieldNames = new String[fieldNames.length];
+        for (int i = 0; i < fieldNames.length; i++)
+            to.fieldNames[i] = new String(fieldNames[i]);
+
+        to.compositePredicate = new String(compositePredicate);
+
+        to.compositePredicateScript = queryToScript(to.compositePredicate);
+
         return to;
     }
     
     @Override
     public void init(SortedKeyValueIterator<Key,Value> source, Map<String,String> options, IteratorEnvironment env) throws IOException {
         super.init(source, options, env);
-        
-        final String lowerTerm = options.get(LOWER_TERM);
-        if (null != lowerTerm)
-            lowerTerms = lowerTerm.split(Composite.START_SEPARATOR);
-        
-        final String lowerTermInclusive = options.get(LOWER_TERM_INCLUSIVE);
-        if (null != lowerTermInclusive)
-            this.lowerTermInclusive = Boolean.parseBoolean(lowerTermInclusive);
-        
-        final String upperTerm = options.get(UPPER_TERM);
-        if (null != upperTerm)
-            upperTerms = upperTerm.split(Composite.START_SEPARATOR);
-        
-        final String upperTermInclusive = options.get(UPPER_TERM_INCLUSIVE);
-        if (null != upperTermInclusive)
-            this.upperTermInclusive = Boolean.parseBoolean(upperTermInclusive);
+
+        final String fields = options.get(COMPOSITE_FIELDS);
+        if (fields != null)
+            this.fieldNames = fields.split(",");
+
+        final String compositePredicate = options.get(COMPOSITE_PREDICATE);
+        if (null != compositePredicate) {
+            this.compositePredicate = compositePredicate;
+            this.compositePredicateScript = queryToScript(compositePredicate);
+        }
+    }
+
+    private Script queryToScript(String query) {
+        JexlEngine engine = new JexlEngine(null, new NormalizedValueArithmetic(), null, null);
+        engine.setCache(1024);
+        engine.setSilent(false);
+
+        // Setting strict to be true causes an Exception when a field
+        // in the query does not occur in the document being tested.
+        // This doesn't appear to have any unexpected consequences looking
+        // at the Interpreter class in JEXL.
+        engine.setStrict(false);
+
+        return engine.createScript(query);
     }
     
     @Override
     public boolean accept(Key key, Value value) {
         String[] terms = key.getRow().toString().split(Composite.START_SEPARATOR);
-        
-        if (this.lowerTerms != null) {
-            int numTerms = Math.min(terms.length, lowerTerms.length);
-            // don't need to check the first term, as it was included in the initial range scan
-            for (int i = 1; i < numTerms; i++)
-                if (!((!lowerTermInclusive && terms[i].compareTo(lowerTerms[i]) > 0) || (lowerTermInclusive && terms[i].compareTo(lowerTerms[i]) >= 0)))
-                    return false;
+        MapContext jexlContext = new MapContext();
+
+        if (terms.length == fieldNames.length) {
+            for (int i = 0; i < fieldNames.length; i++)
+                jexlContext.set(fieldNames[i], terms[i]);
+
+            if (!ArithmeticJexlEngines.isMatched(compositePredicateScript.execute(jexlContext))) {
+                if (log.isTraceEnabled())
+                    log.trace("Filtered out an entry using the composite range filter iterator: " + jexlContext);
+                return false;
+            }
+
+            return true;
+        } else {
+            return false;
         }
-        
-        if (this.upperTerms != null) {
-            int numTerms = Math.min(terms.length, upperTerms.length);
-            // don't need to check the first term, as it was included in the initial range scan
-            for (int i = 1; i < numTerms; i++)
-                if (!((!upperTermInclusive && terms[i].compareTo(upperTerms[i]) < 0) || (upperTermInclusive && terms[i].compareTo(upperTerms[i]) <= 0)))
-                    return false;
-        }
-        
-        return true;
     }
 }

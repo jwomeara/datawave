@@ -278,24 +278,14 @@ public class DatawaveInterpreter extends Interpreter {
             return evaluation;
         }
         
-        FunctionalSet leftFunctionalSet = null;
-        FunctionalSet rightFunctionalSet = null;
         Object left = node.jjtGetChild(0).jjtAccept(this, data);
-        if (left == null)
-            left = FunctionalSet.empty();
-        if (left instanceof Collection == false) {
-            try {
-                boolean leftValue = arithmetic.toBoolean(left);
-                if (!leftValue) {
-                    return Boolean.FALSE;
-                }
-            } catch (RuntimeException xrt) {
-                throw new JexlException(node.jjtGetChild(0), "boolean coercion error", xrt);
+        try {
+            boolean leftValue = arithmetic.toBoolean(left);
+            if (!leftValue) {
+                return Boolean.FALSE;
             }
-        } else {
-            if (leftFunctionalSet == null)
-                leftFunctionalSet = new FunctionalSet();
-            leftFunctionalSet.addAll((Collection) left);
+        } catch (RuntimeException xrt) {
+            throw new JexlException(node.jjtGetChild(0), "boolean coercion error", xrt);
         }
         Object right = node.jjtGetChild(1).jjtAccept(this, data);
         if (right == null)
