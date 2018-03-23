@@ -643,13 +643,13 @@ public class JexlASTHelper {
      * Get the bounded ranges.
      *
      * @param root
-     *            The root and node
+     *            The root node
      * @param otherNodes
      *            If not null, then this is filled with all nodes not used to make the ranges (minimal node list, minimal tree depth)
      * @return The ranges, all bounded.
      */
     @SuppressWarnings("rawtypes")
-    public static Map<LiteralRange<?>,List<JexlNode>> getBoundedRangesIndexAgnostic(ASTAndNode root, List<JexlNode> otherNodes, boolean includeDelayed,
+    public static Map<LiteralRange<?>,List<JexlNode>> getBoundedRangesIndexAgnostic(JexlNode root, List<JexlNode> otherNodes, boolean includeDelayed,
                     int maxDepth) {
         List<JexlNode> rangeNodes = getRangeOperatorNodes(root, otherNodes, includeDelayed, maxDepth);
         return JexlASTHelper.getBoundedRanges(rangeNodes, null, otherNodes);
@@ -659,13 +659,13 @@ public class JexlASTHelper {
      * Get the bounded ranges.
      * 
      * @param root
-     *            The root and node
+     *            The root node
      * @param otherNodes
      *            If not null, then this is filled with all nodes not used to make the ranges (minimal node list, minimal tree depth)
      * @return The ranges, all bounded.
      */
     @SuppressWarnings("rawtypes")
-    public static Map<LiteralRange<?>,List<JexlNode>> getBoundedRangesIndexAgnostic(ASTAndNode root, List<JexlNode> otherNodes, boolean includeDelayed) {
+    public static Map<LiteralRange<?>,List<JexlNode>> getBoundedRangesIndexAgnostic(JexlNode root, List<JexlNode> otherNodes, boolean includeDelayed) {
         return getBoundedRangesIndexAgnostic(root, otherNodes, includeDelayed, -1);
     }
     

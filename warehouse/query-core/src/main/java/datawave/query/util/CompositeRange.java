@@ -105,6 +105,7 @@ public class CompositeRange extends Composite {
         boolean isUnbounded = isLowerUnbounded();
         JexlNode node = getNodeClass(jexlNodeListLowerBound);
         // TODO: Revisit this
+        // This calculation is wrong at the moment and only works correctly for bounds with 2 or less nodes
         if (isUnbounded && node instanceof ASTGTNode)
             return JexlNodeFactory.buildNode((ASTGENode) null, compositeName, "");
         return node;
@@ -114,6 +115,7 @@ public class CompositeRange extends Composite {
         boolean isUnbounded = isUpperUnbounded();
         JexlNode node = getNodeClass(jexlNodeListUpperBound);
         // TODO: Revisit this
+        // This calculation is wrong at the moment and only works correctly for bounds with 2 or less nodes
         if (isUnbounded && node instanceof ASTLENode)
             return JexlNodeFactory.buildNode((ASTLTNode) null, compositeName, "");
         return node;
@@ -285,6 +287,8 @@ public class CompositeRange extends Composite {
     // - it contains a 'not equals' node in any position
     @Override
     public boolean isValid() {
+        if (!super.isValid())
+            return false;
         for (JexlNode node : jexlNodeList)
             if (node instanceof ASTERNode || node instanceof ASTNENode)
                 return false;
@@ -314,20 +318,23 @@ public class CompositeRange extends Composite {
     public boolean isGoner(JexlNode node) {
         boolean isGoner = true;
         int nodeIdx = jexlNodeList.indexOf(node);
-        if (nodeIdx >= 0) {
-            // If this node is preceeded by all ASTEQNodes, or it is the first
-            // term in the composite, then we can throw it out because then all
-            // of the values returned by our scan will be within range for this term
-            for (int i = 0; i < nodeIdx; i++) {
-                if (!(jexlNodeList.get(i) instanceof ASTEQNode)) {
-                    // If any of the preceeding nodes is NOT an ASTEQNode, then our scan is not guaranteed
-                    // to strictly return results that fall within range for this term
-                    isGoner = false;
-                    break;
-                }
-            }
-        } else {
-            // If the node is not present, it can't be a goner
+//        if (nodeIdx >= 0) {
+//            // If this node is preceeded by all ASTEQNodes, or it is the first
+//            // term in the composite, then we can throw it out because then all
+//            // of the values returned by our scan will be within range for this term
+//            for (int i = 0; i < nodeIdx; i++) {
+//                if (!(jexlNodeList.get(i) instanceof ASTEQNode)) {
+//                    // If any of the preceeding nodes is NOT an ASTEQNode, then our scan is not guaranteed
+//                    // to strictly return results that fall within range for this term
+//                    isGoner = false;
+//                    break;
+//                }
+//            }
+//        } else {
+//            // If the node is not present, it can't be a goner
+//            isGoner = false;
+//        }
+        if (nodeIdx < 0) {
             isGoner = false;
         }
         return isGoner;

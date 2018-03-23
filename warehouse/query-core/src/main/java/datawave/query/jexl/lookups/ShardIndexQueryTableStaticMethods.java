@@ -38,6 +38,8 @@ import org.apache.accumulo.core.client.TableNotFoundException;
 import org.apache.accumulo.core.data.Key;
 import org.apache.accumulo.core.data.PartialKey;
 import org.apache.accumulo.core.data.Range;
+import org.apache.commons.jexl2.parser.ASTDelayedCompositePredicate;
+import org.apache.commons.jexl2.parser.ASTDelayedPredicate;
 import org.apache.commons.jexl2.parser.ASTEQNode;
 import org.apache.commons.jexl2.parser.ASTERNode;
 import org.apache.commons.jexl2.parser.ASTGENode;
@@ -257,10 +259,15 @@ public class ShardIndexQueryTableStaticMethods {
         
         return (IndexLookup) new LookupTermsFromRegex(fieldName, patterns, datatypeFilter, helperRef);
     }
-    
+
     public static IndexLookup expandRange(LiteralRange<?> range) {
-        
+
         return new LookupBoundedRangeForTerms(range);
+    }
+
+    public static IndexLookup expandRange(LiteralRange<?> range, ASTDelayedPredicate compositePredicate) {
+
+        return new LookupBoundedRangeForTerms(range, compositePredicate);
     }
     
     /**

@@ -4,10 +4,13 @@ import static org.apache.commons.jexl2.parser.JexlNodes.children;
 import static org.apache.commons.jexl2.parser.JexlNodes.id;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 import datawave.query.config.ShardQueryConfiguration;
 import datawave.query.exceptions.DatawaveFatalQueryException;
@@ -33,6 +36,7 @@ import datawave.webservice.query.exception.QueryException;
 
 import org.apache.accumulo.core.client.TableNotFoundException;
 import org.apache.commons.jexl2.parser.ASTAndNode;
+import org.apache.commons.jexl2.parser.ASTDelayedCompositePredicate;
 import org.apache.commons.jexl2.parser.ASTDelayedPredicate;
 import org.apache.commons.jexl2.parser.ASTEQNode;
 import org.apache.commons.jexl2.parser.ASTGENode;
@@ -182,8 +186,21 @@ public class RangeConjunctionRebuildingVisitor extends RebuildingVisitor {
         }
         
         for (Map.Entry<LiteralRange<?>,List<JexlNode>> range : ranges.entrySet()) {
-            IndexLookup lookup = ShardIndexQueryTableStaticMethods.expandRange(range.getKey());
-            
+            ASTDelayedPredicate compositePredicate = null;
+
+            // do some special stuff for composite ranges
+            String fieldName = range.getKey().getFieldName();
+            if (config.getCompositeToFieldMap().keySet().contains(fieldName)) {
+                Collection<String> compFields = config.getCompositeToFieldMap().get(fieldName);
+                // go through the leaves, find the ASTDelayedPredicate, and extract the ranges for each term
+                Map<String, LiteralRange> compRangeMap = new HashMap<>();
+                List<JexlNode> delayedCompositePredicates = leaves.stream().filter(leaf -> leaf instanceof ASTDelayedPredicate).collect(Collectors.toList());
+                if (delayedCompositePredicates != null && delayedCompositePredicates.size() == 1)
+                    compositePredicate = (ASTDelayedPredicate)delayedCompositePredicates.get(0);
+            }
+
+            IndexLookup lookup = (compositePredicate != null) ? ShardIndexQueryTableStaticMethods.expandRange(range.getKey(), compositePredicate) : ShardIndexQueryTableStaticMethods.expandRange(range.getKey());
+
             IndexLookupMap fieldsToTerms = null;
             
             try {
