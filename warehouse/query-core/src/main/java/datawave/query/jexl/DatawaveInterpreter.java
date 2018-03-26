@@ -277,33 +277,43 @@ public class DatawaveInterpreter extends Interpreter {
         if (evaluation != null) {
             return evaluation;
         }
-        
-        Object left = node.jjtGetChild(0).jjtAccept(this, data);
-        try {
-            boolean leftValue = arithmetic.toBoolean(left);
-            if (!leftValue) {
-                return Boolean.FALSE;
-            }
-        } catch (RuntimeException xrt) {
-            throw new JexlException(node.jjtGetChild(0), "boolean coercion error", xrt);
-        }
-        Object right = node.jjtGetChild(1).jjtAccept(this, data);
-        if (right == null)
-            right = FunctionalSet.empty();
-        if (right instanceof Collection == false) {
-            try {
-                boolean rightValue = arithmetic.toBoolean(right);
-                if (!rightValue) {
-                    return Boolean.FALSE;
-                }
-            } catch (ArithmeticException xrt) {
-                throw new JexlException(node.jjtGetChild(1), "boolean coercion error", xrt);
-            }
-        } else {
-            if (rightFunctionalSet == null)
-                rightFunctionalSet = new FunctionalSet();
-            rightFunctionalSet.addAll((Collection) right);
-        }
+
+        FunctionalSet leftFunctionalSet = null;
+         FunctionalSet rightFunctionalSet = null;
+         Object left = node.jjtGetChild(0).jjtAccept(this, data);
+         if (left == null)
+             left = FunctionalSet.empty();
+         if (left instanceof Collection == false) {
+             try {
+                 boolean leftValue = arithmetic.toBoolean(left);
+                 if (!leftValue) {
+                     return Boolean.FALSE;
+                 }
+             } catch (RuntimeException xrt) {
+                 throw new JexlException(node.jjtGetChild(0), "boolean coercion error", xrt);
+             }
+         } else {
+             if (leftFunctionalSet == null)
+                 leftFunctionalSet = new FunctionalSet();
+             leftFunctionalSet.addAll((Collection) left);
+         }
+         Object right = node.jjtGetChild(1).jjtAccept(this, data);
+         if (right == null)
+             right = FunctionalSet.empty();
+         if (right instanceof Collection == false) {
+             try {
+                 boolean rightValue = arithmetic.toBoolean(right);
+                 if (!rightValue) {
+                     return Boolean.FALSE;
+                 }
+             } catch (ArithmeticException xrt) {
+                 throw new JexlException(node.jjtGetChild(1), "boolean coercion error", xrt);
+             }
+         } else {
+             if (rightFunctionalSet == null)
+                 rightFunctionalSet = new FunctionalSet();
+             rightFunctionalSet.addAll((Collection) right);
+         }
         // return union of left and right iff they are both non-null & non-empty
         if (leftFunctionalSet != null && rightFunctionalSet != null) {
             if (!leftFunctionalSet.isEmpty() && !rightFunctionalSet.isEmpty()) {
