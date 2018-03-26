@@ -105,7 +105,7 @@ public class GeoCompositeIndexTest {
     private static final String COMPOSITE_BEGIN_DATE = "20010101 000000.000";
     
     private static final String BEGIN_DATE = "20000101 000000.000";
-    private static final String END_DATE = "20020101 000000.000";
+    private static final String END_DATE = "20001231 000000.000";
     
     private static final String USER = "testcorp";
     private static final String USER_DN = "cn=test.testcorp.com, ou=datawave, ou=development, o=testcorp, c=us";
@@ -114,13 +114,13 @@ public class GeoCompositeIndexTest {
     
     // @formatter:off
     private static final String[] wktLegacyData = {
-            "POINT(0 0)",
+            "POINT(0 0)", // NOT included w/ ivarator
 
-            "POLYGON((10 10, -10 10, -10 -10, 10 -10, 10 10))",
+            "POLYGON((10 10, -10 10, -10 -10, 10 -10, 10 10))", // NOT included w/ ivarator
 
-            "POLYGON((45 45, -45 45, -45 -45, 45 -45, 45 45))",
+            "POLYGON((45 45, -45 45, -45 -45, 45 -45, 45 45))", // included w/ ivarator
 
-            "POLYGON((90 90, -90 90, -90 -90, 90 -90, 90 90))"};
+            "POLYGON((90 90, -90 90, -90 -90, 90 -90, 90 90))"}; // included w/ ivarator
 
     private static final Integer[] wktByteLengthLegacyData = {
             wktLegacyData[0].length(),
@@ -135,17 +135,17 @@ public class GeoCompositeIndexTest {
             0};
 
     private static final String[] wktCompositeData = {
-            "POINT(30 -85)",
-            "POINT(-45 17)",
+            "POINT(30 -85)", // included //
+            "POINT(-45 17)", // included //
 
-            "POLYGON((25 25, 5 25, 5 5, 25 5, 25 25))",
-            "POLYGON((-20 -20, -40 -20, -40 -40, -20 -40, -20 -20))",
+            "POLYGON((25 25, 5 25, 5 5, 25 5, 25 25))", // NOT included
+            "POLYGON((-20 -20, -40 -20, -40 -40, -20 -40, -20 -20))", // included //
 
-            "POLYGON((90 45, 0 45, 0 -45, 90 -45, 90 45))",
-            "POLYGON((45 15, -45 15, -45 -60, 45 -60, 45 15))",
+            "POLYGON((90 45, 0 45, 0 -45, 90 -45, 90 45))", // included //
+            "POLYGON((45 15, -45 15, -45 -60, 45 -60, 45 15))", // NOT included
 
-            "POLYGON((180 90, 0 90, 0 -90, 180 -90, 180 90))",
-            "POLYGON((90 0, -90 0, -90 -180, 90 -180, 90 0))"};
+            "POLYGON((180 90, 0 90, 0 -90, 180 -90, 180 90))", // included //
+            "POLYGON((90 0, -90 0, -90 -180, 90 -180, 90 0))"}; // included //
 
     private static final Integer[] wktByteLengthCompositeData = {
             wktCompositeData[0].length(),
@@ -447,7 +447,7 @@ public class GeoCompositeIndexTest {
         URL hdfsSiteConfig = this.getClass().getResource("/testhadoop.config");
         logic.setHdfsSiteConfigURLs(hdfsSiteConfig.toExternalForm());
         
-//        setupIvarator(logic);
+        setupIvarator(logic);
         
         return logic;
     }
