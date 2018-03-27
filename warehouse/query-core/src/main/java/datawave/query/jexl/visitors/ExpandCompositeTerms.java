@@ -293,7 +293,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
             nodeList.addAll(otherNodes);
             nodeList.addAll(descendantCompositeNodes);
             nodeList.removeAll(goners);
-
+            
             JexlNode orNode;
             // if there's more than one node, wrap any and nodes
             if (nodeList.size() > 1) {
@@ -303,7 +303,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
                 orNode = JexlNodeFactory.createOrNode(nodeList);
             } else
                 orNode = nodeList.get(0);
-
+            
             if (log.isTraceEnabled()) {
                 PrintingVisitor.printQuery(orNode);
             }
@@ -329,11 +329,13 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
                 andNode = JexlNodeFactory.createAndNode(nodeList);
             } else
                 andNode = nodeList.get(0);
-
-//            if (!goners.isEmpty()) {
-//                andNode = JexlNodeFactory.createUnwrappedAndNode(Arrays.asList(andNode, ASTDelayedPredicate.create(JexlNodeFactory.createUnwrappedAndNode(goners.stream().map(node -> JexlNodeFactory.wrap(node)).collect(Collectors.toList())))));
-//            }
-
+            
+            // if (!goners.isEmpty()) {
+            // andNode = JexlNodeFactory.createUnwrappedAndNode(Arrays.asList(andNode,
+            // ASTDelayedPredicate.create(JexlNodeFactory.createUnwrappedAndNode(goners.stream().map(node ->
+            // JexlNodeFactory.wrap(node)).collect(Collectors.toList())))));
+            // }
+            
             if (log.isTraceEnabled()) {
                 PrintingVisitor.printQuery(andNode);
             }
@@ -357,17 +359,40 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
             
             if (comp instanceof CompositeRange) {
                 CompositeRange compRange = (CompositeRange) comp;
-                if (compRange.getLowerBoundNode() != null && compRange.getLowerBoundExpression() != null && !compRange.getLowerBoundExpression().equals("")) {
-                    nodes.add(compRange.getLowerBoundNode());
-                    appendedExpressions.add(compRange.getLowerBoundExpression());
+                // TODO: Also add a check to make sure the query spans the cutoff date for the legacy data
+                if (config.getOverloadedCompositeWithOldData().contains(comp.compositeName)) {
+                    appendedExpressions.add(compRange.getFullyInclusiveLowerBoundExpression());
+                    nodes.add(JexlNodeFactory.buildNode((ASTGENode) null, (String) null, (String) null));
+                } else {
+                    if (compRange.getLowerBoundNode() != null && compRange.getLowerBoundExpression() != null && !compRange.getLowerBoundExpression().equals("")) {
+                        nodes.add(compRange.getLowerBoundNode());
+                        appendedExpressions.add(compRange.getLowerBoundExpression());
+                    }
                 }
                 if (compRange.getUpperBoundNode() != null && compRange.getUpperBoundExpression() != null && !compRange.getUpperBoundExpression().equals("")) {
                     nodes.add(compRange.getUpperBoundNode());
                     appendedExpressions.add(compRange.getUpperBoundExpression());
                 }
             } else {
-                nodes = Arrays.asList(comp.jexlNodeList.get(comp.jexlNodeList.size() - 1));
-                appendedExpressions = Arrays.asList(comp.getAppendedExpressions());
+                nodes.addAll(Arrays.asList(comp.jexlNodeList.get(comp.jexlNodeList.size() - 1)));
+                appendedExpressions.addAll(Arrays.asList(comp.getAppendedExpressions()));
+                
+                if (config.getOverloadedCompositeWithOldData().contains(comp.compositeName)) {
+                    JexlNode node = comp.jexlNodeList.get(0);
+                    if (node instanceof ASTGTNode) {
+                        nodes.clear();
+                        appendedExpressions.clear();
+                        
+                        appendedExpressions.add(CompositeRange.getInclusiveLowerBound(comp.expressionList.get(0)));
+                        nodes.add(JexlNodeFactory.buildNode((ASTGENode) null, (String) null, (String) null));
+                    } else if (node instanceof ASTGENode || node instanceof ASTEQNode) {
+                        nodes.clear();
+                        appendedExpressions.clear();
+                        
+                        appendedExpressions.add(comp.expressionList.get(0));
+                        nodes.add(JexlNodeFactory.buildNode((ASTGENode) null, (String) null, (String) null));
+                    }
+                }
             }
             
             boolean isOverloadedComposite = CompositeIngest.isOverloadedCompositeField(config.getCompositeToFieldMap(), comp.compositeName)
@@ -412,23 +437,25 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
                 
                 finalNodes.add(newNode);
             }
-
+            
             if (finalNodes.size() > 1) {
                 JexlNode finalNode = JexlNodeFactory.createUnwrappedAndNode(finalNodes);
                 if (comp.jexlNodeList.size() > 1) {
-                    JexlNode delayedNode = ASTDelayedPredicate.create(JexlNodeFactory.createUnwrappedAndNode(comp.jexlNodeList.stream().map(node -> JexlNodeFactory.wrap(node)).collect(Collectors.toList())));
+                    JexlNode delayedNode = ASTDelayedPredicate.create(ASTCompositePredicate.create(JexlNodeFactory.createUnwrappedAndNode(comp.jexlNodeList
+                                    .stream().map(node -> JexlNodeFactory.wrap(node)).collect(Collectors.toList()))));
                     finalNode = JexlNodeFactory.createUnwrappedAndNode(Arrays.asList(JexlNodeFactory.wrap(finalNode), delayedNode));
                 }
                 nodeList.add(finalNode);
             } else {
                 JexlNode finalNode = finalNodes.get(0);
                 if (comp.jexlNodeList.size() > 1 && !(finalNode instanceof ASTEQNode)) {
-                    JexlNode delayedNode = ASTDelayedPredicate.create(JexlNodeFactory.createUnwrappedAndNode(comp.jexlNodeList.stream().map(node -> JexlNodeFactory.wrap(node)).collect(Collectors.toList())));
+                    JexlNode delayedNode = ASTDelayedPredicate.create(ASTCompositePredicate.create(JexlNodeFactory.createUnwrappedAndNode(comp.jexlNodeList
+                                    .stream().map(node -> JexlNodeFactory.wrap(node)).collect(Collectors.toList()))));
                     finalNode = JexlNodeFactory.createUnwrappedAndNode(Arrays.asList(finalNode, delayedNode));
                 }
                 nodeList.add(finalNode);
             }
-
+            
             if (!CompositeIngest.isOverloadedCompositeField(config.getCompositeToFieldMap(), comp.compositeName)) {
                 config.getIndexedFields().add(comp.compositeName);
                 config.getQueryFieldsDatatypes().put(comp.compositeName, new NoOpType());
@@ -584,22 +611,22 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
                             break;
                         } else if (!(comp instanceof CompositeRange)) {
                             int nodeIdx = comp.jexlNodeList.indexOf(node);
-//                            if (nodeIdx >= 0) {
-//                                // If this node is preceeded by all ASTEQNodes, or it is the first
-//                                // term in the composite, then we can throw it out because then all
-//                                // of the values returned by our scan will be within range for this term
-//                                for (int i = 0; i < nodeIdx; i++) {
-//                                    if (!(comp.jexlNodeList.get(i) instanceof ASTEQNode)) {
-//                                        // If any of the preceeding nodes is NOT an ASTEQNode, then our scan is not guaranteed
-//                                        // to strictly return results that fall within range for this term
-//                                        isGoner = false;
-//                                        break;
-//                                    }
-//                                }
-//                            } else {
-//                                // If the node is not present, it can't be a goner
-//                                isGoner = false;
-//                            }
+                            // if (nodeIdx >= 0) {
+                            // // If this node is preceeded by all ASTEQNodes, or it is the first
+                            // // term in the composite, then we can throw it out because then all
+                            // // of the values returned by our scan will be within range for this term
+                            // for (int i = 0; i < nodeIdx; i++) {
+                            // if (!(comp.jexlNodeList.get(i) instanceof ASTEQNode)) {
+                            // // If any of the preceeding nodes is NOT an ASTEQNode, then our scan is not guaranteed
+                            // // to strictly return results that fall within range for this term
+                            // isGoner = false;
+                            // break;
+                            // }
+                            // }
+                            // } else {
+                            // // If the node is not present, it can't be a goner
+                            // isGoner = false;
+                            // }
                             if (nodeIdx < 0) {
                                 isGoner = false;
                             }
@@ -610,7 +637,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
                     
                     if (isGoner) {
                         leafNodeMap.remove(compName, node);
-//                        goners.add(node);
+                        // goners.add(node);
                     }
                 }
                 

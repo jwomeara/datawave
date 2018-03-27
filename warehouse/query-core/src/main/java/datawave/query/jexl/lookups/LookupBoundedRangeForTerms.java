@@ -12,7 +12,6 @@ import java.util.concurrent.Callable;
 import datawave.core.iterators.CompositeRangeFilterIterator;
 import datawave.query.config.ShardQueryConfiguration;
 import datawave.query.jexl.visitors.JexlStringBuildingVisitor;
-import datawave.query.util.Composite;
 import org.apache.accumulo.core.client.BatchScanner;
 import org.apache.accumulo.core.client.IteratorSetting;
 import org.apache.accumulo.core.client.TableNotFoundException;
@@ -20,8 +19,7 @@ import org.apache.accumulo.core.data.Key;
 import org.apache.accumulo.core.data.Range;
 import org.apache.accumulo.core.data.Value;
 import org.apache.accumulo.core.iterators.user.WholeRowIterator;
-import org.apache.commons.jexl2.parser.ASTDelayedCompositePredicate;
-import org.apache.commons.jexl2.parser.ASTDelayedPredicate;
+import org.apache.commons.jexl2.parser.ASTCompositePredicate;
 import org.apache.hadoop.io.Text;
 import org.apache.log4j.Logger;
 
@@ -49,13 +47,13 @@ public class LookupBoundedRangeForTerms extends IndexLookup {
     protected Set<String> datatypeFilter;
     protected Set<Text> fields;
     private final LiteralRange<?> literalRange;
-    private final ASTDelayedPredicate compositePredicate;
-
+    private final ASTCompositePredicate compositePredicate;
+    
     public LookupBoundedRangeForTerms(LiteralRange<?> literalRange) {
         this(literalRange, null);
     }
-
-    public LookupBoundedRangeForTerms(LiteralRange<?> literalRange, ASTDelayedPredicate compositePredicate) {
+    
+    public LookupBoundedRangeForTerms(LiteralRange<?> literalRange, ASTCompositePredicate compositePredicate) {
         this.literalRange = literalRange;
         this.compositePredicate = compositePredicate;
         datatypeFilter = Sets.newHashSet();
@@ -144,10 +142,13 @@ public class LookupBoundedRangeForTerms extends IndexLookup {
             // If this is a composite range, we need to setup our query to filter based on each component of the composite range
             if (config.getCompositeToFieldMap().get(literalRange.getFieldName()) != null && compositePredicate != null) {
                 IteratorSetting compositeIterator = new IteratorSetting(config.getBaseIteratorPriority() + 51, CompositeRangeFilterIterator.class);
-
-                compositeIterator.addOption(CompositeRangeFilterIterator.COMPOSITE_FIELDS, StringUtils.collectionToCommaDelimitedString(config.getCompositeToFieldMap().get(literalRange.getFieldName())));
+                
+                compositeIterator.addOption(CompositeRangeFilterIterator.COMPOSITE_FIELDS,
+                                StringUtils.collectionToCommaDelimitedString(config.getCompositeToFieldMap().get(literalRange.getFieldName())));
                 compositeIterator.addOption(CompositeRangeFilterIterator.COMPOSITE_PREDICATE, JexlStringBuildingVisitor.buildQuery(compositePredicate));
-
+                compositeIterator.addOption(CompositeRangeFilterIterator.INCLUDE_NONCOMPOSITE,
+                                Boolean.toString(config.getOverloadedCompositeWithOldData().contains(literalRange.getFieldName())));
+                
                 bs.addScanIterator(compositeIterator);
             }
             
