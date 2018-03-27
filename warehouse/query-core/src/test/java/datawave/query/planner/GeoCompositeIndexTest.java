@@ -394,6 +394,7 @@ public class GeoCompositeIndexTest {
         ShardQueryConfiguration config = ShardQueryConfigurationFactory.createShardQueryConfigurationFromConfiguredLogic(logic, query);
         
         config.setFixedLengthFields(Arrays.asList(GEO_FIELD));
+        config.setOverloadedCompositeWithOldData(Arrays.asList(GEO_FIELD));
         
         logic.initialize(config, instance.getConnector("root", PASSWORD), query, auths);
         
@@ -424,6 +425,7 @@ public class GeoCompositeIndexTest {
         ShardQueryConfiguration config = ShardQueryConfigurationFactory.createShardQueryConfigurationFromConfiguredLogic(logic, query);
         
         config.setFixedLengthFields(Arrays.asList(GEO_FIELD));
+        config.setOverloadedCompositeWithOldData(Arrays.asList(GEO_FIELD));
         
         logic.initialize(config, instance.getConnector("root", PASSWORD), query, auths);
         
