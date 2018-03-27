@@ -54,6 +54,7 @@ import org.jboss.resteasy.specimpl.MultivaluedMapImpl;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.asset.StringAsset;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -105,7 +106,7 @@ public class GeoCompositeIndexTest {
     private static final String COMPOSITE_BEGIN_DATE = "20010101 000000.000";
     
     private static final String BEGIN_DATE = "20000101 000000.000";
-    private static final String END_DATE = "20001231 000000.000";
+    private static final String END_DATE = "20020101 000000.000";
     
     private static final String USER = "testcorp";
     private static final String USER_DN = "cn=test.testcorp.com, ou=datawave, ou=development, o=testcorp, c=us";
@@ -114,18 +115,18 @@ public class GeoCompositeIndexTest {
     
     // @formatter:off
     private static final String[] wktLegacyData = {
-            "POINT(0 0)", // NOT included w/ ivarator
+            "POINT(0 0)",
 
-            "POLYGON((10 10, -10 10, -10 -10, 10 -10, 10 10))", // NOT included w/ ivarator
+            "POLYGON((10 10, -10 10, -10 -10, 10 -10, 10 10))",
 
-            "POLYGON((45 45, -45 45, -45 -45, 45 -45, 45 45))", // included w/ ivarator
+            "POLYGON((45 45, -45 45, -45 -45, 45 -45, 45 45))",
 
-            "POLYGON((90 90, -90 90, -90 -90, 90 -90, 90 90))"}; // included w/ ivarator
+            "POLYGON((90 90, -90 90, -90 -90, 90 -90, 90 90))"};
 
     private static final Integer[] wktByteLengthLegacyData = {
             wktLegacyData[0].length(),
             wktLegacyData[1].length(),
-            wktLegacyData[2].length(),
+            null,
             wktLegacyData[3].length()};
 
     private static final long[] legacyDates = {
@@ -135,17 +136,17 @@ public class GeoCompositeIndexTest {
             0};
 
     private static final String[] wktCompositeData = {
-            "POINT(30 -85)", // included //
-            "POINT(-45 17)", // included //
+            "POINT(30 -85)",
+            "POINT(-45 17)",
 
-            "POLYGON((25 25, 5 25, 5 5, 25 5, 25 25))", // NOT included
-            "POLYGON((-20 -20, -40 -20, -40 -40, -20 -40, -20 -20))", // included //
+            "POLYGON((25 25, 5 25, 5 5, 25 5, 25 25))",
+            "POLYGON((-20 -20, -40 -20, -40 -40, -20 -40, -20 -20))",
 
-            "POLYGON((90 45, 0 45, 0 -45, 90 -45, 90 45))", // included //
-            "POLYGON((45 15, -45 15, -45 -60, 45 -60, 45 15))", // NOT included
+            "POLYGON((90 45, 0 45, 0 -45, 90 -45, 90 45))",
+            "POLYGON((45 15, -45 15, -45 -60, 45 -60, 45 15))",
 
-            "POLYGON((180 90, 0 90, 0 -90, 180 -90, 180 90))", // included //
-            "POLYGON((90 0, -90 0, -90 -180, 90 -180, 90 0))"}; // included //
+            "POLYGON((180 90, 0 90, 0 -90, 180 -90, 180 90))",
+            "POLYGON((90 0, -90 0, -90 -180, 90 -180, 90 0))"};
 
     private static final Integer[] wktByteLengthCompositeData = {
             wktCompositeData[0].length(),
@@ -325,7 +326,7 @@ public class GeoCompositeIndexTest {
     }
     
     @Test
-    public void compositeTest() throws Exception {
+    public void compositeWithoutIvaratorTest() throws Exception {
         // @formatter:off
         String query = "((" + GEO_FIELD + " >= '0202' && " + GEO_FIELD + " <= '020d') || " +
                 "(" + GEO_FIELD + " >= '030a' && " + GEO_FIELD + " <= '0335') || " +
@@ -335,8 +336,8 @@ public class GeoCompositeIndexTest {
                 "(" + WKT_BYTE_LENGTH_FIELD + " >= 0 && " + WKT_BYTE_LENGTH_FIELD + " < 80)";
         // @formatter:on
         
-        List<QueryData> queries = getQueryRanges(query);
-        List<DefaultEvent> events = getQueryResults(query);
+        List<QueryData> queries = getQueryRanges(query, false, true);
+        List<DefaultEvent> events = getQueryResults(query, false, true);
         
         System.out.println(events.size() + " Events Returned");
         for (DefaultEvent event : events) {
@@ -349,30 +350,122 @@ public class GeoCompositeIndexTest {
                 System.out.println(fieldValue);
         }
         
+        Assert.assertEquals(9, events.size());
+        
         System.out.println("done!");
     }
     
-    private List<QueryData> getQueryRanges(String queryString) throws Exception {
-        ShardQueryLogic logic = getShardQueryLogic();
+    @Test
+    public void compositeWithIvaratorTest() throws Exception {
+        // @formatter:off
+        String query = "((" + GEO_FIELD + " >= '0202' && " + GEO_FIELD + " <= '020d') || " +
+                "(" + GEO_FIELD + " >= '030a' && " + GEO_FIELD + " <= '0335') || " +
+                "(" + GEO_FIELD + " >= '0428' && " + GEO_FIELD + " <= '0483') || " +
+                "(" + GEO_FIELD + " >= '0500aa' && " + GEO_FIELD + " <= '050355') || " +
+                "(" + GEO_FIELD + " >= '1f0aaaaaaaaaaaaaaa' && " + GEO_FIELD + " <= '1f36c71c71c71c71c7')) && " +
+                "(" + WKT_BYTE_LENGTH_FIELD + " >= 0 && " + WKT_BYTE_LENGTH_FIELD + " < 80)";
+        // @formatter:on
         
-        Iterator iter = getQueryRangesIterator(queryString, logic);
+        List<QueryData> queries = getQueryRanges(query, true, true);
+        List<DefaultEvent> events = getQueryResults(query, true, true);
+        
+        System.out.println(events.size() + " Events Returned");
+        for (DefaultEvent event : events) {
+            System.out.println("\n Event: " + event.getMetadata().getInternalId());
+            List<String> fieldValues = new ArrayList<>();
+            for (DefaultField field : event.getFields())
+                fieldValues.add("  " + field.getName() + ": " + field.getValueString());
+            Collections.sort(fieldValues);
+            for (String fieldValue : fieldValues)
+                System.out.println(fieldValue);
+        }
+        
+        Assert.assertEquals(9, events.size());
+        
+        System.out.println("done!");
+    }
+    
+    @Test
+    public void compositeWithoutOldDataWithoutIvaratorTest() throws Exception {
+        // @formatter:off
+        String query = "((" + GEO_FIELD + " >= '0202' && " + GEO_FIELD + " <= '020d') || " +
+                "(" + GEO_FIELD + " >= '030a' && " + GEO_FIELD + " <= '0335') || " +
+                "(" + GEO_FIELD + " >= '0428' && " + GEO_FIELD + " <= '0483') || " +
+                "(" + GEO_FIELD + " >= '0500aa' && " + GEO_FIELD + " <= '050355') || " +
+                "(" + GEO_FIELD + " >= '1f0aaaaaaaaaaaaaaa' && " + GEO_FIELD + " <= '1f36c71c71c71c71c7')) && " +
+                "(" + WKT_BYTE_LENGTH_FIELD + " >= 0 && " + WKT_BYTE_LENGTH_FIELD + " < 80)";
+        // @formatter:on
+        
+        List<QueryData> queries = getQueryRanges(query, false, false);
+        List<DefaultEvent> events = getQueryResults(query, false, false);
+        
+        System.out.println(events.size() + " Events Returned");
+        for (DefaultEvent event : events) {
+            System.out.println("\n Event: " + event.getMetadata().getInternalId());
+            List<String> fieldValues = new ArrayList<>();
+            for (DefaultField field : event.getFields())
+                fieldValues.add("  " + field.getName() + ": " + field.getValueString());
+            Collections.sort(fieldValues);
+            for (String fieldValue : fieldValues)
+                System.out.println(fieldValue);
+        }
+        
+        Assert.assertEquals(6, events.size());
+        
+        System.out.println("done!");
+    }
+    
+    @Test
+    public void compositeWithoutOldDataWithIvaratorTest() throws Exception {
+        // @formatter:off
+        String query = "((" + GEO_FIELD + " >= '0202' && " + GEO_FIELD + " <= '020d') || " +
+                "(" + GEO_FIELD + " >= '030a' && " + GEO_FIELD + " <= '0335') || " +
+                "(" + GEO_FIELD + " >= '0428' && " + GEO_FIELD + " <= '0483') || " +
+                "(" + GEO_FIELD + " >= '0500aa' && " + GEO_FIELD + " <= '050355') || " +
+                "(" + GEO_FIELD + " >= '1f0aaaaaaaaaaaaaaa' && " + GEO_FIELD + " <= '1f36c71c71c71c71c7')) && " +
+                "(" + WKT_BYTE_LENGTH_FIELD + " >= 0 && " + WKT_BYTE_LENGTH_FIELD + " < 80)";
+        // @formatter:on
+        
+        List<QueryData> queries = getQueryRanges(query, true, false);
+        List<DefaultEvent> events = getQueryResults(query, true, false);
+        
+        System.out.println(events.size() + " Events Returned");
+        for (DefaultEvent event : events) {
+            System.out.println("\n Event: " + event.getMetadata().getInternalId());
+            List<String> fieldValues = new ArrayList<>();
+            for (DefaultField field : event.getFields())
+                fieldValues.add("  " + field.getName() + ": " + field.getValueString());
+            Collections.sort(fieldValues);
+            for (String fieldValue : fieldValues)
+                System.out.println(fieldValue);
+        }
+        
+        Assert.assertEquals(7, events.size());
+        
+        System.out.println("done!");
+    }
+    
+    private List<QueryData> getQueryRanges(String queryString, boolean useIvarator, boolean queryOldData) throws Exception {
+        ShardQueryLogic logic = getShardQueryLogic(useIvarator);
+        
+        Iterator iter = getQueryRangesIterator(queryString, logic, queryOldData);
         List<QueryData> queryData = new ArrayList<>();
         while (iter.hasNext())
             queryData.add((QueryData) iter.next());
         return queryData;
     }
     
-    private List<DefaultEvent> getQueryResults(String queryString) throws Exception {
-        ShardQueryLogic logic = getShardQueryLogic();
+    private List<DefaultEvent> getQueryResults(String queryString, boolean useIvarator, boolean queryOldData) throws Exception {
+        ShardQueryLogic logic = getShardQueryLogic(useIvarator);
         
-        Iterator iter = getResultsIterator(queryString, logic);
+        Iterator iter = getResultsIterator(queryString, logic, queryOldData);
         List<DefaultEvent> events = new ArrayList<>();
         while (iter.hasNext())
             events.add((DefaultEvent) iter.next());
         return events;
     }
     
-    private Iterator getQueryRangesIterator(String queryString, ShardQueryLogic logic) throws Exception {
+    private Iterator getQueryRangesIterator(String queryString, ShardQueryLogic logic, boolean queryOldData) throws Exception {
         MultivaluedMap<String,String> params = new MultivaluedMapImpl<>();
         params.putSingle(QUERY_STRING, queryString);
         params.putSingle(QUERY_NAME, "geoQuery");
@@ -394,7 +487,9 @@ public class GeoCompositeIndexTest {
         ShardQueryConfiguration config = ShardQueryConfigurationFactory.createShardQueryConfigurationFromConfiguredLogic(logic, query);
         
         config.setFixedLengthFields(Arrays.asList(GEO_FIELD));
-        config.setOverloadedCompositeWithOldData(Arrays.asList(GEO_FIELD));
+        
+        if (queryOldData)
+            config.setOverloadedCompositeWithOldData(Arrays.asList(GEO_FIELD));
         
         logic.initialize(config, instance.getConnector("root", PASSWORD), query, auths);
         
@@ -403,7 +498,7 @@ public class GeoCompositeIndexTest {
         return config.getQueries();
     }
     
-    private Iterator getResultsIterator(String queryString, ShardQueryLogic logic) throws Exception {
+    private Iterator getResultsIterator(String queryString, ShardQueryLogic logic, boolean queryOldData) throws Exception {
         MultivaluedMap<String,String> params = new MultivaluedMapImpl<>();
         params.putSingle(QUERY_STRING, queryString);
         params.putSingle(QUERY_NAME, "geoQuery");
@@ -425,7 +520,9 @@ public class GeoCompositeIndexTest {
         ShardQueryConfiguration config = ShardQueryConfigurationFactory.createShardQueryConfigurationFromConfiguredLogic(logic, query);
         
         config.setFixedLengthFields(Arrays.asList(GEO_FIELD));
-        config.setOverloadedCompositeWithOldData(Arrays.asList(GEO_FIELD));
+        
+        if (queryOldData)
+            config.setOverloadedCompositeWithOldData(Arrays.asList(GEO_FIELD));
         
         logic.initialize(config, instance.getConnector("root", PASSWORD), query, auths);
         
@@ -434,7 +531,7 @@ public class GeoCompositeIndexTest {
         return logic.getTransformIterator(query);
     }
     
-    private ShardQueryLogic getShardQueryLogic() {
+    private ShardQueryLogic getShardQueryLogic(boolean useIvarator) {
         ShardQueryLogic logic = new ShardQueryLogic(this.logic);
         
         // increase the depth threshold
@@ -449,7 +546,8 @@ public class GeoCompositeIndexTest {
         URL hdfsSiteConfig = this.getClass().getResource("/testhadoop.config");
         logic.setHdfsSiteConfigURLs(hdfsSiteConfig.toExternalForm());
         
-        setupIvarator(logic);
+        if (useIvarator)
+            setupIvarator(logic);
         
         return logic;
     }
