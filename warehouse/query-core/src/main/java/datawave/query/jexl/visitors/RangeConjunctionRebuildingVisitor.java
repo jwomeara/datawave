@@ -189,10 +189,11 @@ public class RangeConjunctionRebuildingVisitor extends RebuildingVisitor {
             // do some special stuff for composite ranges
             String fieldName = range.getKey().getFieldName();
             if (config.getCompositeToFieldMap().keySet().contains(fieldName)) {
-                List<JexlNode> delayedCompositePredicates = leaves.stream().filter(leaf -> ASTCompositePredicate.instanceOf(leaf)).collect(Collectors.toList());
-                // TODO: Revisit this and test for cases with multiple composite predicates?
+                Set<JexlNode> delayedCompositePredicates = leaves.stream()
+                                .map(leaf -> CompositePredicateVisitor.findCompositePredicates(leaf, config.getCompositeToFieldMap().get(fieldName)))
+                                .flatMap(set -> set.stream()).collect(Collectors.toSet());
                 if (delayedCompositePredicates != null && delayedCompositePredicates.size() == 1)
-                    compositePredicate = (ASTCompositePredicate) delayedCompositePredicates.get(0);
+                    compositePredicate = (ASTCompositePredicate) delayedCompositePredicates.stream().findFirst().get();
             }
             
             IndexLookup lookup = ShardIndexQueryTableStaticMethods.expandRange(range.getKey(), compositePredicate);
