@@ -62,7 +62,7 @@ public class IndexRegexIteratorBuilder extends IvaratorBuilder implements Iterat
                 DatawaveFieldIndexRegexIteratorJexl regexIterator = new DatawaveFieldIndexRegexIteratorJexl(new Text(field), new Text(value), this.timeFilter,
                                 this.datatypeFilter, negated, ivaratorCacheScanPersistThreshold, ivaratorCacheScanTimeout, ivaratorCacheBufferSize,
                                 maxRangeSplit, ivaratorMaxOpenFiles, hdfsFileSystem, new Path(hdfsCacheURI), queryLock, true,
-                                PartialKey.ROW_COLFAM_COLQUAL_COLVIS_TIME, sortedUIDs);
+                                PartialKey.ROW_COLFAM_COLQUAL_COLVIS_TIME, sortedUIDs, createCompositePredicateFilters(field));
                 if (collectTimingDetails) {
                     regexIterator.setCollectTimingDetails(true);
                     regexIterator.setQuerySpanCollector(this.querySpanCollector);

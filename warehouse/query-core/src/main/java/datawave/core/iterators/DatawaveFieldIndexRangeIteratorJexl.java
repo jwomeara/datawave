@@ -3,9 +3,11 @@ package datawave.core.iterators;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import datawave.core.iterators.querylock.QueryLock;
 import datawave.query.Constants;
+import datawave.query.iterator.filter.composite.CompositePredicateFilter;
 import datawave.query.predicate.TimeFilter;
 
 import org.apache.accumulo.core.data.Key;
@@ -55,15 +57,16 @@ public class DatawaveFieldIndexRangeIteratorJexl extends DatawaveFieldIndexCachi
                     TimeFilter timeFilter, Predicate<Key> datatypeFilter, boolean neg, long scanThreshold, long scanTimeout, int bufferSize, int maxRangeSplit,
                     int maxOpenFiles, FileSystem fs, Path uniqueDir, QueryLock queryLock, boolean allowDirReuse) {
         this(fieldName, lowerBound, lowerInclusive, upperBound, upperInclusive, timeFilter, datatypeFilter, neg, scanThreshold, scanTimeout, bufferSize,
-                        maxRangeSplit, maxOpenFiles, fs, uniqueDir, queryLock, allowDirReuse, DEFAULT_RETURN_KEY_TYPE, true);
+                        maxRangeSplit, maxOpenFiles, fs, uniqueDir, queryLock, allowDirReuse, DEFAULT_RETURN_KEY_TYPE, true, null);
     }
     
     @SuppressWarnings("hiding")
     public DatawaveFieldIndexRangeIteratorJexl(Text fieldName, Text lowerBound, boolean lowerInclusive, Text upperBound, boolean upperInclusive,
                     TimeFilter timeFilter, Predicate<Key> datatypeFilter, boolean neg, long scanThreshold, long scanTimeout, int bufferSize, int maxRangeSplit,
-                    int maxOpenFiles, FileSystem fs, Path uniqueDir, QueryLock queryLock, boolean allowDirReuse, PartialKey returnKeyType, boolean sortedUIDs) {
+                    int maxOpenFiles, FileSystem fs, Path uniqueDir, QueryLock queryLock, boolean allowDirReuse, PartialKey returnKeyType, boolean sortedUIDs,
+                    Map<String,Map<String,CompositePredicateFilter>> fieldIndexFilters) {
         super(fieldName, lowerBound, timeFilter, datatypeFilter, neg, scanThreshold, scanTimeout, bufferSize, maxRangeSplit, maxOpenFiles, fs, uniqueDir,
-                        queryLock, allowDirReuse, returnKeyType, sortedUIDs);
+                        queryLock, allowDirReuse, returnKeyType, sortedUIDs, fieldIndexFilters);
         this.lowerInclusive = lowerInclusive;
         this.upperBound = upperBound;
         this.upperInclusive = upperInclusive;

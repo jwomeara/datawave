@@ -357,10 +357,16 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
             List<JexlNode> nodes = new ArrayList<>();
             List<String> appendedExpressions = new ArrayList<>();
             
+            boolean includeOldData = false;
+            if (config.getCompositeWithOldData().containsKey(comp.compositeName)) {
+                Date transitionDate = config.getCompositeWithOldData().get(comp.compositeName);
+                if (config.getBeginDate().compareTo(transitionDate) < 0)
+                    includeOldData = true;
+            }
+            
             if (comp instanceof CompositeRange) {
                 CompositeRange compRange = (CompositeRange) comp;
-                // TODO: Also add a check to make sure the query spans the cutoff date for the legacy data
-                if (config.getOverloadedCompositeWithOldData().contains(comp.compositeName)) {
+                if (includeOldData) {
                     appendedExpressions.add(compRange.getFullyInclusiveLowerBoundExpression());
                     nodes.add(JexlNodeFactory.buildNode((ASTGENode) null, (String) null, (String) null));
                 } else {
@@ -377,7 +383,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
                 nodes.addAll(Arrays.asList(comp.jexlNodeList.get(comp.jexlNodeList.size() - 1)));
                 appendedExpressions.addAll(Arrays.asList(comp.getAppendedExpressions()));
                 
-                if (config.getOverloadedCompositeWithOldData().contains(comp.compositeName)) {
+                if (includeOldData) {
                     JexlNode node = comp.jexlNodeList.get(0);
                     if (node instanceof ASTGTNode) {
                         nodes.clear();
@@ -543,6 +549,10 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
         for (Set<Entry<String,Collection<String>>> entries : new Set[] {compositeToFieldMap.asMap().entrySet(), overloadedEntries}) {
             // look at each potential composite name to see if its fields are all available as keys in the childNodeMap
             for (Map.Entry<String,Collection<String>> entry : entries) {
+                // Is this a query against a composite field with old data whose date range predates the transition date?
+                if (isQueryAgainstCompositeWithOldDataPriorToTransitionDate(entry.getKey()))
+                    continue;
+                
                 // Did we find a larger key containing this one
                 if (isCompositeFieldContainedInFoundMapWithList(foundCompositeMap, entry.getValue()))
                     continue;
@@ -695,6 +705,10 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
         for (Set<Entry<String,Collection<String>>> entries : new Set[] {compositeToFieldMap.asMap().entrySet(), overloadedEntries}) {
             // look at each potential composite name to see if its fields are all available as keys in the childNodeMap
             for (Map.Entry<String,Collection<String>> entry : entries) {
+                // Is this a query against a composite field with old data whose date range predates the transition date?
+                if (isQueryAgainstCompositeWithOldDataPriorToTransitionDate(entry.getKey()))
+                    continue;
+                
                 // Did we find a larger key containing this one
                 if (isCompositeFieldContainedInFoundMapWithList(foundCompositeMap, entry.getValue()))
                     continue;
@@ -1062,6 +1076,15 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
             }
         }
         return true;
+    }
+    
+    private boolean isQueryAgainstCompositeWithOldDataPriorToTransitionDate(String field) {
+        if (config.getCompositeWithOldData().containsKey(field)) {
+            Date transitionDate = config.getCompositeWithOldData().get(field);
+            if (config.getEndDate().compareTo(transitionDate) < 0)
+                return true;
+        }
+        return false;
     }
     
     /**

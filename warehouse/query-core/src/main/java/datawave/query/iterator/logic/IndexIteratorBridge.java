@@ -4,15 +4,18 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Set;
 
 import datawave.query.iterator.DocumentIterator;
 import datawave.query.iterator.SeekableIterator;
 import datawave.query.attributes.Document;
 import datawave.query.iterator.NestedIterator;
 
+import datawave.query.iterator.filter.composite.CompositePredicateFilterer;
 import org.apache.accumulo.core.data.ByteSequence;
 import org.apache.accumulo.core.data.Key;
 import org.apache.accumulo.core.data.Range;
+import org.apache.commons.jexl2.parser.JexlNode;
 import org.apache.log4j.Logger;
 
 /**
@@ -21,7 +24,7 @@ import org.apache.log4j.Logger;
  * 
  * 
  */
-public class IndexIteratorBridge implements NestedIterator<Key>, SeekableIterator {
+public class IndexIteratorBridge implements NestedIterator<Key>, SeekableIterator, CompositePredicateFilterer {
     private final static Logger log = Logger.getLogger(IndexIteratorBridge.class);
     
     /*
@@ -158,5 +161,11 @@ public class IndexIteratorBridge implements NestedIterator<Key>, SeekableIterato
     public Document document() {
         // If we can assert that this Document won't be reused, we can use _document()
         return prevDocument;
+    }
+    
+    @Override
+    public void addCompositePredicates(Set<JexlNode> compositePredicates) {
+        if (delegate instanceof CompositePredicateFilterer)
+            ((CompositePredicateFilterer) delegate).addCompositePredicates(compositePredicates);
     }
 }

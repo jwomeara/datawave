@@ -1,12 +1,20 @@
 package datawave.query.iterator.builder;
 
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
+import com.google.common.collect.Multimap;
 import datawave.query.iterator.NestedIterator;
+import datawave.query.iterator.filter.composite.CompositePredicateFilter;
 import datawave.query.iterator.logic.IndexIterator;
 import datawave.query.iterator.logic.IndexIteratorBridge;
 import datawave.query.jexl.functions.FieldIndexAggregator;
 import datawave.query.predicate.TimeFilter;
+import datawave.query.util.CompositeMetadata;
 import datawave.query.util.TypeMetadata;
 
 import org.apache.accumulo.core.data.Key;
@@ -26,10 +34,12 @@ public class IndexIteratorBuilder extends AbstractIteratorBuilder {
     
     protected SortedKeyValueIterator<Key,Value> source;
     protected TypeMetadata typeMetadata;
+    protected CompositeMetadata compositeMetadata;
     protected Predicate<Key> datatypeFilter = Predicates.alwaysTrue();
     protected TimeFilter timeFilter = TimeFilter.alwaysTrue();
     protected FieldIndexAggregator keyTform;
     protected Set<String> fieldsToAggregate;
+    protected Map<String,Long> compositeTransitionDates;
     
     public void setSource(final SortedKeyValueIterator<Key,Value> source) {
         this.source = source;
@@ -43,12 +53,28 @@ public class IndexIteratorBuilder extends AbstractIteratorBuilder {
         this.typeMetadata = typeMetadata;
     }
     
+    public CompositeMetadata getCompositeMetadata() {
+        return compositeMetadata;
+    }
+    
+    public void setCompositeMetadata(CompositeMetadata compositeMetadata) {
+        this.compositeMetadata = compositeMetadata;
+    }
+    
     public Set<String> getFieldsToAggregate() {
         return fieldsToAggregate;
     }
     
     public void setFieldsToAggregate(Set<String> fields) {
         fieldsToAggregate = fields;
+    }
+    
+    public Map<String,Long> getCompositeTransitionDates() {
+        return compositeTransitionDates;
+    }
+    
+    public void setCompositeTransitionDates(Map<String,Long> compositeTransitionDates) {
+        this.compositeTransitionDates = compositeTransitionDates;
     }
     
     public Predicate<Key> getDatatypeFilter() {
@@ -77,7 +103,32 @@ public class IndexIteratorBuilder extends AbstractIteratorBuilder {
     
     public IndexIterator newIndexIterator(Text field, Text value, SortedKeyValueIterator<Key,Value> source, TimeFilter timeFilter, TypeMetadata typeMetadata,
                     boolean buildDocument, Predicate<Key> datatypeFilter, FieldIndexAggregator aggregator) {
-        return new IndexIterator(field, value, source, timeFilter, typeMetadata, buildDocument, datatypeFilter, aggregator);
+        return new IndexIterator(field, value, source, timeFilter, typeMetadata, buildDocument, datatypeFilter, aggregator,
+                        createCompositePredicateFilters(field.toString()));
+    }
+    
+    protected Map<String,Map<String,CompositePredicateFilter>> createCompositePredicateFilters(String fieldName) {
+        Map<String,Map<String,CompositePredicateFilter>> compositePredicateFilterMapByType = new HashMap<>();
+        if (compositeMetadata != null && compositeMetadata.getCompositeToFieldMap() != null) {
+            for (Map.Entry<String, Multimap<String, String>> entry : compositeMetadata.getCompositeToFieldMap().entrySet()) {
+                if (entry.getValue().containsKey(fieldName)) {
+                    String ingestType = entry.getKey();
+
+                    Map<String, CompositePredicateFilter> compositePredicateFilterMap;
+                    if (compositePredicateFilterMapByType.containsKey(ingestType)) {
+                        compositePredicateFilterMap = compositePredicateFilterMapByType.get(ingestType);
+                    } else {
+                        compositePredicateFilterMap = new HashMap<>();
+                        compositePredicateFilterMapByType.put(ingestType, compositePredicateFilterMap);
+                    }
+
+                    List<String> compFields = new ArrayList<>(entry.getValue().get(fieldName));
+                    Long transitionDateMillis = (compositeTransitionDates.containsKey(fieldName)) ? compositeTransitionDates.get(fieldName) : null;
+                    compositePredicateFilterMap.put(fieldName, new CompositePredicateFilter(compFields, transitionDateMillis));
+                }
+            }
+        }
+        return compositePredicateFilterMapByType;
     }
     
     @SuppressWarnings("unchecked")

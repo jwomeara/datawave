@@ -60,7 +60,7 @@ public class ASTCompositePredicate extends QueryPropertyMarker {
      * @param node
      * @return the source node or null if not an a delayed predicate marker
      */
-    public static JexlNode getDelayedPredicateSource(JexlNode node) {
+    public static JexlNode getCompositePredicateSource(JexlNode node) {
         return QueryPropertyMarker.getQueryPropertySource(node, ASTCompositePredicate.class);
     }
 }

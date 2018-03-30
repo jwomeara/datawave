@@ -74,7 +74,7 @@ public class IndexFilterIteratorBuilder extends IvaratorBuilder implements Itera
                                 range.getLower().toString()), range.isLowerInclusive(), new Text(range.getUpper().toString()), range.isUpperInclusive(),
                                 this.timeFilter, this.datatypeFilter, false, ivaratorCacheScanPersistThreshold, ivaratorCacheScanTimeout,
                                 ivaratorCacheBufferSize, maxRangeSplit, ivaratorMaxOpenFiles, hdfsFileSystem, new Path(hdfsCacheURI), queryLock, true,
-                                PartialKey.ROW_COLFAM_COLQUAL_COLVIS_TIME, sortedUIDs);
+                                PartialKey.ROW_COLFAM_COLQUAL_COLVIS_TIME, sortedUIDs, createCompositePredicateFilters(range.getFieldName()));
                 if (collectTimingDetails) {
                     rangeIterator.setCollectTimingDetails(true);
                     rangeIterator.setQuerySpanCollector(this.querySpanCollector);

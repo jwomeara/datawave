@@ -11,7 +11,8 @@ public class CardinalityIteratorBuilder extends IndexIteratorBuilder {
     public IndexIteratorBridge build() {
         if (notNull(field, value, source, datatypeFilter, keyTform, timeFilter)) {
             IndexIteratorBridge itr = new IndexIteratorBridge(new IndexIterator(new Text(field), new Text(value), source, this.timeFilter, this.typeMetadata,
-                            this.fieldsToAggregate == null ? false : this.fieldsToAggregate.contains(field), this.datatypeFilter, this.keyTform));
+                            this.fieldsToAggregate == null ? false : this.fieldsToAggregate.contains(field), this.datatypeFilter, this.keyTform,
+                            createCompositePredicateFilters(field)));
             field = null;
             value = null;
             source = null;

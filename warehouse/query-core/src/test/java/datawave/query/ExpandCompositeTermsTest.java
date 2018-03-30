@@ -24,8 +24,12 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 public class ExpandCompositeTermsTest {
     
@@ -536,6 +540,8 @@ public class ExpandCompositeTermsTest {
     @Test
     public void test18b() throws Exception {
         ShardQueryConfiguration conf = new ShardQueryConfiguration();
+        conf.setBeginDate(new Date(0));
+        conf.setEndDate(new Date(TimeUnit.DAYS.toMillis(30)));
         
         Multimap<String,String> compositeToFieldMap = LinkedListMultimap.create();
         
@@ -547,7 +553,10 @@ public class ExpandCompositeTermsTest {
         indexedFields.add("GEO");
         
         conf.setFixedLengthFields(Arrays.asList("GEO"));
-        conf.setOverloadedCompositeWithOldData(Arrays.asList("GEO"));
+        
+        Map<String,Date> compositeWithOldDataMap = new HashMap<>();
+        compositeWithOldDataMap.put("GEO", new Date(TimeUnit.DAYS.toMillis(15)));
+        conf.setCompositeWithOldData(compositeWithOldDataMap);
         
         Multimap<String,CompositeNameAndIndex> fieldToCompositeMap = LinkedListMultimap.create();
         fieldToCompositeMap.put("GEO", new CompositeNameAndIndex("GEO", 0));

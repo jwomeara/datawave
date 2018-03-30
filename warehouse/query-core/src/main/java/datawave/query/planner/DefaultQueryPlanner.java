@@ -13,7 +13,6 @@ import com.google.common.collect.Sets;
 import datawave.core.iterators.querylock.QueryLock;
 import datawave.data.type.GeometryType;
 import datawave.data.type.Type;
-import datawave.ingest.data.config.ingest.CompositeIngest;
 import datawave.ingest.mapreduce.handler.dateindex.DateIndexUtil;
 import datawave.query.CloseableIterable;
 import datawave.query.Constants;
@@ -75,6 +74,7 @@ import datawave.query.planner.pushdown.rules.PushDownRule;
 import datawave.query.postprocessing.tf.Function;
 import datawave.query.postprocessing.tf.TermOffsetPopulator;
 import datawave.query.tables.ScannerFactory;
+import datawave.query.util.Composite;
 import datawave.query.util.DateIndexHelper;
 import datawave.query.util.MetadataHelper;
 import datawave.query.util.QueryStopwatch;
@@ -115,7 +115,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -131,7 +130,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.PatternSyntaxException;
-import java.util.stream.Collectors;
 
 public class DefaultQueryPlanner extends QueryPlanner {
     
@@ -1562,6 +1560,21 @@ public class DefaultQueryPlanner extends QueryPlanner {
                 
                 if (config.isDataQueryExpressionFilterEnabled()) {
                     addOption(cfg, QueryOptions.DATA_QUERY_EXPRESSION_FILTER_ENABLED, Boolean.toString(config.isDataQueryExpressionFilterEnabled()), false);
+                }
+                
+                if (!config.getCompositeWithOldData().isEmpty()) {
+                    StringBuilder sb = new StringBuilder();
+                    for (Map.Entry<String,Date> entry : config.getCompositeWithOldData().entrySet()) {
+                        if (config.getQueryFieldsDatatypes().containsKey(entry.getKey())) {
+                            Date transitionDate = entry.getValue();
+                            if (config.getBeginDate().compareTo(transitionDate) < 0 && config.getEndDate().compareTo(transitionDate) > 0) {
+                                sb.append(entry.getKey() + Composite.START_SEPARATOR + Long.toString(transitionDate.getTime()) + ",");
+                            }
+                        }
+                    }
+                    String compositeTransitionDates = sb.toString();
+                    if (compositeTransitionDates != null && !compositeTransitionDates.isEmpty())
+                        addOption(cfg, QueryOptions.COMPOSITE_TRANSITION_DATES, compositeTransitionDates, true);
                 }
                 
                 return cfg;

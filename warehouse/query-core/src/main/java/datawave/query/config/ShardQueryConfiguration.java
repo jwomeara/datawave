@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -133,7 +134,7 @@ public class ShardQueryConfiguration extends GenericQueryConfiguration {
     private Multimap<String,String> compositeToFieldMap = ArrayListMultimap.create();
     private Multimap<String,String> currentCompositeToFieldMap = ArrayListMultimap.create();
     private List<String> fixedLengthFields = new ArrayList<>();
-    private List<String> overloadedCompositeWithOldData = new ArrayList<>();
+    private Map<String,Date> compositeWithOldData = new HashMap<>();
     
     private boolean sortedUIDs = true;
     
@@ -1075,12 +1076,12 @@ public class ShardQueryConfiguration extends GenericQueryConfiguration {
         this.fixedLengthFields = fixedLengthFields;
     }
     
-    public List<String> getOverloadedCompositeWithOldData() {
-        return overloadedCompositeWithOldData;
+    public Map<String,Date> getCompositeWithOldData() {
+        return compositeWithOldData;
     }
     
-    public void setOverloadedCompositeWithOldData(List<String> overloadedCompositeWithOldData) {
-        this.overloadedCompositeWithOldData = overloadedCompositeWithOldData;
+    public void setCompositeWithOldData(Map<String,Date> compositeWithOldData) {
+        this.compositeWithOldData = compositeWithOldData;
     }
     
     public Multimap<String,Type<?>> getNormalizedFieldsDatatypes() {

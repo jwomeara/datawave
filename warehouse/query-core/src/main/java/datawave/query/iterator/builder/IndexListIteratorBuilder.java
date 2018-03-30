@@ -99,12 +99,14 @@ public class IndexListIteratorBuilder extends IvaratorBuilder implements Iterato
                 if (values != null) {
                     listIterator = new DatawaveFieldIndexListIteratorJexl(new Text(field), values, this.timeFilter, this.datatypeFilter, negated,
                                     ivaratorCacheScanPersistThreshold, ivaratorCacheScanTimeout, ivaratorCacheBufferSize, maxRangeSplit, ivaratorMaxOpenFiles,
-                                    hdfsFileSystem, new Path(hdfsCacheURI), queryLock, true, PartialKey.ROW_COLFAM_COLQUAL_COLVIS_TIME, sortedUIDs);
+                                    hdfsFileSystem, new Path(hdfsCacheURI), queryLock, true, PartialKey.ROW_COLFAM_COLQUAL_COLVIS_TIME, sortedUIDs,
+                                    createCompositePredicateFilters(field));
                 } else {
                     FST fst = DatawaveFieldIndexListIteratorJexl.FSTManager.get(new Path(fstURI), hdfsFileCompressionCodec, fstHdfsFileSystem);
                     listIterator = new DatawaveFieldIndexListIteratorJexl(new Text(field), fst, this.timeFilter, this.datatypeFilter, negated,
                                     ivaratorCacheScanPersistThreshold, ivaratorCacheScanTimeout, ivaratorCacheBufferSize, maxRangeSplit, ivaratorMaxOpenFiles,
-                                    hdfsFileSystem, new Path(hdfsCacheURI), queryLock, true, PartialKey.ROW_COLFAM_COLQUAL_COLVIS_TIME, sortedUIDs);
+                                    hdfsFileSystem, new Path(hdfsCacheURI), queryLock, true, PartialKey.ROW_COLFAM_COLQUAL_COLVIS_TIME, sortedUIDs,
+                                    createCompositePredicateFilters(field));
                 }
                 if (collectTimingDetails) {
                     listIterator.setCollectTimingDetails(true);

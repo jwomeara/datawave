@@ -19,6 +19,7 @@ import datawave.core.iterators.DatawaveFieldIndexCachingIteratorJexl.HdfsBackedC
 import datawave.core.iterators.filesystem.FileSystemCache;
 import datawave.core.iterators.querylock.QueryLock;
 import datawave.data.type.Type;
+import datawave.ingest.data.config.ingest.CompositeIngest;
 import datawave.query.DocumentSerialization;
 import datawave.query.function.ConfiguredFunction;
 import datawave.query.function.Equality;
@@ -39,10 +40,8 @@ import datawave.query.jexl.HitListArithmetic;
 import datawave.query.predicate.ConfiguredPredicate;
 import datawave.query.predicate.TimeFilter;
 import datawave.query.statsd.QueryStatsDClient;
-import datawave.query.DocumentSerialization.ReturnType;
-import datawave.query.jexl.DefaultArithmetic;
 import datawave.query.planner.SeekingQueryPlanner;
-import datawave.query.predicate.TimeFilter;
+import datawave.query.util.Composite;
 import datawave.query.util.CompositeMetadata;
 import datawave.query.util.TypeMetadata;
 import datawave.query.util.TypeMetadataProvider;
@@ -66,6 +65,7 @@ import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -209,6 +209,8 @@ public class QueryOptions implements OptionDescriber {
     
     public static final String DATA_QUERY_EXPRESSION_FILTER_ENABLED = "query.data.expression.filter.enabled";
     
+    public static final String COMPOSITE_TRANSITION_DATES = "composite.with.old.data";
+    
     protected Map<String,String> options;
     
     protected String query;
@@ -333,6 +335,8 @@ public class QueryOptions implements OptionDescriber {
     
     protected boolean dataQueryExpressionFilterEnabled = false;
     
+    protected Map<String,Long> compositeTransitionDates = new HashMap<>();
+    
     public void deepCopy(QueryOptions other) {
         this.options = other.options;
         this.query = other.query;
@@ -436,6 +440,8 @@ public class QueryOptions implements OptionDescriber {
         this.debugMultithreadedSources = other.debugMultithreadedSources;
         
         this.dataQueryExpressionFilterEnabled = other.dataQueryExpressionFilterEnabled;
+        
+        this.compositeTransitionDates = other.compositeTransitionDates;
     }
     
     public String getQuery() {
@@ -613,7 +619,10 @@ public class QueryOptions implements OptionDescriber {
             allIndexOnlyFields.addAll(indexOnlyFields);
         // composite fields are index only as well
         if (compositeMetadata != null)
-            allIndexOnlyFields.addAll(compositeMetadata.keySet());
+            for (Entry<String,Multimap<String,String>> entry : compositeMetadata.entrySet())
+                for (String field : entry.getValue().keySet())
+                    if (!CompositeIngest.isOverloadedCompositeField(entry.getValue(), field))
+                        allIndexOnlyFields.add(field);
         return allIndexOnlyFields;
     }
     
@@ -835,6 +844,14 @@ public class QueryOptions implements OptionDescriber {
         this.dataQueryExpressionFilterEnabled = dataQueryExpressionFilterEnabled;
     }
     
+    public Map<String,Long> getCompositeTransitionDates() {
+        return compositeTransitionDates;
+    }
+    
+    public void setCompositeTransitionDates(Map<String,Long> compositeTransitionDates) {
+        this.compositeTransitionDates = compositeTransitionDates;
+    }
+    
     @Override
     public IteratorOptions describeOptions() {
         Map<String,String> options = new HashMap<>();
@@ -910,6 +927,9 @@ public class QueryOptions implements OptionDescriber {
         
         options.put(DEBUG_MULTITHREADED_SOURCES, "If provided, the SourceThreadTrackingIterator will be used");
         options.put(DATA_QUERY_EXPRESSION_FILTER_ENABLED, "If true, the EventDataQueryExpression filter will be used when performing TLD queries");
+        
+        options.put(COMPOSITE_TRANSITION_DATES,
+                        "If provided, these values are intended to be used to properly handle filtering of composite fields with both composite and non-composite data.");
         
         options.put(METADATA_TABLE_NAME, this.metadataTableName);
         
@@ -1308,6 +1328,13 @@ public class QueryOptions implements OptionDescriber {
         
         if (options.containsKey(DATA_QUERY_EXPRESSION_FILTER_ENABLED)) {
             this.dataQueryExpressionFilterEnabled = Boolean.parseBoolean(options.get(DATA_QUERY_EXPRESSION_FILTER_ENABLED));
+        }
+        
+        if (options.containsKey(COMPOSITE_TRANSITION_DATES)) {
+            for (String entry : options.get(COMPOSITE_TRANSITION_DATES).split(",")) {
+                String[] kv = entry.split(Composite.START_SEPARATOR);
+                this.compositeTransitionDates.put(kv[0], Long.parseLong(kv[1]));
+            }
         }
         
         return true;
