@@ -17,6 +17,7 @@ import org.apache.commons.jexl2.Script;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
+import java.util.Date;
 import java.util.Map;
 
 /**
@@ -29,12 +30,12 @@ public class CompositeRangeFilterIterator extends Filter {
     
     public static final String COMPOSITE_FIELDS = "composite.fields";
     public static final String COMPOSITE_PREDICATE = "composite.predicate";
-    public static final String INCLUDE_NONCOMPOSITE = "include.noncomposite";
+    public static final String INCLUDE_NONCOMPOSITE_BEFORE_DATE = "include.noncomposite.before.date";
     
     protected String[] fieldNames = null;
     protected String compositePredicate = null;
     protected Script compositePredicateScript = null;
-    protected boolean includeNoncomposite = false;
+    protected Long transitionDateMillis = null;
     
     @Override
     public SortedKeyValueIterator<Key,Value> deepCopy(IteratorEnvironment env) {
@@ -49,7 +50,8 @@ public class CompositeRangeFilterIterator extends Filter {
         
         to.compositePredicateScript = queryToScript(to.compositePredicate);
         
-        to.includeNoncomposite = includeNoncomposite;
+        if (transitionDateMillis != null)
+            to.transitionDateMillis = new Long(transitionDateMillis);
         
         return to;
     }
@@ -68,9 +70,9 @@ public class CompositeRangeFilterIterator extends Filter {
             this.compositePredicateScript = queryToScript(compositePredicate);
         }
         
-        final String includeNoncomposite = options.get(INCLUDE_NONCOMPOSITE);
-        if (null != includeNoncomposite) {
-            this.includeNoncomposite = Boolean.parseBoolean(includeNoncomposite);
+        final String transitionDate = options.get(INCLUDE_NONCOMPOSITE_BEFORE_DATE);
+        if (null != transitionDate) {
+            this.transitionDateMillis = Long.parseLong(transitionDate);
         }
     }
     
@@ -104,7 +106,7 @@ public class CompositeRangeFilterIterator extends Filter {
             }
             
             return true;
-        } else if (terms.length == 1 && includeNoncomposite) {
+        } else if (terms.length == 1 && transitionDateMillis != null && key.getTimestamp() < transitionDateMillis) {
             return true;
         } else {
             return false;

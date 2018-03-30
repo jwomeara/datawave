@@ -1,5 +1,6 @@
 package datawave.query.tld;
 
+import datawave.query.iterator.filter.composite.CompositePredicateFilter;
 import datawave.query.iterator.logic.IndexIterator;
 import datawave.query.jexl.functions.FieldIndexAggregator;
 import datawave.query.predicate.TimeFilter;
@@ -15,15 +16,18 @@ import org.apache.hadoop.io.Text;
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
 
+import java.util.Map;
+
 public class TLDIndexIterator extends IndexIterator {
     
     public TLDIndexIterator(Text field, Text value, SortedKeyValueIterator<Key,Value> source, TimeFilter timeFilter) {
-        this(field, value, source, timeFilter, null, false, Predicates.<Key> alwaysTrue(), new TLDFieldIndexAggregator(null, null));
+        this(field, value, source, timeFilter, null, false, Predicates.<Key> alwaysTrue(), new TLDFieldIndexAggregator(null, null), null);
     }
     
     public TLDIndexIterator(Text field, Text value, SortedKeyValueIterator<Key,Value> source, TimeFilter timeFilter, TypeMetadata typeMetadata,
-                    boolean buildDocument, Predicate<Key> datatypeFilter, FieldIndexAggregator aggregator) {
-        super(field, value, source, timeFilter, typeMetadata, buildDocument, datatypeFilter, aggregator);
+                    boolean buildDocument, Predicate<Key> datatypeFilter, FieldIndexAggregator aggregator,
+                    Map<String,Map<String,CompositePredicateFilter>> compositePredicateFilters) {
+        super(field, value, source, timeFilter, typeMetadata, buildDocument, datatypeFilter, aggregator, compositePredicateFilters);
     }
     
     @Override

@@ -12,6 +12,7 @@ import java.net.URISyntaxException;
 import java.text.MessageFormat;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -21,10 +22,6 @@ import datawave.core.iterators.SourcePool;
 import datawave.core.iterators.ThreadLocalPooledSource;
 import datawave.core.iterators.filesystem.FileSystemCache;
 import datawave.core.iterators.querylock.QueryLock;
-import datawave.query.jexl.DatawaveJexlContext;
-import datawave.query.parser.JavaRegexAnalyzer;
-import datawave.query.parser.JavaRegexAnalyzer.JavaRegexParseException;
-import datawave.query.Constants;
 import datawave.query.jexl.DatawaveJexlContext;
 import datawave.query.parser.JavaRegexAnalyzer;
 import datawave.query.parser.JavaRegexAnalyzer.JavaRegexParseException;
@@ -62,8 +59,7 @@ import datawave.query.jexl.nodes.ExceededValueThresholdMarkerJexlNode;
 import datawave.query.predicate.EventDataQueryFilter;
 import datawave.query.predicate.Filter;
 import datawave.query.predicate.TimeFilter;
-import datawave.query.iterator.SourceManager;
-import datawave.query.jexl.JexlASTHelper.IdentifierOpLiteral;
+import datawave.query.util.CompositeMetadata;
 import datawave.query.util.IteratorToSortedKeyValueIterator;
 import datawave.query.util.TypeMetadata;
 import datawave.webservice.query.exception.DatawaveErrorCode;
@@ -146,6 +142,9 @@ public class IteratorBuildingVisitor extends BaseVisitor {
     protected boolean allowTermFrequencyLookup = true;
     protected Set<String> indexOnlyFields = Collections.<String> emptySet();
     protected FieldIndexAggregator fiAggregator = new IdentityAggregator(null);
+    
+    protected CompositeMetadata compositeMetadata;
+    protected Map<String,Long> compositeTransitionDates;
     
     protected Range rangeLimiter;
     
@@ -532,6 +531,8 @@ public class IteratorBuildingVisitor extends BaseVisitor {
         }
         builder.setSource(source.deepCopy(env));
         builder.setTypeMetadata(typeMetadata);
+        builder.setCompositeMetadata(compositeMetadata);
+        builder.setCompositeTransitionDates(compositeTransitionDates);
         builder.setFieldsToAggregate(fieldsToAggregate);
         builder.setTimeFilter(timeFilter);
         builder.setDatatypeFilter(datatypeFilter);
@@ -604,6 +605,8 @@ public class IteratorBuildingVisitor extends BaseVisitor {
         builder.setSource(getSourceIterator(node, isNegation));
         builder.setTimeFilter(getTimeFilter(node));
         builder.setTypeMetadata(typeMetadata);
+        builder.setCompositeMetadata(compositeMetadata);
+        builder.setCompositeTransitionDates(compositeTransitionDates);
         builder.setFieldsToAggregate(fieldsToAggregate);
         builder.setDatatypeFilter(datatypeFilter);
         builder.setKeyTransform(fiAggregator);
@@ -822,7 +825,11 @@ public class IteratorBuildingVisitor extends BaseVisitor {
                     }
                 }
             } else {
-                if (isQueryFullySatisfied == true) {
+                Set<JexlNode> compositeNodes = CompositePredicateVisitor.findCompositePredicates(subNode);
+                if (!compositeNodes.isEmpty() && o instanceof AndIteratorBuilder) {
+                    AndIteratorBuilder aib = (AndIteratorBuilder) o;
+                    aib.addCompositePredicate(subNode);
+                } else if (isQueryFullySatisfied == true) {
                     log.warn("Determined that isQueryFullySatisfied should be false, but it was not preset to false in the SatisfactionVisitor");
                 }
             }
@@ -854,6 +861,8 @@ public class IteratorBuildingVisitor extends BaseVisitor {
         builder.setField(identifier);
         builder.setTimeFilter(TimeFilter.alwaysTrue());
         builder.setTypeMetadata(typeMetadata);
+        builder.setCompositeMetadata(compositeMetadata);
+        builder.setCompositeTransitionDates(compositeTransitionDates);
         builder.setFieldsToAggregate(fieldsToAggregate);
         builder.setDatatypeFilter(datatypeFilter);
         builder.setKeyTransform(fiAggregator);
@@ -886,6 +895,8 @@ public class IteratorBuildingVisitor extends BaseVisitor {
         
         builder.setTimeFilter(getTimeFilter(node));
         builder.setTypeMetadata(typeMetadata);
+        builder.setCompositeMetadata(compositeMetadata);
+        builder.setCompositeTransitionDates(compositeTransitionDates);
         builder.setFieldsToAggregate(fieldsToAggregate);
         builder.setDatatypeFilter(datatypeFilter);
         builder.setKeyTransform(fiAggregator);
@@ -1223,6 +1234,8 @@ public class IteratorBuildingVisitor extends BaseVisitor {
         builder.setSource(ivaratorSource);
         builder.setTimeFilter(timeFilter);
         builder.setTypeMetadata(typeMetadata);
+        builder.setCompositeMetadata(compositeMetadata);
+        builder.setCompositeTransitionDates(compositeTransitionDates);
         builder.setFieldsToAggregate(fieldsToAggregate);
         builder.setDatatypeFilter(datatypeFilter);
         builder.setKeyTransform(fiAggregator);
@@ -1385,6 +1398,16 @@ public class IteratorBuildingVisitor extends BaseVisitor {
     
     public IteratorBuildingVisitor setFiAggregator(FieldIndexAggregator fiAggregator) {
         this.fiAggregator = fiAggregator;
+        return this;
+    }
+    
+    public IteratorBuildingVisitor setCompositeMetadata(CompositeMetadata compositeMetadata) {
+        this.compositeMetadata = compositeMetadata;
+        return this;
+    }
+    
+    public IteratorBuildingVisitor setCompositeTransitionDates(Map<String,Long> compositeTransitionDates) {
+        this.compositeTransitionDates = compositeTransitionDates;
         return this;
     }
     

@@ -28,6 +28,20 @@ public class CompositePredicateVisitor extends BaseVisitor {
     private CompositePredicateVisitor() {}
     
     /**
+     * Finds the ASTCompositePredicates, if there are any
+     *
+     * @param script
+     *            An ASTJexlScript
+     * @return
+     */
+    public static Set<JexlNode> findCompositePredicates(JexlNode script) {
+        CompositePredicateVisitor visitor = new CompositePredicateVisitor();
+        
+        script.jjtAccept(visitor, null);
+        return visitor.compositePredicates;
+    }
+    
+    /**
      * Finds the ASTCompositePredicate associated with the given composite field
      *
      * @param script
@@ -48,7 +62,7 @@ public class CompositePredicateVisitor extends BaseVisitor {
             Set<String> foundIdentifiers = new HashSet<>();
             node.childrenAccept(this, foundIdentifiers);
             
-            if (foundIdentifiers.size() == compFields.size() && foundIdentifiers.containsAll(compFields))
+            if (compFields.size() == 0 || (foundIdentifiers.size() == compFields.size() && foundIdentifiers.containsAll(compFields)))
                 compositePredicates.add(node);
             return null;
         }
@@ -61,7 +75,7 @@ public class CompositePredicateVisitor extends BaseVisitor {
             Set<String> foundIdentifiers = new HashSet<>();
             node.childrenAccept(this, foundIdentifiers);
             
-            if (foundIdentifiers.size() == compFields.size() && foundIdentifiers.containsAll(compFields))
+            if (compFields.size() == 0 || (foundIdentifiers.size() == compFields.size() && foundIdentifiers.containsAll(compFields)))
                 compositePredicates.add(node);
             return null;
         }

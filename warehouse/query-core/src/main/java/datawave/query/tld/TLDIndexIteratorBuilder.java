@@ -16,7 +16,8 @@ public class TLDIndexIteratorBuilder extends IndexIteratorBuilder {
     @Override
     public IndexIterator newIndexIterator(Text field, Text value, SortedKeyValueIterator<Key,Value> source, TimeFilter timeFilter, TypeMetadata typeMetadata,
                     boolean buildDocument, Predicate<Key> datatypeFilter, FieldIndexAggregator aggregator) {
-        return new TLDIndexIterator(field, value, source, timeFilter, typeMetadata, buildDocument, datatypeFilter, aggregator);
+        return new TLDIndexIterator(field, value, source, timeFilter, typeMetadata, buildDocument, datatypeFilter, aggregator,
+                        createCompositePredicateFilters(field.toString()));
     }
     
 }

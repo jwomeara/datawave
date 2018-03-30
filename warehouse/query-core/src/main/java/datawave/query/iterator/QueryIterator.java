@@ -1144,7 +1144,8 @@ public class QueryIterator extends QueryOptions implements SortedKeyValueIterato
                         .setIncludes(indexedFields).setTermFrequencyFields(this.getTermFrequencyFields()).setIsQueryFullySatisfied(isQueryFullySatisfied)
                         .setSortedUIDs(sortedUIDs).limit(documentRange).disableIndexOnly(disableFiEval).limit(this.sourceLimit)
                         .setCollectTimingDetails(this.collectTimingDetails).setQuerySpanCollector(this.querySpanCollector)
-                        .setIndexOnlyFields(this.getAllIndexOnlyFields()).setAllowTermFrequencyLookup(this.allowTermFrequencyLookup);
+                        .setIndexOnlyFields(this.getAllIndexOnlyFields()).setAllowTermFrequencyLookup(this.allowTermFrequencyLookup)
+                        .setCompositeMetadata(compositeMetadata).setCompositeTransitionDates(compositeTransitionDates);
         // TODO: .setStatsPort(this.statsdHostAndPort);
     }
     
