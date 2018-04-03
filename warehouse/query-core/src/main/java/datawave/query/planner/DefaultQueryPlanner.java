@@ -1562,9 +1562,12 @@ public class DefaultQueryPlanner extends QueryPlanner {
                     addOption(cfg, QueryOptions.DATA_QUERY_EXPRESSION_FILTER_ENABLED, Boolean.toString(config.isDataQueryExpressionFilterEnabled()), false);
                 }
                 
-                if (!config.getCompositeWithOldData().isEmpty()) {
+                // if one of the fields we're querying against is a transitioned composite
+                // field, and our query date range spans the transition date, include the
+                // transition date which will be used by the composite predicate filter
+                if (!config.getCompositeTransitionDates().isEmpty()) {
                     StringBuilder sb = new StringBuilder();
-                    for (Map.Entry<String,Date> entry : config.getCompositeWithOldData().entrySet()) {
+                    for (Map.Entry<String,Date> entry : config.getCompositeTransitionDates().entrySet()) {
                         if (config.getQueryFieldsDatatypes().containsKey(entry.getKey())) {
                             Date transitionDate = entry.getValue();
                             if (config.getBeginDate().compareTo(transitionDate) < 0 && config.getEndDate().compareTo(transitionDate) > 0) {

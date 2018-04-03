@@ -327,7 +327,7 @@ public class GeoCompositeIndexTest {
             writer.close();
         }
     }
-
+    
     @Test
     public void compositeWithOldDataWithoutIvaratorTest() throws Exception {
         // @formatter:off
@@ -501,7 +501,7 @@ public class GeoCompositeIndexTest {
         
         config.setFixedLengthFields(Arrays.asList(GEO_FIELD));
         
-        config.setCompositeWithOldData(queryOldData);
+        config.setCompositeTransitionDates(queryOldData);
         
         logic.initialize(config, instance.getConnector("root", PASSWORD), query, auths);
         
@@ -533,7 +533,7 @@ public class GeoCompositeIndexTest {
         
         config.setFixedLengthFields(Arrays.asList(GEO_FIELD));
         
-        config.setCompositeWithOldData(queryOldData);
+        config.setCompositeTransitionDates(queryOldData);
         
         logic.initialize(config, instance.getConnector("root", PASSWORD), query, auths);
         

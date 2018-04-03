@@ -201,7 +201,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
                 break;
             } else if (kid instanceof ASTAndNode) {
                 List<JexlNode> others = new ArrayList<>();
-                Map<LiteralRange<?>,List<JexlNode>> boundedRangesIndexAgnostic = JexlASTHelper.getBoundedRangesIndexAgnostic((ASTAndNode) kid, others, true, 1);
+                Map<LiteralRange<?>,List<JexlNode>> boundedRangesIndexAgnostic = JexlASTHelper.getBoundedRangesIndexAgnostic(kid, others, true, 1);
                 for (LiteralRange range : boundedRangesIndexAgnostic.keySet()) {
                     if (fieldToCompositeMap.containsKey(range.getFieldName())) {
                         hasEqNode = true;
@@ -358,8 +358,8 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
             List<String> appendedExpressions = new ArrayList<>();
             
             boolean includeOldData = false;
-            if (config.getCompositeWithOldData().containsKey(comp.compositeName)) {
-                Date transitionDate = config.getCompositeWithOldData().get(comp.compositeName);
+            if (config.getCompositeTransitionDates().containsKey(comp.compositeName)) {
+                Date transitionDate = config.getCompositeTransitionDates().get(comp.compositeName);
                 if (config.getBeginDate().compareTo(transitionDate) < 0)
                     includeOldData = true;
             }
@@ -1079,8 +1079,8 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
     }
     
     private boolean isQueryAgainstCompositeWithOldDataPriorToTransitionDate(String field) {
-        if (config.getCompositeWithOldData().containsKey(field)) {
-            Date transitionDate = config.getCompositeWithOldData().get(field);
+        if (config.getCompositeTransitionDates().containsKey(field)) {
+            Date transitionDate = config.getCompositeTransitionDates().get(field);
             if (config.getEndDate().compareTo(transitionDate) < 0)
                 return true;
         }

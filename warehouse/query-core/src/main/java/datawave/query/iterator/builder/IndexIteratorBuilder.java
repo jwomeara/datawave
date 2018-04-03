@@ -110,18 +110,18 @@ public class IndexIteratorBuilder extends AbstractIteratorBuilder {
     protected Map<String,Map<String,CompositePredicateFilter>> createCompositePredicateFilters(String fieldName) {
         Map<String,Map<String,CompositePredicateFilter>> compositePredicateFilterMapByType = new HashMap<>();
         if (compositeMetadata != null && compositeMetadata.getCompositeToFieldMap() != null) {
-            for (Map.Entry<String, Multimap<String, String>> entry : compositeMetadata.getCompositeToFieldMap().entrySet()) {
+            for (Map.Entry<String,Multimap<String,String>> entry : compositeMetadata.getCompositeToFieldMap().entrySet()) {
                 if (entry.getValue().containsKey(fieldName)) {
                     String ingestType = entry.getKey();
-
-                    Map<String, CompositePredicateFilter> compositePredicateFilterMap;
+                    
+                    Map<String,CompositePredicateFilter> compositePredicateFilterMap;
                     if (compositePredicateFilterMapByType.containsKey(ingestType)) {
                         compositePredicateFilterMap = compositePredicateFilterMapByType.get(ingestType);
                     } else {
                         compositePredicateFilterMap = new HashMap<>();
                         compositePredicateFilterMapByType.put(ingestType, compositePredicateFilterMap);
                     }
-
+                    
                     List<String> compFields = new ArrayList<>(entry.getValue().get(fieldName));
                     Long transitionDateMillis = (compositeTransitionDates.containsKey(fieldName)) ? compositeTransitionDates.get(fieldName) : null;
                     compositePredicateFilterMap.put(fieldName, new CompositePredicateFilter(compFields, transitionDateMillis));

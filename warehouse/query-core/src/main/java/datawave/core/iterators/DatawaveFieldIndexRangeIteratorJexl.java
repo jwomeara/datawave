@@ -64,9 +64,9 @@ public class DatawaveFieldIndexRangeIteratorJexl extends DatawaveFieldIndexCachi
     public DatawaveFieldIndexRangeIteratorJexl(Text fieldName, Text lowerBound, boolean lowerInclusive, Text upperBound, boolean upperInclusive,
                     TimeFilter timeFilter, Predicate<Key> datatypeFilter, boolean neg, long scanThreshold, long scanTimeout, int bufferSize, int maxRangeSplit,
                     int maxOpenFiles, FileSystem fs, Path uniqueDir, QueryLock queryLock, boolean allowDirReuse, PartialKey returnKeyType, boolean sortedUIDs,
-                    Map<String,Map<String,CompositePredicateFilter>> fieldIndexFilters) {
+                    Map<String,Map<String,CompositePredicateFilter>> compositePredicateFilters) {
         super(fieldName, lowerBound, timeFilter, datatypeFilter, neg, scanThreshold, scanTimeout, bufferSize, maxRangeSplit, maxOpenFiles, fs, uniqueDir,
-                        queryLock, allowDirReuse, returnKeyType, sortedUIDs, fieldIndexFilters);
+                        queryLock, allowDirReuse, returnKeyType, sortedUIDs, compositePredicateFilters);
         this.lowerInclusive = lowerInclusive;
         this.upperBound = upperBound;
         this.upperInclusive = upperInclusive;

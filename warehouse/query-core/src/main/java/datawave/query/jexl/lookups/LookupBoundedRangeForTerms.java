@@ -143,10 +143,10 @@ public class LookupBoundedRangeForTerms extends IndexLookup {
             // If this is a composite range, we need to setup our query to filter based on each component of the composite range
             if (config.getCompositeToFieldMap().get(literalRange.getFieldName()) != null && compositePredicate != null) {
                 Date transitionDate = null;
-                if (config.getCompositeWithOldData().containsKey(literalRange.getFieldName()))
-                    transitionDate = config.getCompositeWithOldData().get(literalRange.getFieldName());
+                if (config.getCompositeTransitionDates().containsKey(literalRange.getFieldName()))
+                    transitionDate = config.getCompositeTransitionDates().get(literalRange.getFieldName());
                 
-                // don't add the iterator if this is a query against a composite field with old data where the date range preceeds the transition date
+                // if this is a transitioned composite field, don't add the iterator if our date range preceeds the transition date
                 if (transitionDate == null || config.getEndDate().compareTo(transitionDate) < 0) {
                     
                     IteratorSetting compositeIterator = new IteratorSetting(config.getBaseIteratorPriority() + 51, CompositeRangeFilterIterator.class);
@@ -157,7 +157,7 @@ public class LookupBoundedRangeForTerms extends IndexLookup {
                     compositeIterator.addOption(CompositeRangeFilterIterator.COMPOSITE_PREDICATE, JexlStringBuildingVisitor.buildQuery(compositePredicate));
                     
                     if (transitionDate != null)
-                        compositeIterator.addOption(CompositeRangeFilterIterator.INCLUDE_NONCOMPOSITE_BEFORE_DATE, Long.toString(transitionDate.getTime()));
+                        compositeIterator.addOption(CompositeRangeFilterIterator.COMPOSITE_TRANSITION_DATE, Long.toString(transitionDate.getTime()));
                     
                     bs.addScanIterator(compositeIterator);
                 }
