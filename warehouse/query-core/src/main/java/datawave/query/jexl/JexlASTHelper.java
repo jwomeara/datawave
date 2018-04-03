@@ -646,6 +646,8 @@ public class JexlASTHelper {
      *            The root node
      * @param otherNodes
      *            If not null, then this is filled with all nodes not used to make the ranges (minimal node list, minimal tree depth)
+     * @param maxDepth
+     *            The maximum depth to traverse the tree. -1 represents unlimited depth.
      * @return The ranges, all bounded.
      */
     @SuppressWarnings("rawtypes")
@@ -1040,6 +1042,9 @@ public class JexlASTHelper {
      * @param helper
      *            Required if mustBeIndexed
      * @param nonIndexedRangeNodes
+     * @param maxDepth
+     *            The maximum depth to traverse the tree. -1 represents unlimited depth.
+     *
      */
     protected static void getRangeOperatorNodes(JexlNode root, Class<?> clz, List<JexlNode> nodes, List<JexlNode> otherNodes, Set<String> datatypeFilterSet,
                     MetadataHelper helper, List<JexlNode> nonIndexedRangeNodes, boolean includeDelayed, int maxDepth) {

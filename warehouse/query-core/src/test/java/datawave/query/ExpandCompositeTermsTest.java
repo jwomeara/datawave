@@ -556,7 +556,7 @@ public class ExpandCompositeTermsTest {
         
         Map<String,Date> compositeWithOldDataMap = new HashMap<>();
         compositeWithOldDataMap.put("GEO", new Date(TimeUnit.DAYS.toMillis(15)));
-        conf.setCompositeWithOldData(compositeWithOldDataMap);
+        conf.setCompositeTransitionDates(compositeWithOldDataMap);
         
         Multimap<String,CompositeNameAndIndex> fieldToCompositeMap = LinkedListMultimap.create();
         fieldToCompositeMap.put("GEO", new CompositeNameAndIndex("GEO", 0));

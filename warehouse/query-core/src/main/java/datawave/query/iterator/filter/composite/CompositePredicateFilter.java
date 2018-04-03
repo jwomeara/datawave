@@ -31,19 +31,8 @@ public class CompositePredicateFilter {
     
     public boolean keep(String[] terms, long timestamp) {
         if (!compositePredicates.isEmpty()) {
-            if (script == null) {
-                JexlEngine engine = new JexlEngine(null, new NormalizedValueArithmetic(), null, null);
-                engine.setCache(1024);
-                engine.setSilent(false);
-                
-                // Setting strict to be true causes an Exception when a field
-                // in the query does not occur in the document being tested.
-                // This doesn't appear to have any unexpected consequences looking
-                // at the Interpreter class in JEXL.
-                engine.setStrict(false);
-                
-                script = engine.createScript(JexlStringBuildingVisitor.buildQuery(JexlNodeFactory.createAndNode(compositePredicates)));
-            }
+            if (script == null)
+                script = queryToScript(JexlStringBuildingVisitor.buildQuery(JexlNodeFactory.createAndNode(compositePredicates)));
             
             if (terms.length == compositeFields.size()) {
                 MapContext jexlContext = new MapContext();
@@ -56,6 +45,8 @@ public class CompositePredicateFilter {
                     return false;
                 }
             } else if (!(terms.length == 1 && transitionDateMillis != null && timestamp < transitionDateMillis)) {
+                // indicates that we are dealing with data that was ingested
+                // before we transitioned this field to a composite field
                 return false;
             }
         }
@@ -68,6 +59,20 @@ public class CompositePredicateFilter {
             if (compNodes != null && !compNodes.isEmpty())
                 compositePredicates.addAll(compNodes);
         }
+    }
+    
+    private Script queryToScript(String query) {
+        JexlEngine engine = new JexlEngine(null, new NormalizedValueArithmetic(), null, null);
+        engine.setCache(1024);
+        engine.setSilent(false);
+        
+        // Setting strict to be true causes an Exception when a field
+        // in the query does not occur in the document being tested.
+        // This doesn't appear to have any unexpected consequences looking
+        // at the Interpreter class in JEXL.
+        engine.setStrict(false);
+        
+        return engine.createScript(query);
     }
     
     public Set<JexlNode> getCompositePredicates() {

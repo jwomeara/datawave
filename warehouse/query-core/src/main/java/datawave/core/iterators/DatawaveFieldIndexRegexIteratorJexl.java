@@ -64,9 +64,9 @@ public class DatawaveFieldIndexRegexIteratorJexl extends DatawaveFieldIndexCachi
     public DatawaveFieldIndexRegexIteratorJexl(Text fieldName, Text fieldRegex, TimeFilter timeFilter, Predicate<Key> datatypeFilter, boolean neg,
                     long scanThreshold, long scanTimeout, int bufferSize, int maxRangeSplits, int maxOpenFiles, FileSystem fs, Path uniqueDir,
                     QueryLock queryLock, boolean allowDirReuse, PartialKey returnKeyType, boolean sortedUIDs,
-                    Map<String,Map<String,CompositePredicateFilter>> fieldIndexFilters) throws JavaRegexParseException {
+                    Map<String,Map<String,CompositePredicateFilter>> compositePredicateFilters) throws JavaRegexParseException {
         super(fieldName, fieldRegex, timeFilter, datatypeFilter, neg, scanThreshold, scanTimeout, bufferSize, maxRangeSplits, maxOpenFiles, fs, uniqueDir,
-                        queryLock, allowDirReuse, returnKeyType, sortedUIDs, fieldIndexFilters);
+                        queryLock, allowDirReuse, returnKeyType, sortedUIDs, compositePredicateFilters);
         this.regex = fieldRegex.toString();
         // now fix the fValue to be the part we use for ranges
         JavaRegexAnalyzer analyzer = new JavaRegexAnalyzer(this.regex);

@@ -290,7 +290,7 @@ public class IndexIterator implements SortedKeyValueIterator<Key,Value>, Documen
                                 ingestType).get(fieldName) : null;
                 if (compositePredicateFilter != null && !compositePredicateFilter.keep(terms, top.getTimestamp())) {
                     if (log.isTraceEnabled())
-                        log.trace("Ignoring key due to not passing the field index value filter: " + top);
+                        log.trace("Ignoring key due to not passing the composite predicate filter: " + top);
                     source.next();
                     continue;
                 }
@@ -443,7 +443,7 @@ public class IndexIterator implements SortedKeyValueIterator<Key,Value>, Documen
     public void addCompositePredicates(Set<JexlNode> compositePredicates) {
         if (compositePredicateFilters != null) {
             // Assign composite predicates to their corresponding field index filters
-            for (Map<String, CompositePredicateFilter> map : compositePredicateFilters.values())
+            for (Map<String,CompositePredicateFilter> map : compositePredicateFilters.values())
                 for (CompositePredicateFilter compositePredicateFilter : map.values())
                     compositePredicateFilter.addCompositePredicates(compositePredicates);
         }

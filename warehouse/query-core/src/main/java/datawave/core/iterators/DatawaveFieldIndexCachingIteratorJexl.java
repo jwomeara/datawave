@@ -1265,7 +1265,7 @@ public abstract class DatawaveFieldIndexCachingIteratorJexl extends WrappingIter
     public void addCompositePredicates(Set<JexlNode> compositePredicates) {
         if (compositePredicateFilters != null) {
             // Assign composite predicates to their corresponding field index filters
-            for (Map<String, CompositePredicateFilter> map : compositePredicateFilters.values())
+            for (Map<String,CompositePredicateFilter> map : compositePredicateFilters.values())
                 for (CompositePredicateFilter compositePredicateFilter : map.values())
                     compositePredicateFilter.addCompositePredicates(compositePredicates);
         }

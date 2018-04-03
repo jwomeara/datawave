@@ -186,7 +186,8 @@ public class RangeConjunctionRebuildingVisitor extends RebuildingVisitor {
         for (Map.Entry<LiteralRange<?>,List<JexlNode>> range : ranges.entrySet()) {
             ASTCompositePredicate compositePredicate = null;
             
-            // do some special stuff for composite ranges
+            // if this is a composite field, find the composite predicate, which will be
+            // used to filter out composite terms which fall outside of our range
             String fieldName = range.getKey().getFieldName();
             if (config.getCompositeToFieldMap().keySet().contains(fieldName)) {
                 Set<JexlNode> delayedCompositePredicates = leaves.stream()

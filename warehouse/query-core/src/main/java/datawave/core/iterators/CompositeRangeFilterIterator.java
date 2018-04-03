@@ -1,9 +1,6 @@
 package datawave.core.iterators;
 
 import datawave.query.jexl.ArithmeticJexlEngines;
-import datawave.query.jexl.DatawaveJexlContext;
-import datawave.query.jexl.DatawaveJexlEngine;
-import datawave.query.jexl.DefaultArithmetic;
 import datawave.query.jexl.NormalizedValueArithmetic;
 import datawave.query.util.Composite;
 import org.apache.accumulo.core.data.Key;
@@ -17,7 +14,6 @@ import org.apache.commons.jexl2.Script;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
-import java.util.Date;
 import java.util.Map;
 
 /**
@@ -30,7 +26,7 @@ public class CompositeRangeFilterIterator extends Filter {
     
     public static final String COMPOSITE_FIELDS = "composite.fields";
     public static final String COMPOSITE_PREDICATE = "composite.predicate";
-    public static final String INCLUDE_NONCOMPOSITE_BEFORE_DATE = "include.noncomposite.before.date";
+    public static final String COMPOSITE_TRANSITION_DATE = "composite.transition.date";
     
     protected String[] fieldNames = null;
     protected String compositePredicate = null;
@@ -70,7 +66,7 @@ public class CompositeRangeFilterIterator extends Filter {
             this.compositePredicateScript = queryToScript(compositePredicate);
         }
         
-        final String transitionDate = options.get(INCLUDE_NONCOMPOSITE_BEFORE_DATE);
+        final String transitionDate = options.get(COMPOSITE_TRANSITION_DATE);
         if (null != transitionDate) {
             this.transitionDateMillis = Long.parseLong(transitionDate);
         }

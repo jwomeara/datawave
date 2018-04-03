@@ -3,7 +3,7 @@ package org.apache.commons.jexl2.parser;
 import datawave.query.jexl.nodes.QueryPropertyMarker;
 
 /**
- * Represents a delayed composite predicate. If this reference expression exists, we should not perform any processing that may affect the indexed query.
+ * Represents a composite predicate. If this reference expression exists, we should not perform any processing that may affect the indexed query.
  */
 public class ASTCompositePredicate extends QueryPropertyMarker {
     
@@ -44,21 +44,21 @@ public class ASTCompositePredicate extends QueryPropertyMarker {
     }
     
     /**
-     * A routine to determine whether an and node is actually a delayed composite predicate marker. The reason for this routine is that if the query is
-     * serialized and deserialized, then only the underlying assignment will persist.
+     * A routine to determine whether an and node is actually a composite predicate marker. The reason for this routine is that if the query is serialized and
+     * deserialized, then only the underlying assignment will persist.
      *
      * @param node
-     * @return true if this and node is a delayed composite predicate marker
+     * @return true if this and node is a composite predicate marker
      */
     public static boolean instanceOf(JexlNode node) {
         return QueryPropertyMarker.instanceOf(node, ASTCompositePredicate.class);
     }
     
     /**
-     * A routine to determine get the node which is the source of the delayed composite predicate
+     * A routine to determine get the node which is the source of the composite predicate
      *
      * @param node
-     * @return the source node or null if not an a delayed predicate marker
+     * @return the source node or null if not an a composite predicate marker
      */
     public static JexlNode getCompositePredicateSource(JexlNode node) {
         return QueryPropertyMarker.getQueryPropertySource(node, ASTCompositePredicate.class);

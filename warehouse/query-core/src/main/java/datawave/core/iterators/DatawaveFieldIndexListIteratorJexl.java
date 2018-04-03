@@ -74,9 +74,9 @@ public class DatawaveFieldIndexListIteratorJexl extends DatawaveFieldIndexCachin
     public DatawaveFieldIndexListIteratorJexl(Text fieldName, Set<String> values, TimeFilter timeFilter, Predicate<Key> datatypeFilter, boolean neg,
                     long scanThreshold, long scanTimeout, int bufferSize, int maxRangeSplits, int maxOpenFiles, FileSystem fs, Path uniqueDir,
                     QueryLock queryLock, boolean allowDirReuse, PartialKey returnKeyType, boolean sortedUIDs,
-                    Map<String,Map<String,CompositePredicateFilter>> fieldIndexFilters) {
+                    Map<String,Map<String,CompositePredicateFilter>> compositePredicateFilters) {
         super(fieldName, null, timeFilter, datatypeFilter, neg, scanThreshold, scanTimeout, bufferSize, maxRangeSplits, maxOpenFiles, fs, uniqueDir, queryLock,
-                        allowDirReuse, returnKeyType, sortedUIDs, fieldIndexFilters);
+                        allowDirReuse, returnKeyType, sortedUIDs, compositePredicateFilters);
         this.values = new ArrayList<String>(values);
         Collections.sort(this.values);
     }
@@ -101,9 +101,9 @@ public class DatawaveFieldIndexListIteratorJexl extends DatawaveFieldIndexCachin
     public DatawaveFieldIndexListIteratorJexl(Text fieldName, FST<?> fst, TimeFilter timeFilter, Predicate<Key> datatypeFilter, boolean neg,
                     long scanThreshold, long scanTimeout, int bufferSize, int maxRangeSplits, int maxOpenFiles, FileSystem fs, Path uniqueDir,
                     QueryLock queryLock, boolean allowDirReuse, PartialKey returnKeyType, boolean sortedUIDs,
-                    Map<String,Map<String,CompositePredicateFilter>> fieldIndexFilters) {
+                    Map<String,Map<String,CompositePredicateFilter>> compositePredicateFilters) {
         super(fieldName, null, timeFilter, datatypeFilter, neg, scanThreshold, scanTimeout, bufferSize, maxRangeSplits, maxOpenFiles, fs, uniqueDir, queryLock,
-                        allowDirReuse, returnKeyType, sortedUIDs, fieldIndexFilters);
+                        allowDirReuse, returnKeyType, sortedUIDs, compositePredicateFilters);
         this.fst = fst;
     }
     

@@ -209,7 +209,7 @@ public class QueryOptions implements OptionDescriber {
     
     public static final String DATA_QUERY_EXPRESSION_FILTER_ENABLED = "query.data.expression.filter.enabled";
     
-    public static final String COMPOSITE_TRANSITION_DATES = "composite.with.old.data";
+    public static final String COMPOSITE_TRANSITION_DATES = "composite.transition.dates";
     
     protected Map<String,String> options;
     
@@ -617,7 +617,7 @@ public class QueryOptions implements OptionDescriber {
         // index only fields are by definition not in the event
         if (indexOnlyFields != null)
             allIndexOnlyFields.addAll(indexOnlyFields);
-        // composite fields are index only as well
+        // composite fields are index only as well, unless they are overloaded composites
         if (compositeMetadata != null)
             for (Entry<String,Multimap<String,String>> entry : compositeMetadata.entrySet())
                 for (String field : entry.getValue().keySet())
@@ -929,7 +929,7 @@ public class QueryOptions implements OptionDescriber {
         options.put(DATA_QUERY_EXPRESSION_FILTER_ENABLED, "If true, the EventDataQueryExpression filter will be used when performing TLD queries");
         
         options.put(COMPOSITE_TRANSITION_DATES,
-                        "If provided, these values are intended to be used to properly handle filtering of composite fields with both composite and non-composite data.");
+                        "If provided, these values indicate the date when a non-composite field transitioned to an overloaded composite field");
         
         options.put(METADATA_TABLE_NAME, this.metadataTableName);
         
