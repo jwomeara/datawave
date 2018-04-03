@@ -28,6 +28,7 @@ import datawave.query.config.ShardQueryConfiguration;
 import datawave.query.config.ShardQueryConfigurationFactory;
 import datawave.query.metrics.MockStatusReporter;
 import datawave.query.tables.ShardQueryLogic;
+import datawave.query.util.Composite;
 import datawave.webservice.edgedictionary.TestDatawaveEdgeDictionaryImpl;
 import datawave.webservice.query.Query;
 import datawave.webservice.query.QueryImpl;
@@ -36,6 +37,7 @@ import datawave.webservice.query.QueryParametersImpl;
 import datawave.webservice.query.configuration.QueryData;
 import datawave.webservice.query.result.event.DefaultEvent;
 import datawave.webservice.query.result.event.DefaultField;
+import io.protostuff.runtime.ArraySchemas;
 import org.apache.accumulo.core.client.BatchWriter;
 import org.apache.accumulo.core.client.BatchWriterConfig;
 import org.apache.accumulo.core.client.Connector;
@@ -281,6 +283,8 @@ public class GeoCompositeIndexTest {
         conf.set(DATA_TYPE_NAME + BaseIngestHelper.COMPOSITE_FIELD_NAMES, compositeFieldName);
         conf.set(DATA_TYPE_NAME + BaseIngestHelper.COMPOSITE_FIELD_MEMBERS, GEO_FIELD + "." + WKT_BYTE_LENGTH_FIELD);
         conf.set(DATA_TYPE_NAME + BaseIngestHelper.COMPOSITE_FIELD_VALUE_SEPARATOR, Constants.MAX_UNICODE_STRING);
+        conf.set(DATA_TYPE_NAME + BaseIngestHelper.COMPOSITE_FIELDS_FIXED_LENGTH, compositeFieldName);
+        conf.set(DATA_TYPE_NAME + BaseIngestHelper.COMPOSITE_FIELDS_TRANSITION_DATES, compositeFieldName + Composite.START_SEPARATOR + COMPOSITE_BEGIN_DATE);
         
         conf.set(DATA_TYPE_NAME + BaseIngestHelper.INDEX_FIELDS, GEO_FIELD + ((!compositeFieldName.equals(GEO_FIELD)) ? "," + compositeFieldName : ""));
         conf.set(DATA_TYPE_NAME + "." + GEO_FIELD + BaseIngestHelper.FIELD_TYPE, GeometryType.class.getName());
@@ -329,7 +333,7 @@ public class GeoCompositeIndexTest {
     }
     
     @Test
-    public void compositeWithOldDataWithoutIvaratorTest() throws Exception {
+    public void compositeWithoutIvaratorTest() throws Exception {
         // @formatter:off
         String query = "((" + GEO_FIELD + " >= '0202' && " + GEO_FIELD + " <= '020d') || " +
                 "(" + GEO_FIELD + " >= '030a' && " + GEO_FIELD + " <= '0335') || " +
@@ -342,8 +346,8 @@ public class GeoCompositeIndexTest {
         Map<String,Date> overloadedCompositeWithOldData = new HashMap<>();
         overloadedCompositeWithOldData.put("GEO", formatter.parse(COMPOSITE_BEGIN_DATE));
         
-        List<QueryData> queries = getQueryRanges(query, false, overloadedCompositeWithOldData);
-        List<DefaultEvent> events = getQueryResults(query, false, overloadedCompositeWithOldData);
+        List<QueryData> queries = getQueryRanges(query, false);
+        List<DefaultEvent> events = getQueryResults(query, false);
         
         System.out.println(events.size() + " Events Returned");
         for (DefaultEvent event : events) {
@@ -362,7 +366,7 @@ public class GeoCompositeIndexTest {
     }
     
     @Test
-    public void compositeWithOldDataWithIvaratorTest() throws Exception {
+    public void compositeWithIvaratorTest() throws Exception {
         // @formatter:off
         String query = "((" + GEO_FIELD + " >= '0202' && " + GEO_FIELD + " <= '020d') || " +
                 "(" + GEO_FIELD + " >= '030a' && " + GEO_FIELD + " <= '0335') || " +
@@ -375,8 +379,8 @@ public class GeoCompositeIndexTest {
         Map<String,Date> overloadedCompositeWithOldData = new HashMap<>();
         overloadedCompositeWithOldData.put("GEO", formatter.parse(COMPOSITE_BEGIN_DATE));
         
-        List<QueryData> queries = getQueryRanges(query, true, overloadedCompositeWithOldData);
-        List<DefaultEvent> events = getQueryResults(query, true, overloadedCompositeWithOldData);
+        List<QueryData> queries = getQueryRanges(query, true);
+        List<DefaultEvent> events = getQueryResults(query, true);
         
         System.out.println(events.size() + " Events Returned");
         for (DefaultEvent event : events) {
@@ -394,91 +398,27 @@ public class GeoCompositeIndexTest {
         System.out.println("done!");
     }
     
-    @Test
-    public void compositeWithoutOldDataWithoutIvaratorTest() throws Exception {
-        // @formatter:off
-        String query = "((" + GEO_FIELD + " >= '0202' && " + GEO_FIELD + " <= '020d') || " +
-                "(" + GEO_FIELD + " >= '030a' && " + GEO_FIELD + " <= '0335') || " +
-                "(" + GEO_FIELD + " >= '0428' && " + GEO_FIELD + " <= '0483') || " +
-                "(" + GEO_FIELD + " >= '0500aa' && " + GEO_FIELD + " <= '050355') || " +
-                "(" + GEO_FIELD + " >= '1f0aaaaaaaaaaaaaaa' && " + GEO_FIELD + " <= '1f36c71c71c71c71c7')) && " +
-                "(" + WKT_BYTE_LENGTH_FIELD + " >= 0 && " + WKT_BYTE_LENGTH_FIELD + " < 80)";
-        // @formatter:on
-        
-        Map<String,Date> overloadedCompositeWithOldData = new HashMap<>();
-        
-        List<QueryData> queries = getQueryRanges(query, false, overloadedCompositeWithOldData);
-        List<DefaultEvent> events = getQueryResults(query, false, overloadedCompositeWithOldData);
-        
-        System.out.println(events.size() + " Events Returned");
-        for (DefaultEvent event : events) {
-            System.out.println("\n Event: " + event.getMetadata().getInternalId());
-            List<String> fieldValues = new ArrayList<>();
-            for (DefaultField field : event.getFields())
-                fieldValues.add("  " + field.getName() + ": " + field.getValueString());
-            Collections.sort(fieldValues);
-            for (String fieldValue : fieldValues)
-                System.out.println(fieldValue);
-        }
-        
-        Assert.assertEquals(6, events.size());
-        
-        System.out.println("done!");
-    }
-    
-    @Test
-    public void compositeWithoutOldDataWithIvaratorTest() throws Exception {
-        // @formatter:off
-        String query = "((" + GEO_FIELD + " >= '0202' && " + GEO_FIELD + " <= '020d') || " +
-                "(" + GEO_FIELD + " >= '030a' && " + GEO_FIELD + " <= '0335') || " +
-                "(" + GEO_FIELD + " >= '0428' && " + GEO_FIELD + " <= '0483') || " +
-                "(" + GEO_FIELD + " >= '0500aa' && " + GEO_FIELD + " <= '050355') || " +
-                "(" + GEO_FIELD + " >= '1f0aaaaaaaaaaaaaaa' && " + GEO_FIELD + " <= '1f36c71c71c71c71c7')) && " +
-                "(" + WKT_BYTE_LENGTH_FIELD + " >= 0 && " + WKT_BYTE_LENGTH_FIELD + " < 80)";
-        // @formatter:on
-        
-        Map<String,Date> overloadedCompositeWithOldData = new HashMap<>();
-        
-        List<QueryData> queries = getQueryRanges(query, true, overloadedCompositeWithOldData);
-        List<DefaultEvent> events = getQueryResults(query, true, overloadedCompositeWithOldData);
-        
-        System.out.println(events.size() + " Events Returned");
-        for (DefaultEvent event : events) {
-            System.out.println("\n Event: " + event.getMetadata().getInternalId());
-            List<String> fieldValues = new ArrayList<>();
-            for (DefaultField field : event.getFields())
-                fieldValues.add("  " + field.getName() + ": " + field.getValueString());
-            Collections.sort(fieldValues);
-            for (String fieldValue : fieldValues)
-                System.out.println(fieldValue);
-        }
-        
-        Assert.assertEquals(6, events.size());
-        
-        System.out.println("done!");
-    }
-    
-    private List<QueryData> getQueryRanges(String queryString, boolean useIvarator, Map<String,Date> queryOldData) throws Exception {
+    private List<QueryData> getQueryRanges(String queryString, boolean useIvarator) throws Exception {
         ShardQueryLogic logic = getShardQueryLogic(useIvarator);
         
-        Iterator iter = getQueryRangesIterator(queryString, logic, queryOldData);
+        Iterator iter = getQueryRangesIterator(queryString, logic);
         List<QueryData> queryData = new ArrayList<>();
         while (iter.hasNext())
             queryData.add((QueryData) iter.next());
         return queryData;
     }
     
-    private List<DefaultEvent> getQueryResults(String queryString, boolean useIvarator, Map<String,Date> queryOldData) throws Exception {
+    private List<DefaultEvent> getQueryResults(String queryString, boolean useIvarator) throws Exception {
         ShardQueryLogic logic = getShardQueryLogic(useIvarator);
         
-        Iterator iter = getResultsIterator(queryString, logic, queryOldData);
+        Iterator iter = getResultsIterator(queryString, logic);
         List<DefaultEvent> events = new ArrayList<>();
         while (iter.hasNext())
             events.add((DefaultEvent) iter.next());
         return events;
     }
     
-    private Iterator getQueryRangesIterator(String queryString, ShardQueryLogic logic, Map<String,Date> queryOldData) throws Exception {
+    private Iterator getQueryRangesIterator(String queryString, ShardQueryLogic logic) throws Exception {
         MultivaluedMap<String,String> params = new MultivaluedMapImpl<>();
         params.putSingle(QUERY_STRING, queryString);
         params.putSingle(QUERY_NAME, "geoQuery");
@@ -498,10 +438,6 @@ public class GeoCompositeIndexTest {
         query.initialize(USER, Arrays.asList(USER_DN), null, queryParams, null);
         
         ShardQueryConfiguration config = ShardQueryConfigurationFactory.createShardQueryConfigurationFromConfiguredLogic(logic, query);
-        
-        config.setFixedLengthFields(Arrays.asList(GEO_FIELD));
-        
-        config.setCompositeTransitionDates(queryOldData);
         
         logic.initialize(config, instance.getConnector("root", PASSWORD), query, auths);
         
@@ -510,7 +446,7 @@ public class GeoCompositeIndexTest {
         return config.getQueries();
     }
     
-    private Iterator getResultsIterator(String queryString, ShardQueryLogic logic, Map<String,Date> queryOldData) throws Exception {
+    private Iterator getResultsIterator(String queryString, ShardQueryLogic logic) throws Exception {
         MultivaluedMap<String,String> params = new MultivaluedMapImpl<>();
         params.putSingle(QUERY_STRING, queryString);
         params.putSingle(QUERY_NAME, "geoQuery");
@@ -530,10 +466,6 @@ public class GeoCompositeIndexTest {
         query.initialize(USER, Arrays.asList(USER_DN), null, queryParams, null);
         
         ShardQueryConfiguration config = ShardQueryConfigurationFactory.createShardQueryConfigurationFromConfiguredLogic(logic, query);
-        
-        config.setFixedLengthFields(Arrays.asList(GEO_FIELD));
-        
-        config.setCompositeTransitionDates(queryOldData);
         
         logic.initialize(config, instance.getConnector("root", PASSWORD), query, auths);
         

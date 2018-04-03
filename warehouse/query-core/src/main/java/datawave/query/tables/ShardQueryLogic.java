@@ -389,7 +389,7 @@ public class ShardQueryLogic extends BaseQueryLogic<Entry<Key,Value>> {
     protected int geoWaveMaxExpansion = 800;
     
     protected int geoWaveMaxEnvelopes = 4;
-    
+
     public ShardQueryLogic() {
         super();
         setBaseIteratorPriority(100);
@@ -2392,7 +2392,7 @@ public class ShardQueryLogic extends BaseQueryLogic<Entry<Key,Value>> {
     public void setGeoWaveMaxEnvelopes(int geoWaveMaxEnvelopes) {
         this.geoWaveMaxEnvelopes = geoWaveMaxEnvelopes;
     }
-    
+
     public long getBeginDateCap() {
         return beginDateCap;
     }

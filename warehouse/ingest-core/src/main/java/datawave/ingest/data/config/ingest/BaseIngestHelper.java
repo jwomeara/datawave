@@ -1,7 +1,10 @@
 package datawave.ingest.data.config.ingest;
 
+import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -140,6 +143,8 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
     protected Set<String> indexOnlyFields = Sets.newHashSet();
     
     protected Set<String> compositeFields = Sets.newHashSet();
+    protected Set<String> fixedLengthFields = Sets.newHashSet();
+    protected Map<String, Date> fieldTransitionDateMap = Maps.newHashMap();
     
     protected Set<String> indexedFields = Sets.newHashSet();
     protected Map<String,Pattern> indexedPatterns = Maps.newHashMap();
@@ -416,20 +421,55 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
                 }
             }
         }
-        
+
         String compositeFieldList = config.get(this.getType().typeName() + CompositeIngest.COMPOSITE_FIELD_NAMES);
         if (null != compositeFieldList) {
             for (String s : compositeFieldList.split(",")) {
-                
+
                 String fieldName = s.trim();
-                
+
                 if (!fieldName.isEmpty()) {
-                    
+
                     this.compositeFields.add(fieldName);
                 } else {
-                    
+
                     // TODO: Possibly add warning to indicated a potentially
                     // questionable configuration file...
+                }
+            }
+        }
+
+        String fixedLengthFields = config.get(this.getType().typeName() + CompositeIngest.COMPOSITE_FIELDS_FIXED_LENGTH);
+        if (null != fixedLengthFields) {
+            for (String s : fixedLengthFields.split(",")) {
+
+                String fieldName = s.trim();
+
+                if (!fieldName.isEmpty()) {
+
+                    this.fixedLengthFields.add(fieldName);
+                } else {
+
+                    // TODO: Possibly add warning to indicated a potentially
+                    // questionable configuration file...
+                }
+            }
+        }
+
+        String transitionedCompositeFields = config.get(this.getType().typeName() + CompositeIngest.COMPOSITE_FIELDS_TRANSITION_DATES);
+        if (null != transitionedCompositeFields) {
+            for (String s : transitionedCompositeFields.split(",")) {
+                try {
+                    if (!s.isEmpty()) {
+                        String[] kv = s.split(new String(Character.toChars(Character.MAX_CODE_POINT)));
+                        this.fieldTransitionDateMap.put(kv[0], CompositeIngest.CompositeFieldNormalizer.formatter.parse(kv[1]));
+                    } else {
+
+                        // TODO: Possibly add warning to indicated a potentially
+                        // questionable configuration file...
+                    }
+                } catch (ParseException e) {
+                    log.trace("Unable to parse composite field transition date", e);
                 }
             }
         }
@@ -584,7 +624,25 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
     public boolean isCompositeField(String fieldName) {
         return this.compositeFields.contains(fieldName);
     }
-    
+
+    @Override
+    public boolean isFixedLengthCompositeField(String fieldName) {
+        return fixedLengthFields != null && fixedLengthFields.contains(fieldName);
+    }
+
+    @Override
+    public boolean isTransitionedCompositeField(String fieldName) {
+        return fieldTransitionDateMap != null && fieldTransitionDateMap.containsKey(fieldName);
+    }
+
+    @Override
+    public Date getCompositeFieldTransitionDate(String fieldName) {
+        Date transitionDate = null;
+        if (isTransitionedCompositeField(fieldName))
+            transitionDate = fieldTransitionDateMap.get(fieldName);
+        return transitionDate;
+    }
+
     @Override
     public void addCompositeField(String fieldName) {
         this.compositeFields.add(fieldName);

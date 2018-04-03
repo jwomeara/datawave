@@ -1,9 +1,12 @@
 package datawave.ingest.data.config.ingest;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -37,10 +40,17 @@ public interface CompositeIngest {
     
     String COMPOSITE_FIELD_NAMES = CompositeFieldNormalizer.COMPOSITE_FIELD_NAMES;
     String COMPOSITE_FIELD_MEMBERS = CompositeFieldNormalizer.COMPOSITE_FIELD_MEMBERS;
+    String COMPOSITE_FIELDS_FIXED_LENGTH = CompositeFieldNormalizer.COMPOSITE_FIELDS_FIXED_LENGTH;
+    String COMPOSITE_FIELDS_TRANSITION_DATES = CompositeFieldNormalizer.COMPOSITE_FIELDS_TRANSITION_DATES;
     String COMPOSITE_FIELD_VALUE_SEPARATOR = CompositeFieldNormalizer.COMPOSITE_FIELD_VALUE_SEPARATOR;
     String COMPOSITE_FIELD_ALLOW_MISSING = CompositeFieldNormalizer.COMPOSITE_FIELD_ALLOW_MISSING;
     String COMPOSITE_FIELD_GROUPING_POLICY = CompositeFieldNormalizer.COMPOSITE_FIELD_GROUPING_POLICY;
-    
+
+    // These values are used to write fixed length and transition date metadata for a composite field
+    String CONFIG_PREFIX = new String(Character.toChars(Character.MAX_CODE_POINT));
+    String FIXED_LENGTH = CONFIG_PREFIX + "fixed.length";
+    String TRANSITION_DATE = CONFIG_PREFIX + "transition.date";
+
     enum GroupingPolicy {
         SAME_GROUP_ONLY, GROUPED_WITH_NON_GROUPED, IGNORE_GROUPS
     }
@@ -56,7 +66,13 @@ public interface CompositeIngest {
     void setDefaultCompositeFieldSeparator(String sep);
     
     boolean isCompositeField(String fieldName);
-    
+
+    boolean isFixedLengthCompositeField(String fieldName);
+
+    boolean isTransitionedCompositeField(String fieldName);
+
+    Date getCompositeFieldTransitionDate(String fieldName);
+
     boolean isOverloadedCompositeField(String fieldName);
     
     Map<String,String[]> getCompositeNameAndIndex(String compositeFieldName);
@@ -81,6 +97,10 @@ public interface CompositeIngest {
         
         private static final long serialVersionUID = -3892470989028896718L;
         private static final Logger log = Logger.getLogger(CompositeFieldNormalizer.class);
+
+        public static final String formatPattern = "yyyyMMdd HHmmss.SSS";
+        public static final SimpleDateFormat formatter = new SimpleDateFormat(formatPattern);
+
         /**
          * Parameter for specifying the name of a composite field. A composite field is a field that does not exist in the raw data, but is derived from the
          * values of other fields in the raw data. The value of this parameter is a comma separated list of composite field names. This parameter supports
@@ -97,7 +117,27 @@ public interface CompositeIngest {
          * are field values to separate. This parameter supports multiple datatypes, so a valid value would be something like mydatatype.data.composite.fields
          */
         public static final String COMPOSITE_FIELD_MEMBERS = ".data.composite.fields";
-        
+
+        /**
+         * Parameter for specifying which fields generate queries against ranges whose terms are of fixed length.  This becomes important
+         * during the query planning phase when trying to create composite ranges.  Composite ranges will only be generated if all terms
+         * in the composite but the final term generate queries against ranges whose terms and values are of fixed length.  GeoWave
+         * query ranges are a good example of this.
+         *
+         * This is represented as a comma separated list of said fields.
+         */
+        public static final String COMPOSITE_FIELDS_FIXED_LENGTH = ".data.composite.fields.fixed.length";
+
+        /**
+         * Parameter for specifying which fields have been transitioned from non-composite to overloaded composite fields, and when.  The
+         * 'when' is important, because for queries which span the transition date, we will need to expand our composite range to include
+         * both composite and non-composite terms.  This also affects how and which iterators will be run against the data.
+         *
+         * This is represented as a comma separated list of fieldName􏿿date, with the separator being Composite.START_SEPARATOR, and the
+         * date being of the format yyyyMMdd HHmmss.SSS.
+         */
+        public static final String COMPOSITE_FIELDS_TRANSITION_DATES = ".data.composite.fields.transition.dates";
+
         /**
          * Parameter that denotes the beginning of a separator
          */
@@ -141,6 +181,8 @@ public interface CompositeIngest {
         
         protected Map<String,String[]> compositeFieldDefinitions = new HashMap<>();
         protected Map<String,Pattern> compiledFieldPatterns = null;
+        protected List<String> fixedLengthFields = null;
+        protected Map<String, Date> fieldTransitionDateMap = null;
         protected String defaultSeparator = null;
         protected String defaultStartSeparator = null;
         protected String defaultEndSeparator = null;
@@ -156,7 +198,21 @@ public interface CompositeIngest {
             
             String[] fieldNames = getStrings(type, instance, config, COMPOSITE_FIELD_NAMES, null);
             String[] fieldMembers = getStrings(type, instance, config, COMPOSITE_FIELD_MEMBERS, null);
-            
+
+            this.fixedLengthFields = Arrays.asList(getStrings(type, instance, config, COMPOSITE_FIELDS_FIXED_LENGTH, null));
+            String[] fieldTransitionDates = getStrings(type, instance, config, COMPOSITE_FIELDS_TRANSITION_DATES, null);
+            try {
+                if (fieldTransitionDates != null) {
+                    fieldTransitionDateMap = new HashMap<>();
+                    for (String fieldDate : fieldTransitionDates) {
+                        String[] kv = fieldDate.split(new String(Character.toChars(Character.MAX_CODE_POINT)));
+                        fieldTransitionDateMap.put(kv[0], formatter.parse(kv[1]));
+                    }
+                }
+            } catch (ParseException e) {
+                log.trace("Unable to parse composite field transition date", e);
+            }
+
             String[] groupingPolicies = getStrings(type, instance, config, COMPOSITE_FIELD_GROUPING_POLICY, new String[0]);
             String[] missingPolicies = getStrings(type, instance, config, COMPOSITE_FIELD_ALLOW_MISSING, new String[0]);
             defaultSeparator = get(type, instance, config, COMPOSITE_FIELD_VALUE_SEPARATOR, " ");
@@ -571,7 +627,23 @@ public interface CompositeIngest {
         public void setDefaultSeparator(String sep) {
             this.defaultSeparator = sep;
         }
-        
+
+        public List<String> getFixedLengthFields() {
+            return fixedLengthFields;
+        }
+
+        public void setFixedLengthFields(List<String> fixedLengthFields) {
+            this.fixedLengthFields = fixedLengthFields;
+        }
+
+        public Map<String, Date> getFieldTransitionDateMap() {
+            return fieldTransitionDateMap;
+        }
+
+        public void setFieldTransitionDateMap(Map<String, Date> fieldTransitionDateMap) {
+            this.fieldTransitionDateMap = fieldTransitionDateMap;
+        }
+
         public static Set<String> cleanSet(String[] items) {
             Set<String> itemSet = new HashSet<>();
             for (String item : items) {
