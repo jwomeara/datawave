@@ -133,7 +133,7 @@ public class ShardQueryConfiguration extends GenericQueryConfiguration {
     private Multimap<String,CompositeNameAndIndex> fieldToCompositeMap = ArrayListMultimap.create();
     private Multimap<String,String> compositeToFieldMap = ArrayListMultimap.create();
     private Multimap<String,String> currentCompositeToFieldMap = ArrayListMultimap.create();
-    private List<String> fixedLengthFields = new ArrayList<>();
+    private Set<String> fixedLengthFields = new HashSet<>();
     private Map<String,Date> compositeTransitionDates = new HashMap<>();
     
     private boolean sortedUIDs = true;
@@ -1068,11 +1068,11 @@ public class ShardQueryConfiguration extends GenericQueryConfiguration {
         this.currentCompositeToFieldMap = currentCompositeToFieldMap;
     }
     
-    public List<String> getFixedLengthFields() {
+    public Set<String> getFixedLengthFields() {
         return fixedLengthFields;
     }
     
-    public void setFixedLengthFields(List<String> fixedLengthFields) {
+    public void setFixedLengthFields(Set<String> fixedLengthFields) {
         this.fixedLengthFields = fixedLengthFields;
     }
     

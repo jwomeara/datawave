@@ -10,6 +10,7 @@ import datawave.ingest.data.RawRecordContainer;
 import datawave.ingest.data.Type;
 import datawave.ingest.data.config.NormalizedContentInterface;
 import datawave.ingest.data.config.ingest.AbstractContentIngestHelper;
+import datawave.ingest.data.config.ingest.CompositeIngest;
 import datawave.ingest.data.config.ingest.CompositeIngestHelperInterface;
 import datawave.ingest.data.config.ingest.IndexOnlyIngestHelperInterface;
 import datawave.ingest.data.config.ingest.IngestHelperInterface;
@@ -27,6 +28,8 @@ import org.apache.log4j.Logger;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+
+import static datawave.ingest.data.config.ingest.CompositeIngest.TRANSITION_DATE;
 
 /**
  * Object that summarizes the events that are processed by the EventMapper. This object extracts metadata about the events (i.e. fields, indexed fields, field
@@ -191,6 +194,15 @@ public class EventMetadata implements RawRecordMetadata {
             if (helper.isCompositeField(fieldName)) {
                 Map<String,String[]> map = helper.getCompositeNameAndIndex(fieldName);
                 update(map.get(fieldName), event, fields.get(fieldName), "", 0, null, this.compositeFieldsInfo, null);
+
+                // Add fixed fields and transition date if applicable
+                if (helper.isFixedLengthCompositeField(fieldName))
+                    compositeFieldsInfo.createOrUpdate(CompositeIngest.FIXED_LENGTH, event.getDataType().outputName(), fieldName, event.getDate());
+
+                if (helper.isTransitionedCompositeField(fieldName)) {
+                    String transitionDateStr = CompositeIngest.CompositeFieldNormalizer.formatter.format(helper.getCompositeFieldTransitionDate(fieldName).getTime());
+                    compositeFieldsInfo.createOrUpdate(CompositeIngest.TRANSITION_DATE, event.getDataType().outputName(), fieldName + CompositeIngest.CONFIG_PREFIX + transitionDateStr, event.getDate());
+                }
             }
             
         }

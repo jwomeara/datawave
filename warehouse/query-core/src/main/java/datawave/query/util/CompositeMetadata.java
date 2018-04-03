@@ -1,6 +1,9 @@
 package datawave.query.util;
 
 import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -45,7 +48,15 @@ public class CompositeMetadata {
                             return ArrayListMultimap.<String,String> create();
                         }
                     });
-    
+
+    protected LoadingCache<String,Map<String, Date>> transitionDateMap = CacheBuilder.newBuilder().build(
+                    new CacheLoader<String,Map<String, Date>>() {
+                        @Override
+                        public Map<String, Date> load(String key) throws Exception {
+                            return Maps.newHashMap();
+                        }
+                    });
+
     public CompositeMetadata() {}
     
     public CompositeMetadata(String in) {
@@ -55,6 +66,7 @@ public class CompositeMetadata {
     public CompositeMetadata(CompositeMetadata in) {
         this.compositeMetadata.putAll(in.compositeMetadata.asMap());
         this.ingestTypes.addAll(in.ingestTypes);
+        this.transitionDateMap.putAll(in.transitionDateMap.asMap());
     }
     
     public void addForAllIngestTypes(Map<String,Set<String>> map) {
@@ -64,7 +76,15 @@ public class CompositeMetadata {
             }
         }
     }
-    
+
+    public void addTransitionDate(String fieldName, String ingestType, Date transitionDate) {
+        this.ingestTypes.add(ingestType);
+        log.debug("compositeMetadata [transitionDateMap]:" + transitionDateMap.asMap());
+        Map<String,Date> tdMap = this.transitionDateMap.getUnchecked(ingestType);
+        tdMap.put(fieldName, transitionDate);
+        log.debug("compositeMetadata [transitionDateMap]:" + transitionDateMap.asMap());
+    }
+
     public CompositeMetadata put(String compositeName, String ingestType, Collection<String> fields) {
         addCompositeMetadata(compositeName, ingestType, fields);
         return this;
@@ -119,9 +139,20 @@ public class CompositeMetadata {
                 localMap.put(key, filtered);
             }
         }
+
+        Map<String,Map<String,Date>> tdMap = Maps.newHashMap();
+        for (String key : this.transitionDateMap.asMap().keySet()) {
+            Map<String,Date> map = this.transitionDateMap.getUnchecked(key);
+            Map<String,Date> filtered = Maps.filterKeys(map, Predicates.in(datatypeFilter));
+            if (filtered.isEmpty() == false) {
+                tdMap.put(key, filtered);
+            }
+        }
+
         CompositeMetadata compositeMetadata = new CompositeMetadata();
         compositeMetadata.ingestTypes = datatypeFilter;
         compositeMetadata.compositeMetadata.asMap().putAll(localMap);
+        compositeMetadata.transitionDateMap.asMap().putAll(tdMap);
         return compositeMetadata;
     }
     
@@ -327,6 +358,7 @@ public class CompositeMetadata {
         final int prime = 31;
         int result = 1;
         result = prime * result + ((compositeMetadata == null) ? 0 : compositeMetadata.hashCode());
+        result = prime * result + ((transitionDateMap == null) ? 0 : transitionDateMap.hashCode());
         return result;
     }
     
@@ -343,6 +375,8 @@ public class CompositeMetadata {
             if (other.compositeMetadata != null)
                 return false;
         } else if (!compositeMetadata.asMap().equals(other.compositeMetadata.asMap()))
+            return false;
+        else if (!transitionDateMap.asMap().equals(other.transitionDateMap.asMap()))
             return false;
         return true;
     }

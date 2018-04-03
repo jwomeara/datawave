@@ -862,6 +862,34 @@ public class MetadataHelper implements ApplicationContextAware {
         
         return this.allFieldMetadataHelper.getFieldToCompositeMap(ingestTypeFilter);
     }
+
+    /**
+     * A map of composite name to transition date.
+     *
+     * @return An unmodifiable Map
+     * @throws TableNotFoundException
+     */
+    public Map<String,Date> getCompositeTransitionDateMap() throws TableNotFoundException {
+        return this.allFieldMetadataHelper.getCompositeTransitionDateMap();
+    }
+
+    public Map<String,Date> getCompositeTransitionDateMap(Set<String> ingestTypeFilter) throws TableNotFoundException {
+        return this.allFieldMetadataHelper.getCompositeTransitionDateMap(ingestTypeFilter);
+    }
+
+    /**
+     * A set of fixed length composite fields.
+     *
+     * @return An unmodifiable Set
+     * @throws TableNotFoundException
+     */
+    public Set<String> getFixedLengthCompositeFields() throws TableNotFoundException {
+        return this.allFieldMetadataHelper.getFixedLengthCompositeFields();
+    }
+
+    public Set<String> getFixedLengthCompositeFields(Set<String> ingestTypeFilter) throws TableNotFoundException {
+        return this.allFieldMetadataHelper.getFixedLengthCompositeFields(ingestTypeFilter);
+    }
     
     /**
      * Fetch the set of {@link Type}s that are configured for this <code>fieldName</code> as specified in the table pointed to by the

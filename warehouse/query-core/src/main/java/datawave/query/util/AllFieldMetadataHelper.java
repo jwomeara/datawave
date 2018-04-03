@@ -3,9 +3,11 @@ package datawave.query.util;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -17,6 +19,7 @@ import java.util.concurrent.ExecutionException;
 
 import datawave.data.ColumnFamilyConstants;
 import datawave.data.type.Type;
+import datawave.ingest.data.config.ingest.CompositeIngest;
 import datawave.security.util.AuthorizationsUtil;
 import datawave.security.util.ScannerHelper;
 
@@ -295,7 +298,7 @@ public class AllFieldMetadataHelper {
         TreeMultimap<String,CompositeNameAndIndex> mapForSorting = TreeMultimap.create();
         
         Scanner bs = ScannerHelper.createScanner(connector, metadataTableName, auths);
-        Range range = new Range();
+        Range range = new Range((Key) null, true, new Key(CompositeIngest.CONFIG_PREFIX), false);
         
         bs.setRange(range);
         
@@ -332,7 +335,112 @@ public class AllFieldMetadataHelper {
         
         return Multimaps.unmodifiableSortedSetMultimap(mapForSorting);
     }
-    
+
+    /**
+     * A map of composite name to transition date.
+     *
+     * @return An unmodifiable Map
+     * @throws TableNotFoundException
+     */
+    @Cacheable(value = "getCompositeTransitionDateMap", key = "{#root.target.auths,#root.target.metadataTableName}", cacheManager = "metadataHelperCacheManager")
+    public Map<String,Date> getCompositeTransitionDateMap() throws TableNotFoundException {
+        log.debug("cache fault for getCompositeTransitionDateMap(" + this.auths + "," + this.metadataTableName + ")");
+        return this.getCompositeTransitionDateMap(null);
+    }
+
+    @Cacheable(value = "getCompositeTransitionDateMap", key = "{#root.target.auths,#root.target.metadataTableName,#ingestTypeFilter}",
+            cacheManager = "metadataHelperCacheManager")
+    public Map<String,Date> getCompositeTransitionDateMap(Set<String> ingestTypeFilter) throws TableNotFoundException {
+        log.debug("cache fault for getCompositeTransitionDateMap(" + this.auths + "," + this.metadataTableName + "," + ingestTypeFilter + ")");
+
+        Map<String, Date> tdMap = new HashMap<>();
+
+        Scanner bs = ScannerHelper.createScanner(connector, metadataTableName, auths);
+        Range range = new Range(new Text(CompositeIngest.TRANSITION_DATE));
+
+        bs.setRange(range);
+
+        // Fetch all of the index columns
+        for (Text colf : this.metadataCompositeIndexColfs) {
+            bs.fetchColumnFamily(colf);
+        }
+
+        for (Entry<Key,Value> entry : bs) {
+            if (null != entry.getKey().getColumnQualifier()) {
+                String row = entry.getKey().getRow().toString();
+                String colq = entry.getKey().getColumnQualifier().toString();
+                int idx = colq.indexOf(NULL_BYTE);
+                String type = colq.substring(0, idx); // this is the datatype
+
+                if (idx != -1) {
+                    String[] fieldNameAndDate = colq.substring(idx + 1).split(CompositeIngest.CONFIG_PREFIX); // this is the fieldName and transitionDate
+                    try {
+                        Date transitionDate = CompositeIngest.CompositeFieldNormalizer.formatter.parse(fieldNameAndDate[1]);
+                        tdMap.put(fieldNameAndDate[0], transitionDate);
+                    } catch (ParseException e) {
+                        log.trace("Unable to parse composite field transition date", e);
+                    }
+                } else {
+                    log.warn("EventMetadata entry did not contain a null byte in the column qualifier: " + entry.getKey().toString());
+                }
+            } else {
+                log.warn("ColumnQualifier null in EventMetadata for key: " + entry.getKey().toString());
+            }
+        }
+
+        return Collections.unmodifiableMap(tdMap);
+    }
+
+    /**
+     * A set of fixed length composite fields
+     *
+     * @return An unmodifiable Set
+     * @throws TableNotFoundException
+     */
+    @Cacheable(value = "getFixedLengthCompositeFields", key = "{#root.target.auths,#root.target.metadataTableName}", cacheManager = "metadataHelperCacheManager")
+    public Set<String> getFixedLengthCompositeFields() throws TableNotFoundException {
+        log.debug("cache fault for getFixedLengthCompositeFields(" + this.auths + "," + this.metadataTableName + ")");
+        return this.getFixedLengthCompositeFields(null);
+    }
+
+    @Cacheable(value = "getFixedLengthCompositeFields", key = "{#root.target.auths,#root.target.metadataTableName,#ingestTypeFilter}",
+            cacheManager = "metadataHelperCacheManager")
+    public Set<String> getFixedLengthCompositeFields(Set<String> ingestTypeFilter) throws TableNotFoundException {
+        log.debug("cache fault for getFixedLengthCompositeFields(" + this.auths + "," + this.metadataTableName + "," + ingestTypeFilter + ")");
+
+        Set<String> fixedLengthFields = new HashSet<>();
+
+        Scanner bs = ScannerHelper.createScanner(connector, metadataTableName, auths);
+        Range range = new Range(new Text(CompositeIngest.FIXED_LENGTH));
+
+        bs.setRange(range);
+
+        // Fetch all of the index columns
+        for (Text colf : this.metadataCompositeIndexColfs) {
+            bs.fetchColumnFamily(colf);
+        }
+
+        for (Entry<Key,Value> entry : bs) {
+            if (null != entry.getKey().getColumnQualifier()) {
+                String row = entry.getKey().getRow().toString();
+                String colq = entry.getKey().getColumnQualifier().toString();
+                int idx = colq.indexOf(NULL_BYTE);
+                String type = colq.substring(0, idx); // this is the datatype
+
+                if (idx != -1) {
+                    String fieldName = colq.substring(idx + 1); // this is the fieldName
+                    fixedLengthFields.add(fieldName);
+                } else {
+                    log.warn("EventMetadata entry did not contain a null byte in the column qualifier: " + entry.getKey().toString());
+                }
+            } else {
+                log.warn("ColumnQualifier null in EventMetadata for key: " + entry.getKey().toString());
+            }
+        }
+
+        return Collections.unmodifiableSet(fixedLengthFields);
+    }
+
     public TypeMetadata getTypeMetadata() throws TableNotFoundException {
         return this.typeMetadataHelper.getTypeMetadata(null);
     }

@@ -1,5 +1,7 @@
 package datawave.ingest.data.config.ingest;
 
+import java.util.Date;
+import java.util.List;
 import java.util.Map;
 
 import datawave.ingest.data.Type;
@@ -88,7 +90,27 @@ public class CompositeFieldIngestHelper implements CompositeIngest {
         Map<String,String[]> map = this.getCompositeFieldDefinitions();
         return map.containsKey(fieldName);
     }
-    
+
+    @Override
+    public boolean isFixedLengthCompositeField(String fieldName) {
+        List<String> fixedLengthFields = compositeFieldNormalizer.getFixedLengthFields();
+        return fixedLengthFields != null && fixedLengthFields.contains(fieldName);
+    }
+
+    @Override
+    public boolean isTransitionedCompositeField(String fieldName) {
+        Map<String, Date> fieldTransitionDateMap = compositeFieldNormalizer.getFieldTransitionDateMap();
+        return fieldTransitionDateMap != null && fieldTransitionDateMap.containsKey(fieldName);
+    }
+
+    @Override
+    public Date getCompositeFieldTransitionDate(String fieldName) {
+        Date transitionDate = null;
+        if (isTransitionedCompositeField(fieldName))
+            transitionDate = compositeFieldNormalizer.getFieldTransitionDateMap().get(fieldName);
+        return transitionDate;
+    }
+
     @Override
     public boolean isOverloadedCompositeField(String fieldName) {
         return CompositeIngest.isOverloadedCompositeField(getCompositeFieldDefinitions(), fieldName);

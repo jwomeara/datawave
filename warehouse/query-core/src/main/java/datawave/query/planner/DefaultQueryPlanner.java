@@ -572,6 +572,8 @@ public class DefaultQueryPlanner extends QueryPlanner {
             try {
                 config.setCompositeToFieldMap(metadataHelper.getCompositeToFieldMap(config.getDatatypeFilter()));
                 config.setFieldToCompositeMap(metadataHelper.getFieldToCompositeMap(config.getDatatypeFilter()));
+                config.setCompositeTransitionDates(metadataHelper.getCompositeTransitionDateMap(config.getDatatypeFilter()));
+                config.setFixedLengthFields(metadataHelper.getFixedLengthCompositeFields(config.getDatatypeFilter()));
             } catch (TableNotFoundException ex) {
                 QueryException qe = new QueryException(DatawaveErrorCode.COMPOSITES_RETRIEVAL_ERROR, ex);
                 log.warn(qe);
