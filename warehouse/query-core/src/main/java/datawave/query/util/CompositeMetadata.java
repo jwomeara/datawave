@@ -48,15 +48,14 @@ public class CompositeMetadata {
                             return ArrayListMultimap.<String,String> create();
                         }
                     });
-
-    protected LoadingCache<String,Map<String, Date>> transitionDateMap = CacheBuilder.newBuilder().build(
-                    new CacheLoader<String,Map<String, Date>>() {
-                        @Override
-                        public Map<String, Date> load(String key) throws Exception {
-                            return Maps.newHashMap();
-                        }
-                    });
-
+    
+    protected LoadingCache<String,Map<String,Date>> transitionDateMap = CacheBuilder.newBuilder().build(new CacheLoader<String,Map<String,Date>>() {
+        @Override
+        public Map<String,Date> load(String key) throws Exception {
+            return Maps.newHashMap();
+        }
+    });
+    
     public CompositeMetadata() {}
     
     public CompositeMetadata(String in) {
@@ -76,7 +75,7 @@ public class CompositeMetadata {
             }
         }
     }
-
+    
     public void addTransitionDate(String fieldName, String ingestType, Date transitionDate) {
         this.ingestTypes.add(ingestType);
         log.debug("compositeMetadata [transitionDateMap]:" + transitionDateMap.asMap());
@@ -84,7 +83,7 @@ public class CompositeMetadata {
         tdMap.put(fieldName, transitionDate);
         log.debug("compositeMetadata [transitionDateMap]:" + transitionDateMap.asMap());
     }
-
+    
     public CompositeMetadata put(String compositeName, String ingestType, Collection<String> fields) {
         addCompositeMetadata(compositeName, ingestType, fields);
         return this;
@@ -139,7 +138,7 @@ public class CompositeMetadata {
                 localMap.put(key, filtered);
             }
         }
-
+        
         Map<String,Map<String,Date>> tdMap = Maps.newHashMap();
         for (String key : this.transitionDateMap.asMap().keySet()) {
             Map<String,Date> map = this.transitionDateMap.getUnchecked(key);
@@ -148,7 +147,7 @@ public class CompositeMetadata {
                 tdMap.put(key, filtered);
             }
         }
-
+        
         CompositeMetadata compositeMetadata = new CompositeMetadata();
         compositeMetadata.ingestTypes = datatypeFilter;
         compositeMetadata.compositeMetadata.asMap().putAll(localMap);

@@ -282,7 +282,6 @@ public class GeoCompositeIndexTest {
         String compositeFieldName = GEO_FIELD;// + "_" + WKT_BYTE_LENGTH_FIELD;
         conf.set(DATA_TYPE_NAME + BaseIngestHelper.COMPOSITE_FIELD_NAMES, compositeFieldName);
         conf.set(DATA_TYPE_NAME + BaseIngestHelper.COMPOSITE_FIELD_MEMBERS, GEO_FIELD + "." + WKT_BYTE_LENGTH_FIELD);
-        conf.set(DATA_TYPE_NAME + BaseIngestHelper.COMPOSITE_FIELD_VALUE_SEPARATOR, Constants.MAX_UNICODE_STRING);
         conf.set(DATA_TYPE_NAME + BaseIngestHelper.COMPOSITE_FIELDS_FIXED_LENGTH, compositeFieldName);
         conf.set(DATA_TYPE_NAME + BaseIngestHelper.COMPOSITE_FIELDS_TRANSITION_DATES, compositeFieldName + Composite.START_SEPARATOR + COMPOSITE_BEGIN_DATE);
         
@@ -343,9 +342,6 @@ public class GeoCompositeIndexTest {
                 "(" + WKT_BYTE_LENGTH_FIELD + " >= 0 && " + WKT_BYTE_LENGTH_FIELD + " < 80)";
         // @formatter:on
         
-        Map<String,Date> overloadedCompositeWithOldData = new HashMap<>();
-        overloadedCompositeWithOldData.put("GEO", formatter.parse(COMPOSITE_BEGIN_DATE));
-        
         List<QueryData> queries = getQueryRanges(query, false);
         List<DefaultEvent> events = getQueryResults(query, false);
         
@@ -375,9 +371,6 @@ public class GeoCompositeIndexTest {
                 "(" + GEO_FIELD + " >= '1f0aaaaaaaaaaaaaaa' && " + GEO_FIELD + " <= '1f36c71c71c71c71c7')) && " +
                 "(" + WKT_BYTE_LENGTH_FIELD + " >= 0 && " + WKT_BYTE_LENGTH_FIELD + " < 80)";
         // @formatter:on
-        
-        Map<String,Date> overloadedCompositeWithOldData = new HashMap<>();
-        overloadedCompositeWithOldData.put("GEO", formatter.parse(COMPOSITE_BEGIN_DATE));
         
         List<QueryData> queries = getQueryRanges(query, true);
         List<DefaultEvent> events = getQueryResults(query, true);

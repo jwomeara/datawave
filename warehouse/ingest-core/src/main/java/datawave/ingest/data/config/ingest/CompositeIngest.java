@@ -42,15 +42,10 @@ public interface CompositeIngest {
     String COMPOSITE_FIELD_MEMBERS = CompositeFieldNormalizer.COMPOSITE_FIELD_MEMBERS;
     String COMPOSITE_FIELDS_FIXED_LENGTH = CompositeFieldNormalizer.COMPOSITE_FIELDS_FIXED_LENGTH;
     String COMPOSITE_FIELDS_TRANSITION_DATES = CompositeFieldNormalizer.COMPOSITE_FIELDS_TRANSITION_DATES;
-    String COMPOSITE_FIELD_VALUE_SEPARATOR = CompositeFieldNormalizer.COMPOSITE_FIELD_VALUE_SEPARATOR;
     String COMPOSITE_FIELD_ALLOW_MISSING = CompositeFieldNormalizer.COMPOSITE_FIELD_ALLOW_MISSING;
     String COMPOSITE_FIELD_GROUPING_POLICY = CompositeFieldNormalizer.COMPOSITE_FIELD_GROUPING_POLICY;
-
-    // These values are used to write fixed length and transition date metadata for a composite field
-    String CONFIG_PREFIX = new String(Character.toChars(Character.MAX_CODE_POINT));
-    String FIXED_LENGTH = CONFIG_PREFIX + "fixed.length";
-    String TRANSITION_DATE = CONFIG_PREFIX + "transition.date";
-
+    String COMPOSITE_DEFAULT_SEPARATOR = new String(Character.toChars(Character.MAX_CODE_POINT));
+    
     enum GroupingPolicy {
         SAME_GROUP_ONLY, GROUPED_WITH_NON_GROUPED, IGNORE_GROUPS
     }
@@ -61,18 +56,14 @@ public interface CompositeIngest {
     
     void setCompositeFieldDefinitions(Map<String,String[]> compositeFieldDefinitions);
     
-    String getDefaultCompositeFieldSeparator();
-    
-    void setDefaultCompositeFieldSeparator(String sep);
-    
     boolean isCompositeField(String fieldName);
-
+    
     boolean isFixedLengthCompositeField(String fieldName);
-
+    
     boolean isTransitionedCompositeField(String fieldName);
-
+    
     Date getCompositeFieldTransitionDate(String fieldName);
-
+    
     boolean isOverloadedCompositeField(String fieldName);
     
     Map<String,String[]> getCompositeNameAndIndex(String compositeFieldName);
@@ -97,10 +88,10 @@ public interface CompositeIngest {
         
         private static final long serialVersionUID = -3892470989028896718L;
         private static final Logger log = Logger.getLogger(CompositeFieldNormalizer.class);
-
+        
         public static final String formatPattern = "yyyyMMdd HHmmss.SSS";
         public static final SimpleDateFormat formatter = new SimpleDateFormat(formatPattern);
-
+        
         /**
          * Parameter for specifying the name of a composite field. A composite field is a field that does not exist in the raw data, but is derived from the
          * values of other fields in the raw data. The value of this parameter is a comma separated list of composite field names. This parameter supports
@@ -117,43 +108,25 @@ public interface CompositeIngest {
          * are field values to separate. This parameter supports multiple datatypes, so a valid value would be something like mydatatype.data.composite.fields
          */
         public static final String COMPOSITE_FIELD_MEMBERS = ".data.composite.fields";
-
+        
         /**
-         * Parameter for specifying which fields generate queries against ranges whose terms are of fixed length.  This becomes important
-         * during the query planning phase when trying to create composite ranges.  Composite ranges will only be generated if all terms
-         * in the composite but the final term generate queries against ranges whose terms and values are of fixed length.  GeoWave
-         * query ranges are a good example of this.
+         * Parameter for specifying which fields generate queries against ranges whose terms are of fixed length. This becomes important during the query
+         * planning phase when trying to create composite ranges. Composite ranges will only be generated if all terms in the composite but the final term
+         * generate queries against ranges whose terms and values are of fixed length. GeoWave query ranges are a good example of this.
          *
          * This is represented as a comma separated list of said fields.
          */
         public static final String COMPOSITE_FIELDS_FIXED_LENGTH = ".data.composite.fields.fixed.length";
-
+        
         /**
-         * Parameter for specifying which fields have been transitioned from non-composite to overloaded composite fields, and when.  The
-         * 'when' is important, because for queries which span the transition date, we will need to expand our composite range to include
-         * both composite and non-composite terms.  This also affects how and which iterators will be run against the data.
+         * Parameter for specifying which fields have been transitioned from non-composite to overloaded composite fields, and when. The 'when' is important,
+         * because for queries which span the transition date, we will need to expand our composite range to include both composite and non-composite terms.
+         * This also affects how and which iterators will be run against the data.
          *
-         * This is represented as a comma separated list of fieldName􏿿date, with the separator being Composite.START_SEPARATOR, and the
-         * date being of the format yyyyMMdd HHmmss.SSS.
+         * This is represented as a comma separated list of fieldName􏿿date, with the separator being Composite.START_SEPARATOR, and the date being of the
+         * format yyyyMMdd HHmmss.SSS.
          */
         public static final String COMPOSITE_FIELDS_TRANSITION_DATES = ".data.composite.fields.transition.dates";
-
-        /**
-         * Parameter that denotes the beginning of a separator
-         */
-        public static final String COMPOSITE_FIELD_VALUE_START_SEPATATOR = ".data.composite.start.separator";
-        
-        /**
-         * Parameter that denotes the ending of a separator
-         */
-        
-        public static final String COMPOSITE_FIELD_VALUE_END_SEPATATOR = ".data.composite.end.separator";
-        
-        /**
-         * Parameter for specifying a separator in the composite field to be used between the values of the field members. This parameter supports multiple
-         * datatypes, so a valid value would be something like mydatatype.data.composite.separator
-         */
-        public static final String COMPOSITE_FIELD_VALUE_SEPARATOR = ".data.composite.separator";
         
         /**
          * Boolean parameter for specifying a whether missing parts of a composite field are permitted. If only one value is specified, the it applies to all of
@@ -182,10 +155,7 @@ public interface CompositeIngest {
         protected Map<String,String[]> compositeFieldDefinitions = new HashMap<>();
         protected Map<String,Pattern> compiledFieldPatterns = null;
         protected List<String> fixedLengthFields = null;
-        protected Map<String, Date> fieldTransitionDateMap = null;
-        protected String defaultSeparator = null;
-        protected String defaultStartSeparator = null;
-        protected String defaultEndSeparator = null;
+        protected Map<String,Date> fieldTransitionDateMap = null;
         protected Map<String,GroupingPolicy> grouping = new HashMap<>();
         protected Map<String,Boolean> allowMissing = new HashMap<>();
         private Set<String> ignoreNormalizationForFields = new HashSet<>();
@@ -198,7 +168,7 @@ public interface CompositeIngest {
             
             String[] fieldNames = getStrings(type, instance, config, COMPOSITE_FIELD_NAMES, null);
             String[] fieldMembers = getStrings(type, instance, config, COMPOSITE_FIELD_MEMBERS, null);
-
+            
             this.fixedLengthFields = Arrays.asList(getStrings(type, instance, config, COMPOSITE_FIELDS_FIXED_LENGTH, null));
             String[] fieldTransitionDates = getStrings(type, instance, config, COMPOSITE_FIELDS_TRANSITION_DATES, null);
             try {
@@ -212,12 +182,9 @@ public interface CompositeIngest {
             } catch (ParseException e) {
                 log.trace("Unable to parse composite field transition date", e);
             }
-
+            
             String[] groupingPolicies = getStrings(type, instance, config, COMPOSITE_FIELD_GROUPING_POLICY, new String[0]);
             String[] missingPolicies = getStrings(type, instance, config, COMPOSITE_FIELD_ALLOW_MISSING, new String[0]);
-            defaultSeparator = get(type, instance, config, COMPOSITE_FIELD_VALUE_SEPARATOR, " ");
-            defaultStartSeparator = get(type, instance, config, COMPOSITE_FIELD_VALUE_START_SEPATATOR, null);
-            defaultEndSeparator = get(type, instance, config, COMPOSITE_FIELD_VALUE_END_SEPATATOR, null);
             
             String[] ignoreNormalization = getStrings(type, instance, config, COMPOSITE_FIELD_IGNORE_NORMALIZATION_ON_FIELD, null);
             Set<String> emptySet = Collections.emptySet();
@@ -246,11 +213,6 @@ public interface CompositeIngest {
             
             if (fieldNames.length == 0)
                 return;
-            
-            if (StringUtils.isEmpty(defaultStartSeparator) && StringUtils.isEmpty(defaultEndSeparator)) {
-                this.defaultStartSeparator = this.defaultSeparator;
-                this.defaultEndSeparator = "";
-            }
             
             for (int i = 0; i < fieldNames.length; i++) {
                 String name = fieldNames[i];
@@ -423,9 +385,7 @@ public interface CompositeIngest {
                 for (Entry<String,String[]> vFields : this.compositeFieldDefinitions.entrySet()) {
                     tempResults.clear();
                     addCompositeFields(tempResults, eventFields, vFields.getKey(), null, null, grouping.get(vFields.getKey()),
-                                    allowMissing.get(vFields.getKey()), vFields.getValue(), 0, "",
-                                    "", // separator is initially empty
-                                    new StringBuilder(), new StringBuilder(), null,
+                                    allowMissing.get(vFields.getKey()), vFields.getValue(), 0, new StringBuilder(), new StringBuilder(), null,
                                     CompositeIngest.isOverloadedCompositeField(Arrays.asList(vFields.getValue()), vFields.getKey()));
                     for (NormalizedContentInterface value : tempResults) {
                         compositeFields.put(value.getIndexedFieldName(), value);
@@ -454,9 +414,8 @@ public interface CompositeIngest {
         // Create the composite field from the event Fields members
         public void addCompositeFields(List<NormalizedContentInterface> compositeFields, Multimap<String,NormalizedContentInterface> eventFields,
                         String compositeFieldName, String replacement, String[] grouping, GroupingPolicy groupingPolicy, boolean allowMissing, String[] fields,
-                        int pos, String startSeparator, String endSeparator, StringBuilder originalValue, StringBuilder normalizedValue,
-                        Map<String,String> markings, boolean isOverloadedField) {
-            String separator = "";
+                        int pos, StringBuilder originalValue, StringBuilder normalizedValue, Map<String,String> markings, boolean isOverloadedField) {
+            String separator = COMPOSITE_DEFAULT_SEPARATOR;
             // append any constants that have been specified
             while (pos < fields.length && isConstant(fields[pos])) {
                 String constant = getConstant(fields[pos++]);
@@ -464,8 +423,7 @@ public interface CompositeIngest {
                     originalValue.append(constant);
                 normalizedValue.append(constant);
                 // given we found a constant, drop the separator for this round
-                startSeparator = "";
-                endSeparator = "";
+                separator = "";
             }
             
             if (pos < fields.length) {
@@ -474,7 +432,6 @@ public interface CompositeIngest {
                 if ((memberName.charAt(0) == '\'' && memberName.charAt(memberName.length() - 1) == '\'')
                                 || (memberName.charAt(0) == '"' && memberName.charAt(memberName.length() - 1) == '"')) {
                     separator = memberName.substring(1, memberName.length() - 1);
-                    startSeparator = separator;
                     pos++;
                     memberName = fields[pos + 1];
                 }
@@ -499,18 +456,15 @@ public interface CompositeIngest {
                                 }
                                 // ensure that we have a matching nesting level if required
                                 if (!isOverloadedField || (isOverloadedField && pos == 0)) {
-                                    originalValue.append(startSeparator);
+                                    originalValue.append(separator);
                                     originalValue.append(value.getEventFieldValue());
-                                    originalValue.append(endSeparator);
                                 }
-                                normalizedValue.append(startSeparator);
+                                normalizedValue.append(separator);
                                 normalizedValue.append(value.getIndexedFieldValue());
-                                normalizedValue.append(endSeparator);
                                 if (pos + 1 < fields.length) {
                                     addCompositeFields(compositeFields, eventFields, compositeFieldName.replace("*", replacement), replacement,
-                                                    (grouping == null ? newGrouping : grouping), groupingPolicy, allowMissing, fields, pos + 1,
-                                                    this.defaultStartSeparator, this.defaultEndSeparator, originalValue, normalizedValue,
-                                                    mergeMarkings(markings, value.getMarkings()), isOverloadedField);
+                                                    (grouping == null ? newGrouping : grouping), groupingPolicy, allowMissing, fields, pos + 1, originalValue,
+                                                    normalizedValue, mergeMarkings(markings, value.getMarkings()), isOverloadedField);
                                 }
                                 originalValue.setLength(oLen);
                                 normalizedValue.setLength(nLen);
@@ -519,7 +473,7 @@ public interface CompositeIngest {
                     }
                 } else if (!eventFields.containsKey(memberName) && allowMissing) {
                     addCompositeFields(compositeFields, eventFields, compositeFieldName, replacement, grouping, groupingPolicy, allowMissing, fields, pos + 1,
-                                    startSeparator, endSeparator, originalValue, normalizedValue, markings, isOverloadedField);
+                                    originalValue, normalizedValue, markings, isOverloadedField);
                 } else {
                     int oLen = originalValue.length();
                     int nLen = normalizedValue.length();
@@ -531,20 +485,18 @@ public interface CompositeIngest {
                             }
                         }
                         if (!isOverloadedField || (isOverloadedField && pos == 0)) {
-                            originalValue.append(startSeparator);
+                            originalValue.append(separator);
                             originalValue.append(value.getEventFieldValue());
-                            originalValue.append(endSeparator);
                         }
-                        normalizedValue.append(startSeparator);
+                        normalizedValue.append(separator);
                         if (ignoreNormalizationForFields.contains(value.getIndexedFieldName())) {
                             normalizedValue.append(value.getEventFieldValue());
                         } else {
                             normalizedValue.append(value.getIndexedFieldValue());
                         }
-                        normalizedValue.append(endSeparator);
                         addCompositeFields(compositeFields, eventFields, compositeFieldName, replacement, (grouping == null ? newGrouping : grouping),
-                                        groupingPolicy, allowMissing, fields, pos + 1, this.defaultStartSeparator, this.defaultEndSeparator, originalValue,
-                                        normalizedValue, mergeMarkings(markings, value.getMarkings()), isOverloadedField);
+                                        groupingPolicy, allowMissing, fields, pos + 1, originalValue, normalizedValue,
+                                        mergeMarkings(markings, value.getMarkings()), isOverloadedField);
                         originalValue.setLength(oLen);
                         normalizedValue.setLength(nLen);
                     }
@@ -620,30 +572,22 @@ public interface CompositeIngest {
             this.compositeFieldDefinitions = compositeFieldDefinitions;
         }
         
-        public String getDefaultSeparator() {
-            return defaultSeparator;
-        }
-        
-        public void setDefaultSeparator(String sep) {
-            this.defaultSeparator = sep;
-        }
-
         public List<String> getFixedLengthFields() {
             return fixedLengthFields;
         }
-
+        
         public void setFixedLengthFields(List<String> fixedLengthFields) {
             this.fixedLengthFields = fixedLengthFields;
         }
-
-        public Map<String, Date> getFieldTransitionDateMap() {
+        
+        public Map<String,Date> getFieldTransitionDateMap() {
             return fieldTransitionDateMap;
         }
-
-        public void setFieldTransitionDateMap(Map<String, Date> fieldTransitionDateMap) {
+        
+        public void setFieldTransitionDateMap(Map<String,Date> fieldTransitionDateMap) {
             this.fieldTransitionDateMap = fieldTransitionDateMap;
         }
-
+        
         public static Set<String> cleanSet(String[] items) {
             Set<String> itemSet = new HashSet<>();
             for (String item : items) {

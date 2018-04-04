@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import com.google.common.collect.Multimap;
 import datawave.data.ColumnFamilyConstants;
 import datawave.ingest.data.config.ingest.CompositeIngest;
 import datawave.security.util.ScannerHelper;
@@ -28,8 +27,6 @@ import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
 
-import static datawave.ingest.data.config.ingest.CompositeIngest.CONFIG_PREFIX;
-
 /**
  */
 @Configuration
@@ -39,8 +36,8 @@ public class CompositeMetadataHelper {
     private static final Logger log = Logger.getLogger(CompositeMetadataHelper.class);
     
     public static final String NULL_BYTE = "\0";
-
-    protected final List<Text> metadataCompositeColfs = Arrays.asList(ColumnFamilyConstants.COLF_CI);
+    
+    protected final List<Text> metadataCompositeColfs = Arrays.asList(ColumnFamilyConstants.COLF_CI, ColumnFamilyConstants.COLF_CITD);
     
     protected Connector connector;
     protected Instance instance;
@@ -106,26 +103,30 @@ public class CompositeMetadataHelper {
         }
         
         for (Entry<Key,Value> entry : bs) {
+            Text colFam = entry.getKey().getColumnFamily();
+            
             String row = entry.getKey().getRow().toString();
             String colq = entry.getKey().getColumnQualifier().toString();
             int idx = colq.indexOf(NULL_BYTE);
             String type = colq.substring(0, idx); // this is the datatype
-
-            if (row.startsWith(CompositeIngest.CONFIG_PREFIX)) {
-                if (row.equals(CompositeIngest.TRANSITION_DATE)) {
+            
+            if (colFam.equals(ColumnFamilyConstants.COLF_CITD)) {
+                String fieldName = entry.getKey().getRow().toString();
+                if (null != entry.getKey().getColumnQualifier()) {
                     if (idx != -1) {
-                        String[] fieldNameAndDate = colq.substring(idx + 1).split(CompositeIngest.CONFIG_PREFIX); // this is the fieldName
                         try {
-                            Date transitionDate = CompositeIngest.CompositeFieldNormalizer.formatter.parse(fieldNameAndDate[1]);
-                            compositeMetadata.addTransitionDate(fieldNameAndDate[0], type, transitionDate);
+                            Date transitionDate = CompositeIngest.CompositeFieldNormalizer.formatter.parse(colq.substring(idx + 1));
+                            compositeMetadata.addTransitionDate(fieldName, type, transitionDate);
                         } catch (ParseException e) {
                             log.trace("Unable to parse composite field transition date", e);
                         }
                     } else {
                         log.warn("EventMetadata entry did not contain a null byte in the column qualifier: " + entry.getKey().toString());
                     }
+                } else {
+                    log.warn("ColumnQualifier null in EventMetadata for key: " + entry.getKey().toString());
                 }
-            } else {
+            } else if (colFam.equals(ColumnFamilyConstants.COLF_CI)) {
                 // Get the column qualifier from the key. It contains the datatype
                 // and composite name,idx
                 if (null != entry.getKey().getColumnQualifier()) {
@@ -149,7 +150,7 @@ public class CompositeMetadataHelper {
         
         return compositeMetadata;
     }
-
+    
     /**
      * Invalidates all elements in all internal caches
      */
