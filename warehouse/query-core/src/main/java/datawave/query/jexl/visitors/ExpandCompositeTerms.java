@@ -43,7 +43,6 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
     private static final Logger log = ThreadConfigurableLogger.getLogger(ExpandCompositeTerms.class);
     
     private final ShardQueryConfiguration config;
-    protected MetadataHelper helper;
     
     private static class ExpandData {
         public JexlNode root;
@@ -72,10 +71,9 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
         }
     }
     
-    private ExpandCompositeTerms(ShardQueryConfiguration config, MetadataHelper helper) {
+    private ExpandCompositeTerms(ShardQueryConfiguration config) {
         Preconditions.checkNotNull(config);
         this.config = config;
-        this.helper = helper;
     }
     
     /**
@@ -88,7 +86,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
     @SuppressWarnings("unchecked")
     public static <T extends JexlNode> T expandTerms(ShardQueryConfiguration config, MetadataHelper helper, T script) {
         
-        ExpandCompositeTerms visitor = new ExpandCompositeTerms(config, helper);
+        ExpandCompositeTerms visitor = new ExpandCompositeTerms(config);
         
         // need to flatten the tree so i get all and nodes at the same level
         script = TreeFlatteningRebuildingVisitor.flatten(script);

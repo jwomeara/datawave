@@ -3,6 +3,7 @@ package datawave.ingest.data.config.ingest;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import datawave.ingest.data.Type;
 import datawave.ingest.data.config.NormalizedContentInterface;
@@ -73,7 +74,7 @@ public class CompositeFieldIngestHelper implements CompositeIngest {
     
     @Override
     public boolean isFixedLengthCompositeField(String fieldName) {
-        List<String> fixedLengthFields = compositeFieldNormalizer.getFixedLengthFields();
+        Set<String> fixedLengthFields = compositeFieldNormalizer.getFixedLengthFields();
         return fixedLengthFields != null && fixedLengthFields.contains(fieldName);
     }
     

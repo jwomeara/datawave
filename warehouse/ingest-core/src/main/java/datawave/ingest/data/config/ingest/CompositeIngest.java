@@ -154,7 +154,7 @@ public interface CompositeIngest {
         
         protected Map<String,String[]> compositeFieldDefinitions = new HashMap<>();
         protected Map<String,Pattern> compiledFieldPatterns = null;
-        protected List<String> fixedLengthFields = null;
+        protected Set<String> fixedLengthFields = new HashSet<>();
         protected Map<String,Date> fieldTransitionDateMap = null;
         protected Map<String,GroupingPolicy> grouping = new HashMap<>();
         protected Map<String,Boolean> allowMissing = new HashMap<>();
@@ -169,18 +169,21 @@ public interface CompositeIngest {
             String[] fieldNames = getStrings(type, instance, config, COMPOSITE_FIELD_NAMES, null);
             String[] fieldMembers = getStrings(type, instance, config, COMPOSITE_FIELD_MEMBERS, null);
             
-            this.fixedLengthFields = Arrays.asList(getStrings(type, instance, config, COMPOSITE_FIELDS_FIXED_LENGTH, null));
+            String[] fixedLengthFields = getStrings(type, instance, config, COMPOSITE_FIELDS_FIXED_LENGTH, null);
+            if (fixedLengthFields != null)
+                this.fixedLengthFields.addAll(Arrays.asList(fixedLengthFields));
+            
             String[] fieldTransitionDates = getStrings(type, instance, config, COMPOSITE_FIELDS_TRANSITION_DATES, null);
-            try {
-                if (fieldTransitionDates != null) {
+            if (fieldTransitionDates != null) {
+                try {
                     fieldTransitionDateMap = new HashMap<>();
                     for (String fieldDate : fieldTransitionDates) {
                         String[] kv = fieldDate.split(new String(Character.toChars(Character.MAX_CODE_POINT)));
                         fieldTransitionDateMap.put(kv[0], formatter.parse(kv[1]));
                     }
+                } catch (ParseException e) {
+                    log.trace("Unable to parse composite field transition date", e);
                 }
-            } catch (ParseException e) {
-                log.trace("Unable to parse composite field transition date", e);
             }
             
             String[] groupingPolicies = getStrings(type, instance, config, COMPOSITE_FIELD_GROUPING_POLICY, new String[0]);
@@ -415,7 +418,7 @@ public interface CompositeIngest {
         public void addCompositeFields(List<NormalizedContentInterface> compositeFields, Multimap<String,NormalizedContentInterface> eventFields,
                         String compositeFieldName, String replacement, String[] grouping, GroupingPolicy groupingPolicy, boolean allowMissing, String[] fields,
                         int pos, StringBuilder originalValue, StringBuilder normalizedValue, Map<String,String> markings, boolean isOverloadedField) {
-            String separator = COMPOSITE_DEFAULT_SEPARATOR;
+            String separator = (pos > 0) ? COMPOSITE_DEFAULT_SEPARATOR : "";
             // append any constants that have been specified
             while (pos < fields.length && isConstant(fields[pos])) {
                 String constant = getConstant(fields[pos++]);
@@ -572,11 +575,11 @@ public interface CompositeIngest {
             this.compositeFieldDefinitions = compositeFieldDefinitions;
         }
         
-        public List<String> getFixedLengthFields() {
+        public Set<String> getFixedLengthFields() {
             return fixedLengthFields;
         }
         
-        public void setFixedLengthFields(List<String> fixedLengthFields) {
+        public void setFixedLengthFields(Set<String> fixedLengthFields) {
             this.fixedLengthFields = fixedLengthFields;
         }
         
