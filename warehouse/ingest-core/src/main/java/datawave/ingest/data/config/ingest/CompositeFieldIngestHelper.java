@@ -53,26 +53,6 @@ public class CompositeFieldIngestHelper implements CompositeIngest {
     /*
      * (non-Javadoc)
      * 
-     * @see datawave.ingest.data.config.ingest.CompositeIngest#getDefaultSeparator()
-     */
-    @Override
-    public String getDefaultCompositeFieldSeparator() {
-        return compositeFieldNormalizer.getDefaultSeparator();
-    }
-    
-    /*
-     * (non-Javadoc)
-     * 
-     * @see datawave.ingest.data.config.ingest.CompositeIngest#setDefaultSeparator(java.lang.String)
-     */
-    @Override
-    public void setDefaultCompositeFieldSeparator(String sep) {
-        compositeFieldNormalizer.setDefaultSeparator(sep);
-    }
-    
-    /*
-     * (non-Javadoc)
-     * 
      * @see datawave.ingest.data.config.ingest.CompositeIngest#getCompositeFields(com.google.common.collect.Multimap)
      */
     @Override
@@ -90,19 +70,19 @@ public class CompositeFieldIngestHelper implements CompositeIngest {
         Map<String,String[]> map = this.getCompositeFieldDefinitions();
         return map.containsKey(fieldName);
     }
-
+    
     @Override
     public boolean isFixedLengthCompositeField(String fieldName) {
         List<String> fixedLengthFields = compositeFieldNormalizer.getFixedLengthFields();
         return fixedLengthFields != null && fixedLengthFields.contains(fieldName);
     }
-
+    
     @Override
     public boolean isTransitionedCompositeField(String fieldName) {
-        Map<String, Date> fieldTransitionDateMap = compositeFieldNormalizer.getFieldTransitionDateMap();
+        Map<String,Date> fieldTransitionDateMap = compositeFieldNormalizer.getFieldTransitionDateMap();
         return fieldTransitionDateMap != null && fieldTransitionDateMap.containsKey(fieldName);
     }
-
+    
     @Override
     public Date getCompositeFieldTransitionDate(String fieldName) {
         Date transitionDate = null;
@@ -110,7 +90,7 @@ public class CompositeFieldIngestHelper implements CompositeIngest {
             transitionDate = compositeFieldNormalizer.getFieldTransitionDateMap().get(fieldName);
         return transitionDate;
     }
-
+    
     @Override
     public boolean isOverloadedCompositeField(String fieldName) {
         return CompositeIngest.isOverloadedCompositeField(getCompositeFieldDefinitions(), fieldName);

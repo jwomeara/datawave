@@ -862,7 +862,7 @@ public class MetadataHelper implements ApplicationContextAware {
         
         return this.allFieldMetadataHelper.getFieldToCompositeMap(ingestTypeFilter);
     }
-
+    
     /**
      * A map of composite name to transition date.
      *
@@ -872,11 +872,11 @@ public class MetadataHelper implements ApplicationContextAware {
     public Map<String,Date> getCompositeTransitionDateMap() throws TableNotFoundException {
         return this.allFieldMetadataHelper.getCompositeTransitionDateMap();
     }
-
+    
     public Map<String,Date> getCompositeTransitionDateMap(Set<String> ingestTypeFilter) throws TableNotFoundException {
         return this.allFieldMetadataHelper.getCompositeTransitionDateMap(ingestTypeFilter);
     }
-
+    
     /**
      * A set of fixed length composite fields.
      *
@@ -886,7 +886,7 @@ public class MetadataHelper implements ApplicationContextAware {
     public Set<String> getFixedLengthCompositeFields() throws TableNotFoundException {
         return this.allFieldMetadataHelper.getFixedLengthCompositeFields();
     }
-
+    
     public Set<String> getFixedLengthCompositeFields(Set<String> ingestTypeFilter) throws TableNotFoundException {
         return this.allFieldMetadataHelper.getFixedLengthCompositeFields(ingestTypeFilter);
     }

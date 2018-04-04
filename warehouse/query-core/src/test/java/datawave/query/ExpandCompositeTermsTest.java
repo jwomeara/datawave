@@ -144,7 +144,7 @@ public class ExpandCompositeTermsTest {
     public void test7d() throws Exception {
         String query = "(TEAM >= 'gold' && TEAM <= 'silver') && (POINTS > 10 && POINTS <= 11)";
         String expected = "(TEAM_POINTS > 'gold􏿿10' && TEAM_POINTS <= 'silver􏿿11') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((TEAM >= 'gold' && TEAM <= 'silver') && (POINTS > 10 && POINTS <= 11)))))";
-
+        
         Set<String> fieldSet = new HashSet<>();
         fieldSet.add("TEAM");
         this.conf.setFixedLengthFields(fieldSet);
@@ -192,11 +192,11 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-
+        
         Set<String> fieldSet = new HashSet<>();
         fieldSet.add("GEO");
         conf.setFixedLengthFields(fieldSet);
-
+        
         Multimap<String,CompositeNameAndIndex> fieldToCompositeMap = LinkedListMultimap.create();
         fieldToCompositeMap.put("GEO", new CompositeNameAndIndex("GEO", 0));
         fieldToCompositeMap.put("WKT_BYTE_LENGTH", new CompositeNameAndIndex("GEO", 1));
@@ -221,7 +221,7 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-
+        
         Set<String> fieldSet = new HashSet<>();
         fieldSet.add("GEO");
         conf.setFixedLengthFields(fieldSet);
@@ -249,7 +249,7 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-
+        
         Set<String> fieldSet = new HashSet<>();
         fieldSet.add("GEO");
         conf.setFixedLengthFields(fieldSet);
@@ -277,7 +277,7 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-
+        
         Set<String> fieldSet = new HashSet<>();
         fieldSet.add("GEO");
         conf.setFixedLengthFields(fieldSet);
@@ -305,7 +305,7 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-
+        
         Set<String> fieldSet = new HashSet<>();
         fieldSet.add("GEO");
         conf.setFixedLengthFields(fieldSet);
@@ -333,7 +333,7 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-
+        
         Set<String> fieldSet = new HashSet<>();
         fieldSet.add("GEO");
         conf.setFixedLengthFields(fieldSet);
@@ -363,7 +363,7 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-
+        
         Set<String> fieldSet = new HashSet<>();
         fieldSet.add("GEO");
         conf.setFixedLengthFields(fieldSet);
@@ -567,11 +567,11 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-
+        
         Set<String> fieldSet = new HashSet<>();
         fieldSet.add("GEO");
         conf.setFixedLengthFields(fieldSet);
-
+        
         Map<String,Date> compositeWithOldDataMap = new HashMap<>();
         compositeWithOldDataMap.put("GEO", new Date(TimeUnit.DAYS.toMillis(15)));
         conf.setCompositeTransitionDates(compositeWithOldDataMap);
@@ -773,11 +773,11 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-
+        
         Set<String> fieldSet = new HashSet<>();
         fieldSet.add("GEO");
         conf.setFixedLengthFields(fieldSet);
-
+        
         Multimap<String,CompositeNameAndIndex> fieldToCompositeMap = LinkedListMultimap.create();
         fieldToCompositeMap.put("GEO", new CompositeNameAndIndex("GEO_WKT", 0));
         fieldToCompositeMap.put("WKT", new CompositeNameAndIndex("GEO_WKT", 1));
@@ -974,11 +974,11 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-
+        
         Set<String> fieldSet = new HashSet<>();
         fieldSet.add("GEO");
         conf.setFixedLengthFields(fieldSet);
-
+        
         Multimap<String,CompositeNameAndIndex> fieldToCompositeMap = LinkedListMultimap.create();
         fieldToCompositeMap.put("GEO", new CompositeNameAndIndex("GEO", 0));
         fieldToCompositeMap.put("WKT", new CompositeNameAndIndex("GEO", 1));
@@ -1002,11 +1002,11 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-
+        
         Set<String> fieldSet = new HashSet<>();
         fieldSet.add("GEO");
         conf.setFixedLengthFields(fieldSet);
-
+        
         Multimap<String,CompositeNameAndIndex> fieldToCompositeMap = LinkedListMultimap.create();
         fieldToCompositeMap.put("GEO", new CompositeNameAndIndex("GEO", 0));
         fieldToCompositeMap.put("WKT", new CompositeNameAndIndex("GEO", 1));
@@ -1054,11 +1054,11 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-
+        
         Set<String> fieldSet = new HashSet<>();
         fieldSet.add("GEO");
         conf.setFixedLengthFields(fieldSet);
-
+        
         Multimap<String,CompositeNameAndIndex> fieldToCompositeMap = LinkedListMultimap.create();
         fieldToCompositeMap.put("GEO", new CompositeNameAndIndex("GEO_WKT", 0));
         fieldToCompositeMap.put("WKT", new CompositeNameAndIndex("GEO_WKT", 1));
@@ -1082,11 +1082,11 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-
+        
         Set<String> fieldSet = new HashSet<>();
         fieldSet.add("GEO");
         conf.setFixedLengthFields(fieldSet);
-
+        
         Multimap<String,CompositeNameAndIndex> fieldToCompositeMap = LinkedListMultimap.create();
         fieldToCompositeMap.put("GEO", new CompositeNameAndIndex("GEO_WKT", 0));
         fieldToCompositeMap.put("WKT", new CompositeNameAndIndex("GEO_WKT", 1));

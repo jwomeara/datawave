@@ -144,7 +144,7 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
     
     protected Set<String> compositeFields = Sets.newHashSet();
     protected Set<String> fixedLengthFields = Sets.newHashSet();
-    protected Map<String, Date> fieldTransitionDateMap = Maps.newHashMap();
+    protected Map<String,Date> fieldTransitionDateMap = Maps.newHashMap();
     
     protected Set<String> indexedFields = Sets.newHashSet();
     protected Map<String,Pattern> indexedPatterns = Maps.newHashMap();
@@ -421,41 +421,41 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
                 }
             }
         }
-
+        
         String compositeFieldList = config.get(this.getType().typeName() + CompositeIngest.COMPOSITE_FIELD_NAMES);
         if (null != compositeFieldList) {
             for (String s : compositeFieldList.split(",")) {
-
+                
                 String fieldName = s.trim();
-
+                
                 if (!fieldName.isEmpty()) {
-
+                    
                     this.compositeFields.add(fieldName);
                 } else {
-
+                    
                     // TODO: Possibly add warning to indicated a potentially
                     // questionable configuration file...
                 }
             }
         }
-
+        
         String fixedLengthFields = config.get(this.getType().typeName() + CompositeIngest.COMPOSITE_FIELDS_FIXED_LENGTH);
         if (null != fixedLengthFields) {
             for (String s : fixedLengthFields.split(",")) {
-
+                
                 String fieldName = s.trim();
-
+                
                 if (!fieldName.isEmpty()) {
-
+                    
                     this.fixedLengthFields.add(fieldName);
                 } else {
-
+                    
                     // TODO: Possibly add warning to indicated a potentially
                     // questionable configuration file...
                 }
             }
         }
-
+        
         String transitionedCompositeFields = config.get(this.getType().typeName() + CompositeIngest.COMPOSITE_FIELDS_TRANSITION_DATES);
         if (null != transitionedCompositeFields) {
             for (String s : transitionedCompositeFields.split(",")) {
@@ -464,7 +464,7 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
                         String[] kv = s.split(new String(Character.toChars(Character.MAX_CODE_POINT)));
                         this.fieldTransitionDateMap.put(kv[0], CompositeIngest.CompositeFieldNormalizer.formatter.parse(kv[1]));
                     } else {
-
+                        
                         // TODO: Possibly add warning to indicated a potentially
                         // questionable configuration file...
                     }
@@ -624,17 +624,17 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
     public boolean isCompositeField(String fieldName) {
         return this.compositeFields.contains(fieldName);
     }
-
+    
     @Override
     public boolean isFixedLengthCompositeField(String fieldName) {
         return fixedLengthFields != null && fixedLengthFields.contains(fieldName);
     }
-
+    
     @Override
     public boolean isTransitionedCompositeField(String fieldName) {
         return fieldTransitionDateMap != null && fieldTransitionDateMap.containsKey(fieldName);
     }
-
+    
     @Override
     public Date getCompositeFieldTransitionDate(String fieldName) {
         Date transitionDate = null;
@@ -642,7 +642,7 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
             transitionDate = fieldTransitionDateMap.get(fieldName);
         return transitionDate;
     }
-
+    
     @Override
     public void addCompositeField(String fieldName) {
         this.compositeFields.add(fieldName);
@@ -1143,16 +1143,6 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
     @Override
     public void setCompositeFieldDefinitions(Map<String,String[]> compositeFieldDefinitions) {
         getCompositeIngest().setCompositeFieldDefinitions(compositeFieldDefinitions);
-    }
-    
-    @Override
-    public String getDefaultCompositeFieldSeparator() {
-        return getCompositeIngest().getDefaultCompositeFieldSeparator();
-    }
-    
-    @Override
-    public void setDefaultCompositeFieldSeparator(String sep) {
-        getCompositeIngest().setDefaultCompositeFieldSeparator(sep);
     }
     
     @Override

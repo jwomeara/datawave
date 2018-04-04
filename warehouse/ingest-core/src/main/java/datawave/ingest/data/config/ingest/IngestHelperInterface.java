@@ -101,13 +101,13 @@ public interface IngestHelperInterface extends DataTypeHelper {
     void addIndexOnlyField(String fieldName);
     
     boolean isCompositeField(String fieldName);
-
+    
     boolean isFixedLengthCompositeField(String fieldName);
-
+    
     boolean isTransitionedCompositeField(String fieldName);
-
+    
     Date getCompositeFieldTransitionDate(String fieldName);
-
+    
     boolean isOverloadedCompositeField(String fieldName);
     
     void addCompositeField(String fieldName);
@@ -123,7 +123,7 @@ public interface IngestHelperInterface extends DataTypeHelper {
     boolean isDataTypeField(String fieldName);
     
     Map<String,String[]> getCompositeNameAndIndex(String fieldName);
-
+    
     boolean isVirtualIndexedField(String fieldName);
     
     Map<String,String[]> getVirtualNameAndIndex(String fieldName);
