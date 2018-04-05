@@ -18,9 +18,9 @@ import org.apache.log4j.Logger;
  * This is a node that can be put in place of an underlying reference node to place a property on an underlying query sub-tree (e.g. ExceededValueThreshold)
  */
 public class QueryPropertyMarker extends ASTReference {
-
+    
     private static final Logger log = Logger.getLogger(QueryPropertyMarker.class);
-
+    
     public QueryPropertyMarker() {
         this(ParserTreeConstants.JJTREFERENCE);
     }
@@ -68,7 +68,7 @@ public class QueryPropertyMarker extends ASTReference {
         refExpNode1.jjtSetParent(this);
         this.jjtAddChild(refExpNode1, 0);
     }
-
+    
     /**
      * A routine to determine whether an and node is actually a specific instance of a query marker. The reason for this routine is that if the query is
      * serialized and deserialized, then only the underlying assignment will persist. Any node within the tree originally created except for a sibling of the
@@ -82,7 +82,7 @@ public class QueryPropertyMarker extends ASTReference {
     public static boolean instanceOf(JexlNode node, Class<? extends QueryPropertyMarker> type) {
         return QueryPropertyMarkerVisitor.instanceOf(node, type, null);
     }
-
+    
     /**
      * A routine to determine the node which is the source of the query property (i.e. the one passed into the constructor of this class)
      *
@@ -94,13 +94,13 @@ public class QueryPropertyMarker extends ASTReference {
     public static JexlNode getQueryPropertySource(JexlNode node, Class<? extends QueryPropertyMarker> type) {
         List<JexlNode> sourceNodes = new ArrayList<>();
         if (QueryPropertyMarkerVisitor.instanceOf(node, type, sourceNodes) && !sourceNodes.isEmpty()) {
-
+            
             if (sourceNodes.size() != 1)
                 log.debug("Found multiple source nodes for " + type);
-
+            
             return sourceNodes.get(0);
         }
-
+        
         return null;
     }
 }

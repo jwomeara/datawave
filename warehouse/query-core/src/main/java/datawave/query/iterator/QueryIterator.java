@@ -744,7 +744,7 @@ public class QueryIterator extends QueryOptions implements SortedKeyValueIterato
     }
     
     protected Iterator<Entry<Key,Document>> getEvaluation(SortedKeyValueIterator<Key,Value> sourceDeepCopy, Iterator<Entry<Key,Document>> documents,
-                                                          CompositeMetadata compositeMetadata, TypeMetadata typeMetadataForEval) {
+                    CompositeMetadata compositeMetadata, TypeMetadata typeMetadataForEval) {
         return getEvaluation(null, sourceDeepCopy, documents, compositeMetadata, typeMetadataForEval);
     }
     

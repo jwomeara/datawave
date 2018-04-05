@@ -24,6 +24,7 @@ import datawave.configuration.spring.SpringBean;
 import datawave.helpers.PrintUtility;
 import datawave.ingest.data.TypeRegistry;
 import datawave.marking.MarkingFunctions;
+import datawave.query.composite.CompositeMetadata;
 import datawave.query.language.parser.ParseException;
 import datawave.query.QueryTestTableHelper;
 import datawave.query.attributes.Attribute;
@@ -236,15 +237,19 @@ public abstract class ValueToAttributesTest {
         }
     }
 
-    // TODO: Update this test!!!!!
-//    @Test
-//    public void testComposites() {
-//        CompositeMetadata compositeMetadata = new CompositeMetadata(
-//                        "test:[MAKE:MAKE_COLOR[0];WHEELS:COLOR_WHEELS[1];COLOR:COLOR_WHEELS[0],MAKE_COLOR[1]];pilot:[MAKE:MAKE_COLOR[0];WHEELS:COLOR_WHEELS[1];COLOR:COLOR_WHEELS[0],MAKE_COLOR[1]];work:[MAKE:MAKE_COLOR[0];WHEELS:COLOR_WHEELS[1];COLOR:COLOR_WHEELS[0],MAKE_COLOR[1]];beep:[MAKE:MAKE_COLOR[0];WHEELS:COLOR_WHEELS[1];COLOR:COLOR_WHEELS[0],MAKE_COLOR[1]];tw:[MAKE:MAKE_COLOR[0];WHEELS:COLOR_WHEELS[1];COLOR:COLOR_WHEELS[0],MAKE_COLOR[1]]");
-//
-//        TypeMetadata typeMetadata = new TypeMetadata(
-//                        "MAKE:[beep:datawave.data.type.LcNoDiacriticsType];MAKE_COLOR:[beep:datawave.data.type.NoOpType];START_DATE:[beep:datawave.data.type.DateType];TYPE_NOEVAL:[beep:datawave.data.type.LcNoDiacriticsType];IP_ADDR:[beep:datawave.data.type.IpAddressType];WHEELS:[beep:datawave.data.type.LcNoDiacriticsType,datawave.data.type.NumberType];COLOR:[beep:datawave.data.type.LcNoDiacriticsType];COLOR_WHEELS:[beep:datawave.data.type.NoOpType];TYPE:[beep:datawave.data.type.LcNoDiacriticsType]");
-//        MarkingFunctions markingFunctions = new MarkingFunctions.NoOp();
-//        ValueToAttributes valueToAttributes = new ValueToAttributes(compositeMetadata, typeMetadata, null, markingFunctions);
-//    }
+    @Test
+    public void testComposites() {
+        CompositeMetadata compositeMetadata = new CompositeMetadata();
+        for (String ingestType : new String[]{"test", "pilot", "work", "beep", "tw"}) {
+            compositeMetadata.addCompositeFieldMapByType(ingestType, "MAKE_COLOR", "MAKE");
+            compositeMetadata.addCompositeFieldMapByType(ingestType, "MAKE_COLOR", "COLOR");
+            compositeMetadata.addCompositeFieldMapByType(ingestType, "COLOR_WHEELS", "COLOR");
+            compositeMetadata.addCompositeFieldMapByType(ingestType, "COLOR_WHEELS", "WHEELS");
+        }
+
+        TypeMetadata typeMetadata = new TypeMetadata(
+                "MAKE:[beep:datawave.data.type.LcNoDiacriticsType];MAKE_COLOR:[beep:datawave.data.type.NoOpType];START_DATE:[beep:datawave.data.type.DateType];TYPE_NOEVAL:[beep:datawave.data.type.LcNoDiacriticsType];IP_ADDR:[beep:datawave.data.type.IpAddressType];WHEELS:[beep:datawave.data.type.LcNoDiacriticsType,datawave.data.type.NumberType];COLOR:[beep:datawave.data.type.LcNoDiacriticsType];COLOR_WHEELS:[beep:datawave.data.type.NoOpType];TYPE:[beep:datawave.data.type.LcNoDiacriticsType]");
+        MarkingFunctions markingFunctions = new MarkingFunctions.NoOp();
+        ValueToAttributes valueToAttributes = new ValueToAttributes(compositeMetadata, typeMetadata, null, markingFunctions);
+    }
 }

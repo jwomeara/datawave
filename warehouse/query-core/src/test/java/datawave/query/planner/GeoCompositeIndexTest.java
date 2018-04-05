@@ -344,9 +344,9 @@ public class GeoCompositeIndexTest {
         
         List<QueryData> queries = getQueryRanges(query, false);
         Assert.assertEquals(12, queries.size());
-
+        
         List<DefaultEvent> events = getQueryResults(query, false);
-
+        
         System.out.println(queries.size() + " Queries Returned " + events.size() + " Events");
         for (DefaultEvent event : events) {
             System.out.println("\n Event: " + event.getMetadata().getInternalId());
@@ -376,7 +376,7 @@ public class GeoCompositeIndexTest {
         
         List<QueryData> queries = getQueryRanges(query, true);
         Assert.assertEquals(732, queries.size());
-
+        
         List<DefaultEvent> events = getQueryResults(query, true);
         
         System.out.println(queries.size() + " Queries Returned " + events.size() + " Events");
