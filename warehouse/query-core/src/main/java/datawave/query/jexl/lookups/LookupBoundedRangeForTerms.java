@@ -21,6 +21,7 @@ import org.apache.accumulo.core.data.Range;
 import org.apache.accumulo.core.data.Value;
 import org.apache.accumulo.core.iterators.user.WholeRowIterator;
 import org.apache.commons.jexl2.parser.ASTCompositePredicate;
+import org.apache.commons.jexl2.parser.JexlNode;
 import org.apache.hadoop.io.Text;
 import org.apache.log4j.Logger;
 
@@ -48,13 +49,13 @@ public class LookupBoundedRangeForTerms extends IndexLookup {
     protected Set<String> datatypeFilter;
     protected Set<Text> fields;
     private final LiteralRange<?> literalRange;
-    private final ASTCompositePredicate compositePredicate;
+    private final JexlNode compositePredicate;
     
     public LookupBoundedRangeForTerms(LiteralRange<?> literalRange) {
         this(literalRange, null);
     }
     
-    public LookupBoundedRangeForTerms(LiteralRange<?> literalRange, ASTCompositePredicate compositePredicate) {
+    public LookupBoundedRangeForTerms(LiteralRange<?> literalRange, JexlNode compositePredicate) {
         this.literalRange = literalRange;
         this.compositePredicate = compositePredicate;
         datatypeFilter = Sets.newHashSet();

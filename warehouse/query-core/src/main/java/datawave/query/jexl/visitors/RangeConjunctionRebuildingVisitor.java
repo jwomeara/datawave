@@ -172,7 +172,7 @@ public class RangeConjunctionRebuildingVisitor extends RebuildingVisitor {
             log.debug(leaves.get(index).image);
             // Add each child which is not a part of the bounded range, visiting them first
             JexlNode visitedChild = (JexlNode) leaves.get(index).jjtAccept(this, null);
-            newNode.jjtAddChild(visitedChild, index + 1);
+            newNode.jjtAddChild(visitedChild, index);
             visitedChild.jjtSetParent(newNode);
         }
         
@@ -184,7 +184,7 @@ public class RangeConjunctionRebuildingVisitor extends RebuildingVisitor {
         }
         
         for (Map.Entry<LiteralRange<?>,List<JexlNode>> range : ranges.entrySet()) {
-            ASTCompositePredicate compositePredicate = null;
+            JexlNode compositePredicate = null;
             
             // if this is a composite field, find the composite predicate, which will be
             // used to filter out composite terms which fall outside of our range
@@ -194,7 +194,7 @@ public class RangeConjunctionRebuildingVisitor extends RebuildingVisitor {
                                 .map(leaf -> CompositePredicateVisitor.findCompositePredicates(leaf, config.getCompositeToFieldMap().get(fieldName)))
                                 .flatMap(set -> set.stream()).collect(Collectors.toSet());
                 if (delayedCompositePredicates != null && delayedCompositePredicates.size() == 1)
-                    compositePredicate = (ASTCompositePredicate) delayedCompositePredicates.stream().findFirst().get();
+                    compositePredicate = delayedCompositePredicates.stream().findFirst().get();
             }
             
             IndexLookup lookup = ShardIndexQueryTableStaticMethods.expandRange(range.getKey(), compositePredicate);
@@ -226,7 +226,7 @@ public class RangeConjunctionRebuildingVisitor extends RebuildingVisitor {
             newNode.jjtAddChild(orNode, index++);
             
         }
-        
+
         // If we had no other nodes than this bounded range, we can strip out the original parent
         if (newNode.jjtGetNumChildren() == 1) {
             newNode.jjtGetChild(0).jjtSetParent(newNode.jjtGetParent());
