@@ -29,6 +29,7 @@ import datawave.data.type.Type;
 import datawave.iterators.EdgeMetadataCombiner;
 import datawave.iterators.filter.EdgeMetadataCQStrippingIterator;
 import datawave.marking.MarkingFunctions;
+import datawave.query.composite.CompositeMetadata;
 import datawave.query.model.QueryModel;
 import datawave.query.iterator.PowerSet;
 import datawave.security.util.AuthorizationsUtil;

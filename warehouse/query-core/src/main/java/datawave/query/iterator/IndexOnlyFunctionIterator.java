@@ -11,6 +11,7 @@ import java.util.Map.Entry;
 
 import com.google.common.base.Objects;
 
+import datawave.query.composite.CompositeMetadata;
 import datawave.query.function.IndexOnlyContextCreator;
 import datawave.query.function.IndexOnlyKeyToDocumentData;
 import datawave.query.function.JexlContextCreator;

@@ -14,10 +14,10 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import datawave.query.Constants;
+import datawave.query.composite.CompositeMetadata;
 import datawave.query.function.KeyToFieldName;
 import datawave.query.jexl.JexlASTHelper;
 import datawave.query.predicate.EventDataQueryFilter;
-import datawave.query.predicate.Filter;
 import datawave.query.predicate.ValueToAttributes;
 import org.apache.accumulo.core.data.Key;
 import org.apache.accumulo.core.data.Value;
@@ -34,7 +34,6 @@ import com.google.common.collect.Sets;
 import datawave.marking.MarkingFunctions;
 import datawave.query.jexl.DatawaveJexlContext;
 import datawave.query.collections.FunctionalSet;
-import datawave.query.util.CompositeMetadata;
 import datawave.query.util.TypeMetadata;
 import datawave.util.time.DateHelper;
 

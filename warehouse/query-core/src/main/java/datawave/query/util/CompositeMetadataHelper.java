@@ -9,6 +9,7 @@ import java.util.Set;
 
 import datawave.data.ColumnFamilyConstants;
 import datawave.ingest.data.config.ingest.CompositeIngest;
+import datawave.query.composite.CompositeMetadata;
 import datawave.security.util.ScannerHelper;
 
 import org.apache.accumulo.core.client.Connector;
@@ -116,7 +117,7 @@ public class CompositeMetadataHelper {
                     if (idx != -1) {
                         try {
                             Date transitionDate = CompositeIngest.CompositeFieldNormalizer.formatter.parse(colq.substring(idx + 1));
-                            compositeMetadata.addTransitionDate(fieldName, type, transitionDate);
+                            compositeMetadata.addCompositeTransitionDateByType(type, fieldName, transitionDate);
                         } catch (ParseException e) {
                             log.trace("Unable to parse composite field transition date", e);
                         }
@@ -131,11 +132,12 @@ public class CompositeMetadataHelper {
                 // and composite name,idx
                 if (null != entry.getKey().getColumnQualifier()) {
                     if (idx != -1) {
-                        String field = entry.getKey().getRow().toString(); // this is the component of the composite
+                        String componentField = entry.getKey().getRow().toString(); // this is the component of the composite
                         if (datatypeFilter == null || datatypeFilter.isEmpty() || datatypeFilter.contains(type)) {
-                            String compositeNameAndIndex = colq.substring(idx + 1); // this is the compositename,idx
-                            compositeNameAndIndex = compositeNameAndIndex.replaceAll(",", "[") + "]";
-                            compositeMetadata.put(compositeNameAndIndex, type, field);
+//                            String compositeNameAndIndex = colq.substring(idx + 1); // this is the compositename,idx
+//                            compositeNameAndIndex = compositeNameAndIndex.replaceAll(",", "[") + "]";
+                            String compositeField = colq.substring(idx + 1, colq.indexOf(","));
+                            compositeMetadata.addCompositeFieldMapByType(type, compositeField, componentField);
                         }
                     } else {
                         log.warn("EventMetadata entry did not contain a null byte in the column qualifier: " + entry.getKey().toString());

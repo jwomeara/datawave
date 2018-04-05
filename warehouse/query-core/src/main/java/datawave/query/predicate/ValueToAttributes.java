@@ -11,13 +11,13 @@ import datawave.ingest.data.config.ingest.CompositeIngest;
 import datawave.marking.MarkingFunctions;
 import datawave.marking.MarkingFunctions.Exception;
 import datawave.query.attributes.Attribute;
+import datawave.query.composite.CompositeMetadata;
 import datawave.query.jexl.JexlASTHelper;
 import datawave.query.Constants;
 import datawave.query.attributes.AttributeFactory;
 import datawave.query.attributes.Attributes;
 import datawave.query.attributes.TypeAttribute;
 import datawave.query.util.Composite;
-import datawave.query.util.CompositeMetadata;
 import datawave.query.util.TypeMetadata;
 
 import org.apache.accumulo.core.data.Key;
@@ -52,7 +52,7 @@ public class ValueToAttributes implements Function<Entry<Key,String>,Iterable<En
     public ValueToAttributes(CompositeMetadata compositeMetadata, TypeMetadata typeMetadata, EventDataQueryFilter attrFilter, MarkingFunctions markingFunctions) {
         this.attrFactory = new AttributeFactory(typeMetadata);
         this.markingFunctions = markingFunctions;
-        this.compositeToFieldMap = compositeMetadata.getCompositeToFieldMap();
+        this.compositeToFieldMap = compositeMetadata.getCompositeFieldMapByType();
         this.attrFilter = attrFilter;
     }
     

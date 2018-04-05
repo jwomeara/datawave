@@ -1,20 +1,19 @@
 package datawave.query.iterator.builder;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import com.google.common.collect.Multimap;
+import datawave.query.composite.CompositeMetadata;
 import datawave.query.iterator.NestedIterator;
 import datawave.query.iterator.filter.composite.CompositePredicateFilter;
 import datawave.query.iterator.logic.IndexIterator;
 import datawave.query.iterator.logic.IndexIteratorBridge;
 import datawave.query.jexl.functions.FieldIndexAggregator;
 import datawave.query.predicate.TimeFilter;
-import datawave.query.util.CompositeMetadata;
 import datawave.query.util.TypeMetadata;
 
 import org.apache.accumulo.core.data.Key;
@@ -109,8 +108,8 @@ public class IndexIteratorBuilder extends AbstractIteratorBuilder {
     
     protected Map<String,Map<String,CompositePredicateFilter>> createCompositePredicateFilters(String fieldName) {
         Map<String,Map<String,CompositePredicateFilter>> compositePredicateFilterMapByType = new HashMap<>();
-        if (compositeMetadata != null && compositeMetadata.getCompositeToFieldMap() != null) {
-            for (Map.Entry<String,Multimap<String,String>> entry : compositeMetadata.getCompositeToFieldMap().entrySet()) {
+        if (compositeMetadata != null && compositeMetadata.getCompositeFieldMapByType() != null) {
+            for (Map.Entry<String,Multimap<String,String>> entry : compositeMetadata.getCompositeFieldMapByType().entrySet()) {
                 if (entry.getValue().containsKey(fieldName)) {
                     String ingestType = entry.getKey();
                     

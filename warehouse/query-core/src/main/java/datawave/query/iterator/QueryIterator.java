@@ -8,6 +8,7 @@ import java.net.MalformedURLException;
 import datawave.data.type.Type;
 import datawave.data.type.util.NumericalEncoder;
 import datawave.ingest.data.config.ingest.CompositeIngest;
+import datawave.query.composite.CompositeMetadata;
 import datawave.query.jexl.DatawaveJexlContext;
 import datawave.query.Constants;
 import datawave.query.DocumentSerialization.ReturnType;
@@ -622,7 +623,6 @@ public class QueryIterator extends QueryOptions implements SortedKeyValueIterato
         // removing Attributes for this Document
         // which do not fall within the expected time range
         Iterator<Entry<Key,Document>> documents = null;
-        CompositeMetadata compositeMetadata = new CompositeMetadata(this.getCompositeMetadata());
         Aggregation a = new Aggregation(this.getTimeFilter(), this.typeMetadataWithNonIndexed, compositeMetadata, this.isIncludeGroupingContext(),
                         this.includeRecordId, this.disableIndexOnlyDocuments(), this.getEvaluationFilter());
         if (gatherTimingDetails()) {
@@ -744,7 +744,7 @@ public class QueryIterator extends QueryOptions implements SortedKeyValueIterato
     }
     
     protected Iterator<Entry<Key,Document>> getEvaluation(SortedKeyValueIterator<Key,Value> sourceDeepCopy, Iterator<Entry<Key,Document>> documents,
-                    CompositeMetadata compositeMetadata, TypeMetadata typeMetadataForEval) {
+                                                          CompositeMetadata compositeMetadata, TypeMetadata typeMetadataForEval) {
         return getEvaluation(null, sourceDeepCopy, documents, compositeMetadata, typeMetadataForEval);
     }
     
@@ -970,9 +970,9 @@ public class QueryIterator extends QueryOptions implements SortedKeyValueIterato
     protected DocumentProjection getCompositeProjection() {
         DocumentProjection projection = new DocumentProjection(this.isIncludeGroupingContext(), this.isReducedResponse());
         Set<String> composites = Sets.newHashSet();
-        for (Multimap<String,String> val : this.compositeMetadata.getCompositeToFieldMap().values())
+        for (Multimap<String,String> val : this.compositeMetadata.getCompositeFieldMapByType().values())
             for (String compositeField : val.keySet())
-                if (!CompositeIngest.isOverloadedCompositeField(val.get(compositeField), compositeField))
+                if (!CompositeIngest.isOverloadedCompositeField(val, compositeField))
                     composites.add(compositeField);
         projection.initializeBlacklist(composites);
         return projection;

@@ -6,12 +6,12 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import datawave.query.attributes.Attribute;
+import datawave.query.composite.CompositeMetadata;
 import datawave.query.predicate.EventDataQueryFilter;
 import datawave.query.predicate.ParentEventDataFilter;
 import datawave.query.attributes.Document;
 import datawave.query.function.Aggregation;
 import datawave.query.function.KeyToDocumentData;
-import datawave.query.util.CompositeMetadata;
 import datawave.query.util.Tuple2;
 import datawave.query.util.TupleToEntry;
 
