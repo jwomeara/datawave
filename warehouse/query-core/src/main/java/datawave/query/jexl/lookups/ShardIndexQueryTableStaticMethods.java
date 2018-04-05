@@ -259,7 +259,7 @@ public class ShardIndexQueryTableStaticMethods {
         return (IndexLookup) new LookupTermsFromRegex(fieldName, patterns, datatypeFilter, helperRef);
     }
     
-    public static IndexLookup expandRange(LiteralRange<?> range, ASTCompositePredicate compositePredicate) {
+    public static IndexLookup expandRange(LiteralRange<?> range, JexlNode compositePredicate) {
         
         return new LookupBoundedRangeForTerms(range, compositePredicate);
     }

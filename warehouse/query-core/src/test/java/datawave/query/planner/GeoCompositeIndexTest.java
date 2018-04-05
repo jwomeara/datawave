@@ -375,7 +375,7 @@ public class GeoCompositeIndexTest {
         // @formatter:on
         
         List<QueryData> queries = getQueryRanges(query, true);
-        Assert.assertEquals(12, queries.size());
+        Assert.assertEquals(732, queries.size());
 
         List<DefaultEvent> events = getQueryResults(query, true);
         
