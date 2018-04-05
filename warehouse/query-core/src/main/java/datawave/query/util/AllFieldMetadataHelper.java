@@ -20,6 +20,7 @@ import java.util.concurrent.ExecutionException;
 import datawave.data.ColumnFamilyConstants;
 import datawave.data.type.Type;
 import datawave.ingest.data.config.ingest.CompositeIngest;
+import datawave.query.composite.CompositeMetadata;
 import datawave.security.util.AuthorizationsUtil;
 import datawave.security.util.ScannerHelper;
 

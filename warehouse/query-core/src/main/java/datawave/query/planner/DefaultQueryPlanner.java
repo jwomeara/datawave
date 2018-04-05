@@ -17,6 +17,7 @@ import datawave.ingest.mapreduce.handler.dateindex.DateIndexUtil;
 import datawave.query.CloseableIterable;
 import datawave.query.Constants;
 import datawave.query.QueryParameters;
+import datawave.query.composite.CompositeMetadata;
 import datawave.query.config.ShardQueryConfiguration;
 import datawave.query.exceptions.CannotExpandUnfieldedTermFatalException;
 import datawave.query.exceptions.DatawaveFatalQueryException;
@@ -219,9 +220,9 @@ public class DefaultQueryPlanner extends QueryPlanner {
     protected MetadataHelper metadataHelper = null;
     
     protected DateIndexHelper dateIndexHelper = null;
-    
+
     protected boolean compressMappings;
-    
+
     protected boolean buildQueryModel = true;
     
     protected boolean preloadOptions = false;
@@ -1533,13 +1534,8 @@ public class DefaultQueryPlanner extends QueryPlanner {
                 }
                 
                 try {
-                    if (compressMappings) {
-                        addOption(cfg, QueryOptions.COMPOSITE_METADATA,
-                                        QueryOptions.compressOption(metadataHelper.getCompositeMetadata().toString(), QueryOptions.UTF8), true);
-                    } else {
-                        addOption(cfg, QueryOptions.COMPOSITE_METADATA, metadataHelper.getCompositeMetadata().toString(), true);
-                    }
-                } catch (TableNotFoundException | IOException e) {
+                    addOption(cfg, QueryOptions.COMPOSITE_METADATA, new String(CompositeMetadata.toBytes(metadataHelper.getCompositeMetadata())), true);
+                } catch (TableNotFoundException e) {
                     QueryException qe = new QueryException(DatawaveErrorCode.COMPOSITE_METADATA_CONFIG_ERROR, e);
                     throw new DatawaveQueryException(qe);
                 }
@@ -2006,11 +2002,11 @@ public class DefaultQueryPlanner extends QueryPlanner {
     public long maxRangesPerQueryPiece() {
         return this.maxRangesPerQueryPiece;
     }
-    
+
     public void setCompressOptionMappings(boolean compressMappings) {
         this.compressMappings = compressMappings;
     }
-    
+
     public boolean getCompressOptionMappings() {
         return compressMappings;
     }

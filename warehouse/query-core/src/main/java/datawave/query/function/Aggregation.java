@@ -2,11 +2,11 @@ package datawave.query.function;
 
 import java.util.Map.Entry;
 
+import datawave.query.composite.CompositeMetadata;
 import datawave.query.iterator.aggregation.DocumentData;
 import datawave.query.predicate.EventDataQueryFilter;
 import datawave.query.attributes.Document;
 import datawave.query.predicate.TimeFilter;
-import datawave.query.util.CompositeMetadata;
 import datawave.query.util.TypeMetadata;
 
 import org.apache.accumulo.core.data.Key;

@@ -26,7 +26,7 @@ public class WKTParser extends GeometryParser {
         try {
             geom = new WKTReader().read(StringUtils.replaceEach(geoString, zGeomTypes, geomTypes));
         } catch (com.vividsolutions.jts.io.ParseException e) {
-            log.debug("Cannot parse WKT geometry from [" + geoString + "]");
+            log.trace("Cannot parse WKT geometry from [" + geoString + "]");
         }
         return geom;
     }

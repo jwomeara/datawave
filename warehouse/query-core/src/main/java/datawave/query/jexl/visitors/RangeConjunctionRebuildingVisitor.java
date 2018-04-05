@@ -172,7 +172,7 @@ public class RangeConjunctionRebuildingVisitor extends RebuildingVisitor {
             log.debug(leaves.get(index).image);
             // Add each child which is not a part of the bounded range, visiting them first
             JexlNode visitedChild = (JexlNode) leaves.get(index).jjtAccept(this, null);
-            newNode.jjtAddChild(visitedChild, index);
+            newNode.jjtAddChild(visitedChild, index + 1);
             visitedChild.jjtSetParent(newNode);
         }
         

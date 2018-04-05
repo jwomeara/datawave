@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 
+import datawave.query.composite.CompositeMetadata;
 import datawave.query.jexl.DatawaveJexlContext;
 import datawave.query.jexl.IndexOnlyJexlContext;
 import datawave.query.jexl.visitors.SetMembershipVisitor;
@@ -15,7 +16,6 @@ import datawave.query.iterator.IndexOnlyFunctionIterator;
 import datawave.query.iterator.QueryOptions;
 import datawave.query.planner.DefaultQueryPlanner;
 import datawave.query.predicate.TimeFilter;
-import datawave.query.util.CompositeMetadata;
 import datawave.query.util.Tuple3;
 import datawave.query.util.TypeMetadata;
 
@@ -138,11 +138,7 @@ public class IndexOnlyContextCreator extends JexlContextCreator {
     }
     
     public CompositeMetadata getCompositeMetadata() {
-        if (null != this.compositeMetadata) {
-            return new CompositeMetadata(this.compositeMetadata);
-        } else {
-            return new CompositeMetadata();
-        }
+        return compositeMetadata;
     }
     
     public Range getRange() {

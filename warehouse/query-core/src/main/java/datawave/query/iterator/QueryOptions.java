@@ -21,6 +21,7 @@ import datawave.core.iterators.querylock.QueryLock;
 import datawave.data.type.Type;
 import datawave.ingest.data.config.ingest.CompositeIngest;
 import datawave.query.DocumentSerialization;
+import datawave.query.composite.CompositeMetadata;
 import datawave.query.function.ConfiguredFunction;
 import datawave.query.function.Equality;
 import datawave.query.function.GetStartKey;
@@ -42,7 +43,6 @@ import datawave.query.predicate.TimeFilter;
 import datawave.query.statsd.QueryStatsDClient;
 import datawave.query.planner.SeekingQueryPlanner;
 import datawave.query.util.Composite;
-import datawave.query.util.CompositeMetadata;
 import datawave.query.util.TypeMetadata;
 import datawave.query.util.TypeMetadataProvider;
 import datawave.util.StringUtils;
@@ -65,7 +65,6 @@ import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -107,6 +106,7 @@ public class QueryOptions implements OptionDescriber {
     public static final String COMPOSITE_FIELDS = "composite.fields";
     public static final String COMPOSITE_METADATA = "composite.metadata";
     public static final String CONTAINS_COMPOSITE_TERMS = "composite.terms";
+    public static final String COMPOSITE_TRANSITION_DATES = "composite.transition.dates";
     public static final String IGNORE_COLUMN_FAMILIES = "ignore.column.families";
     public static final String INCLUDE_GROUPING_CONTEXT = "include.grouping.context";
     public static final String TERM_FREQUENCY_FIELDS = "term.frequency.fields";
@@ -208,9 +208,7 @@ public class QueryOptions implements OptionDescriber {
     public static final String SORTED_UIDS = "sorted.uids";
     
     public static final String DATA_QUERY_EXPRESSION_FILTER_ENABLED = "query.data.expression.filter.enabled";
-    
-    public static final String COMPOSITE_TRANSITION_DATES = "composite.transition.dates";
-    
+
     protected Map<String,String> options;
     
     protected String query;
@@ -619,10 +617,10 @@ public class QueryOptions implements OptionDescriber {
             allIndexOnlyFields.addAll(indexOnlyFields);
         // composite fields are index only as well, unless they are overloaded composites
         if (compositeMetadata != null)
-            for (Entry<String,Multimap<String,String>> entry : compositeMetadata.entrySet())
-                for (String field : entry.getValue().keySet())
-                    if (!CompositeIngest.isOverloadedCompositeField(entry.getValue(), field))
-                        allIndexOnlyFields.add(field);
+            for (Multimap<String,String> compositeFieldMap : compositeMetadata.getCompositeFieldMapByType().values())
+                for (String compositeField : compositeFieldMap.keySet())
+                    if(!CompositeIngest.isOverloadedCompositeField(compositeFieldMap, compositeField))
+                        allIndexOnlyFields.add(compositeField);
         return allIndexOnlyFields;
     }
     
@@ -641,7 +639,10 @@ public class QueryOptions implements OptionDescriber {
             nonEventFields.addAll(termFrequencyFields);
         // composite metadata contains combined fields that are not in the event in the same form
         if (compositeMetadata != null)
-            nonEventFields.addAll(compositeMetadata.keySet());
+            for (Multimap<String,String> compositeFieldMap : compositeMetadata.getCompositeFieldMapByType().values())
+                for (String compositeField : compositeFieldMap.keySet())
+                    if(!CompositeIngest.isOverloadedCompositeField(compositeFieldMap, compositeField))
+                        nonEventFields.add(compositeField);
         return nonEventFields;
     }
     
@@ -992,10 +993,8 @@ public class QueryOptions implements OptionDescriber {
         if (options.containsKey(COMPOSITE_METADATA)) {
             try {
                 String compositeMetadataString = options.get(COMPOSITE_METADATA);
-                if (compressedMappings) {
-                    compositeMetadataString = decompressOption(compositeMetadataString, QueryOptions.UTF8);
-                }
-                this.compositeMetadata = buildCompositeMetadata(compositeMetadataString);
+                if (compositeMetadataString != null && !compositeMetadataString.isEmpty())
+                    this.compositeMetadata = CompositeMetadata.fromBytes(compositeMetadataString.getBytes("UTF8"));
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -1117,10 +1116,7 @@ public class QueryOptions implements OptionDescriber {
             log.error("A list of index only fields must be provided when running an optimized query");
             return false;
         }
-        
-        if (options.containsKey(COMPOSITE_METADATA)) {
-            this.compositeMetadata = buildCompositeMetadata(options.get(COMPOSITE_METADATA));
-        }
+
         this.fiAggregator = new IdentityAggregator(getNonEventFields(), getEvaluationFilter(), getEvaluationFilter() != null ? getEvaluationFilter()
                         .getMaxNextCount() : -1);
         
@@ -1460,10 +1456,6 @@ public class QueryOptions implements OptionDescriber {
     
     public static TypeMetadata buildTypeMetadata(String data) throws IOException {
         return new TypeMetadata(data);
-    }
-    
-    public static CompositeMetadata buildCompositeMetadata(String in) {
-        return new CompositeMetadata(in);
     }
     
     /**
