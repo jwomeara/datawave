@@ -134,8 +134,8 @@ public class CompositeMetadataHelper {
                     if (idx != -1) {
                         String componentField = entry.getKey().getRow().toString(); // this is the component of the composite
                         if (datatypeFilter == null || datatypeFilter.isEmpty() || datatypeFilter.contains(type)) {
-//                            String compositeNameAndIndex = colq.substring(idx + 1); // this is the compositename,idx
-//                            compositeNameAndIndex = compositeNameAndIndex.replaceAll(",", "[") + "]";
+                            // String compositeNameAndIndex = colq.substring(idx + 1); // this is the compositename,idx
+                            // compositeNameAndIndex = compositeNameAndIndex.replaceAll(",", "[") + "]";
                             String compositeField = colq.substring(idx + 1, colq.indexOf(","));
                             compositeMetadata.addCompositeFieldMapByType(type, compositeField, componentField);
                         }

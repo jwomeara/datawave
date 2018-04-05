@@ -220,9 +220,9 @@ public class DefaultQueryPlanner extends QueryPlanner {
     protected MetadataHelper metadataHelper = null;
     
     protected DateIndexHelper dateIndexHelper = null;
-
+    
     protected boolean compressMappings;
-
+    
     protected boolean buildQueryModel = true;
     
     protected boolean preloadOptions = false;
@@ -1534,7 +1534,9 @@ public class DefaultQueryPlanner extends QueryPlanner {
                 }
                 
                 try {
-                    addOption(cfg, QueryOptions.COMPOSITE_METADATA, new String(CompositeMetadata.toBytes(metadataHelper.getCompositeMetadata())), true);
+                    CompositeMetadata compositeMetadata = metadataHelper.getCompositeMetadata();
+                    if (compositeMetadata != null && !compositeMetadata.isEmpty())
+                        addOption(cfg, QueryOptions.COMPOSITE_METADATA, new String(CompositeMetadata.toBytes(compositeMetadata)), false);
                 } catch (TableNotFoundException e) {
                     QueryException qe = new QueryException(DatawaveErrorCode.COMPOSITE_METADATA_CONFIG_ERROR, e);
                     throw new DatawaveQueryException(qe);
@@ -2002,11 +2004,11 @@ public class DefaultQueryPlanner extends QueryPlanner {
     public long maxRangesPerQueryPiece() {
         return this.maxRangesPerQueryPiece;
     }
-
+    
     public void setCompressOptionMappings(boolean compressMappings) {
         this.compressMappings = compressMappings;
     }
-
+    
     public boolean getCompressOptionMappings() {
         return compressMappings;
     }

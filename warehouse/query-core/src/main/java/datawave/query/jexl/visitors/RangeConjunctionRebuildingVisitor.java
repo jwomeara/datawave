@@ -226,7 +226,7 @@ public class RangeConjunctionRebuildingVisitor extends RebuildingVisitor {
             newNode.jjtAddChild(orNode, index++);
             
         }
-
+        
         // If we had no other nodes than this bounded range, we can strip out the original parent
         if (newNode.jjtGetNumChildren() == 1) {
             newNode.jjtGetChild(0).jjtSetParent(newNode.jjtGetParent());

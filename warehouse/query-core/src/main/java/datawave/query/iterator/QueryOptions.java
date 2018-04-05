@@ -208,7 +208,7 @@ public class QueryOptions implements OptionDescriber {
     public static final String SORTED_UIDS = "sorted.uids";
     
     public static final String DATA_QUERY_EXPRESSION_FILTER_ENABLED = "query.data.expression.filter.enabled";
-
+    
     protected Map<String,String> options;
     
     protected String query;
@@ -619,7 +619,7 @@ public class QueryOptions implements OptionDescriber {
         if (compositeMetadata != null)
             for (Multimap<String,String> compositeFieldMap : compositeMetadata.getCompositeFieldMapByType().values())
                 for (String compositeField : compositeFieldMap.keySet())
-                    if(!CompositeIngest.isOverloadedCompositeField(compositeFieldMap, compositeField))
+                    if (!CompositeIngest.isOverloadedCompositeField(compositeFieldMap, compositeField))
                         allIndexOnlyFields.add(compositeField);
         return allIndexOnlyFields;
     }
@@ -641,7 +641,7 @@ public class QueryOptions implements OptionDescriber {
         if (compositeMetadata != null)
             for (Multimap<String,String> compositeFieldMap : compositeMetadata.getCompositeFieldMapByType().values())
                 for (String compositeField : compositeFieldMap.keySet())
-                    if(!CompositeIngest.isOverloadedCompositeField(compositeFieldMap, compositeField))
+                    if (!CompositeIngest.isOverloadedCompositeField(compositeFieldMap, compositeField))
                         nonEventFields.add(compositeField);
         return nonEventFields;
     }
@@ -1116,7 +1116,7 @@ public class QueryOptions implements OptionDescriber {
             log.error("A list of index only fields must be provided when running an optimized query");
             return false;
         }
-
+        
         this.fiAggregator = new IdentityAggregator(getNonEventFields(), getEvaluationFilter(), getEvaluationFilter() != null ? getEvaluationFilter()
                         .getMaxNextCount() : -1);
         

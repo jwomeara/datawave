@@ -1,5 +1,6 @@
 package datawave.util;
 
+import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import io.protostuff.LinkedBuffer;
@@ -30,7 +31,7 @@ public class StringMultimapSchemaTest {
     
     @Test
     public void testProtobufReadWrite() {
-        Multimap<String,String> sourceMultimap = HashMultimap.create();
+        Multimap<String,String> sourceMultimap = ArrayListMultimap.create();
         sourceMultimap.put("this", "that");
         sourceMultimap.putAll("something", Arrays.asList("this", "that", "the other"));
         

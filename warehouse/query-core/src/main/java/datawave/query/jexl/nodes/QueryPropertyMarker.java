@@ -21,9 +21,9 @@ import org.apache.log4j.Logger;
  * This is a node that can be put in place of an underlying reference node to place a property on an underlying query sub-tree (e.g. ExceededValueThreshold)
  */
 public class QueryPropertyMarker extends ASTReference {
-
+    
     private static final Logger log = Logger.getLogger(QueryPropertyMarker.class);
-
+    
     public QueryPropertyMarker() {
         this(ParserTreeConstants.JJTREFERENCE);
     }
@@ -71,7 +71,7 @@ public class QueryPropertyMarker extends ASTReference {
         refExpNode1.jjtSetParent(this);
         this.jjtAddChild(refExpNode1, 0);
     }
-
+    
     /**
      * A routine to determine whether an and node is actually a specific instance of a query marker. The reason for this routine is that if the query is
      * serialized and deserialized, then only the underlying assignment will persist. Any node within the tree originally created except for a sibling of the
