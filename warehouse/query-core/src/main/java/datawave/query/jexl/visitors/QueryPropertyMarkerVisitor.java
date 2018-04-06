@@ -34,7 +34,7 @@ public class QueryPropertyMarkerVisitor extends BaseVisitor {
     protected List<JexlNode> sourceNodes;
     
     private boolean identifierFound = false;
-    
+
     static {
         TYPE_IDENTIFIERS = new HashSet<>();
         TYPE_IDENTIFIERS.add(IndexHoleMarkerJexlNode.class.getSimpleName());
@@ -84,10 +84,45 @@ public class QueryPropertyMarkerVisitor extends BaseVisitor {
             if (identifier != null) {
                 foundIdentifiers.add(identifier);
             }
+        } else {
+            String identifier = JexlASTHelper.getIdentifier(node);
+            // we found the identifier, but we didn't see the
+            // overarching and node, let's see if we can find it
+            if (identifier != null && typeIdentifiers.contains(identifier)) {
+                JexlNode andParent = null;
+                JexlNode curNode = node;
+                JexlNode parent = node.jjtGetParent();
+
+                // keep traversing our ancestors as long as they are either a Reference, ReferenceExpression, or AndNode
+                while (parent != null && (parent instanceof ASTReference || parent instanceof ASTReferenceExpression || parent instanceof ASTAndNode)) {
+                    if (parent instanceof ASTAndNode && parent.jjtGetNumChildren() > 1) {
+                        andParent = parent;
+                        break;
+                    }
+                    curNode = parent;
+                }
+
+                // if we found the overarching and node, every node other than the current
+                // node (the node that leads to the marker node) is a sibling
+                if (andParent != null) {
+                    this.identifierFound = true;
+                    List<JexlNode> siblingNodes = new ArrayList<>();
+                    for (JexlNode child : JexlNodes.children(andParent)) {
+                        if (!child.equals(curNode))
+                            siblingNodes.add(child);
+                    }
+                    sourceNodes = siblingNodes;
+                }
+            }
         }
         return null;
     }
-    
+
+    @Override
+    public Object visit(ASTOrNode node, Object data) {
+        return null;
+    }
+
     @Override
     public Object visit(ASTOrNode node, Object data) {
         return null;
