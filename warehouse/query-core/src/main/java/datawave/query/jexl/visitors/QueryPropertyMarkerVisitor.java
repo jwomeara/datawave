@@ -67,44 +67,47 @@ public class QueryPropertyMarkerVisitor extends BaseVisitor {
             return trimReferenceNodes(node.jjtGetChild(0));
         return node;
     }
-    
+
     @Override
     public Object visit(ASTAssignment node, Object data) {
-        if (data != null) {
-            Set foundIdentifiers = (Set) data;
-            
-            String identifier = JexlASTHelper.getIdentifier(node);
-            if (identifier != null) {
-                foundIdentifiers.add(identifier);
-            }
-        } else {
-            String identifier = JexlASTHelper.getIdentifier(node);
-            // we found the identifier, but we didn't see the
-            // overarching and node, let's see if we can find it
-            if (identifier != null && typeIdentifiers.contains(identifier)) {
-                JexlNode andParent = null;
-                JexlNode curNode = node;
-                JexlNode parent = node.jjtGetParent();
+        if (!identifierFound) {
+            if (data != null) {
+                Set foundIdentifiers = (Set) data;
 
-                // keep traversing our ancestors as long as they are either a Reference, ReferenceExpression, or AndNode
-                while (parent != null && (parent instanceof ASTReference || parent instanceof ASTReferenceExpression || parent instanceof ASTAndNode)) {
-                    if (parent instanceof ASTAndNode && parent.jjtGetNumChildren() > 1) {
-                        andParent = parent;
-                        break;
-                    }
-                    curNode = parent;
+                String identifier = JexlASTHelper.getIdentifier(node);
+                if (identifier != null) {
+                    foundIdentifiers.add(identifier);
                 }
+            } else {
+                String identifier = JexlASTHelper.getIdentifier(node);
+                // we found the identifier, but we didn't see the
+                // overarching and node, let's see if we can find it
+                if (identifier != null && typeIdentifiers.contains(identifier)) {
+                    JexlNode andParent = null;
+                    JexlNode curNode = node;
+                    JexlNode parent = node.jjtGetParent();
 
-                // if we found the overarching and node, every node other than the current
-                // node (the node that leads to the marker node) is a sibling
-                if (andParent != null) {
-                    this.identifierFound = true;
-                    List<JexlNode> siblingNodes = new ArrayList<>();
-                    for (JexlNode child : JexlNodes.children(andParent)) {
-                        if (!child.equals(curNode))
-                            siblingNodes.add(child);
+                    // keep traversing our ancestors as long as they are either a Reference, ReferenceExpression, or AndNode
+                    while (parent != null && (parent instanceof ASTReference || parent instanceof ASTReferenceExpression || parent instanceof ASTAndNode)) {
+                        if (parent instanceof ASTAndNode && parent.jjtGetNumChildren() > 1) {
+                            andParent = parent;
+                            break;
+                        }
+                        curNode = parent;
+                        parent = parent.jjtGetParent();
                     }
-                    sourceNodes = siblingNodes;
+
+                    // if we found the overarching and node, every node other than the current
+                    // node (the node that leads to the marker node) is a sibling
+                    if (andParent != null) {
+                        this.identifierFound = true;
+                        List<JexlNode> siblingNodes = new ArrayList<>();
+                        for (JexlNode child : JexlNodes.children(andParent)) {
+                            if (!child.equals(curNode))
+                                siblingNodes.add(child);
+                        }
+                        sourceNodes = siblingNodes;
+                    }
                 }
             }
         }
