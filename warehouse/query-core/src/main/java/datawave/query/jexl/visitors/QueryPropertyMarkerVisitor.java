@@ -29,7 +29,7 @@ public class QueryPropertyMarkerVisitor extends BaseVisitor {
     protected List<JexlNode> sourceNodes;
     
     private boolean identifierFound = false;
-
+    
     static {
         TYPE_IDENTIFIERS = new HashSet<>();
         TYPE_IDENTIFIERS.add(IndexHoleMarkerJexlNode.class.getSimpleName());
@@ -51,12 +51,47 @@ public class QueryPropertyMarkerVisitor extends BaseVisitor {
             visitor.typeIdentifiers.addAll(TYPE_IDENTIFIERS);
         
         node.jjtAccept(visitor, null);
-
+        
         if (visitor.identifierFound) {
             if (sourceNodes != null)
                 for (JexlNode sourceNode : visitor.sourceNodes)
                     sourceNodes.add(trimReferenceNodes(sourceNode));
             return true;
+        } else {
+            // go up the tree and check all of the and nodes along the way to
+            // see if they are marked (i.e. are we deep within a marked node?)
+            JexlNode andParent = null;
+            JexlNode parent = node.jjtGetParent();
+
+            while (andParent == null) {
+                while (parent != null) {
+                    if (parent instanceof ASTAndNode && parent.jjtGetNumChildren() > 1) {
+                        andParent = parent;
+                        break;
+                    }
+                    parent = parent.jjtGetParent();
+                }
+
+                if (andParent != null) {
+                    andParent.jjtAccept(visitor, null);
+
+                    if (visitor.identifierFound) {
+                        if (sourceNodes != null) {
+                            for (JexlNode sourceNode : visitor.sourceNodes)
+                                sourceNodes.add(trimReferenceNodes(sourceNode));
+                        }
+                        return true;
+                    }
+                }
+
+                if (parent != null) {
+                    // keep going
+                    parent = parent.jjtGetParent();
+                    andParent = null;
+                } else {
+                    break;
+                }
+            }
         }
         
         return false;
@@ -67,58 +102,25 @@ public class QueryPropertyMarkerVisitor extends BaseVisitor {
             return trimReferenceNodes(node.jjtGetChild(0));
         return node;
     }
-
+    
     @Override
     public Object visit(ASTAssignment node, Object data) {
-        if (!identifierFound) {
-            if (data != null) {
-                Set foundIdentifiers = (Set) data;
+        if (data != null) {
+            Set foundIdentifiers = (Set) data;
 
-                String identifier = JexlASTHelper.getIdentifier(node);
-                if (identifier != null) {
-                    foundIdentifiers.add(identifier);
-                }
-            } else {
-                String identifier = JexlASTHelper.getIdentifier(node);
-                // we found the identifier, but we didn't see the
-                // overarching and node, let's see if we can find it
-                if (identifier != null && typeIdentifiers.contains(identifier)) {
-                    JexlNode andParent = null;
-                    JexlNode curNode = node;
-                    JexlNode parent = node.jjtGetParent();
-
-                    // keep traversing our ancestors as long as they are either a Reference, ReferenceExpression, or AndNode
-                    while (parent != null && (parent instanceof ASTReference || parent instanceof ASTReferenceExpression || parent instanceof ASTAndNode)) {
-                        if (parent instanceof ASTAndNode && parent.jjtGetNumChildren() > 1) {
-                            andParent = parent;
-                            break;
-                        }
-                        curNode = parent;
-                        parent = parent.jjtGetParent();
-                    }
-
-                    // if we found the overarching and node, every node other than the current
-                    // node (the node that leads to the marker node) is a sibling
-                    if (andParent != null) {
-                        this.identifierFound = true;
-                        List<JexlNode> siblingNodes = new ArrayList<>();
-                        for (JexlNode child : JexlNodes.children(andParent)) {
-                            if (!child.equals(curNode))
-                                siblingNodes.add(child);
-                        }
-                        sourceNodes = siblingNodes;
-                    }
-                }
+            String identifier = JexlASTHelper.getIdentifier(node);
+            if (identifier != null) {
+                foundIdentifiers.add(identifier);
             }
         }
         return null;
     }
-
+    
     @Override
     public Object visit(ASTOrNode node, Object data) {
         return null;
     }
-
+    
     @Override
     public Object visit(ASTAndNode node, Object data) {
         if (node.jjtGetNumChildren() == 1) {

@@ -391,9 +391,9 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
                     }
                 }
             }
-
+            
             // if this is true, then it indicates that we are dealing with a query containing an overloaded composite
-            // field which only contained the first component term.  This means that we are running a query against
+            // field which only contained the first component term. This means that we are running a query against
             // the base composite term, and thus need to expand our ranges to fully include both the composite and
             // non-composite events in our range.
             boolean expandRangeForBaseTerm = CompositeIngest.isOverloadedCompositeField(config.getCompositeToFieldMap(), comp.compositeName)
@@ -1125,7 +1125,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
         }
         return orderedMm;
     }
-
+    
     private Multimap<String,JexlNode> getChildLeafNodes(JexlNode child, Collection<JexlNode> otherNodes) {
         Multimap<String,JexlNode> childrenLeafNodes = ArrayListMultimap.create();
         
