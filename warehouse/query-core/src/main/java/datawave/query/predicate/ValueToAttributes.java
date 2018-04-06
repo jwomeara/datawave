@@ -17,7 +17,7 @@ import datawave.query.Constants;
 import datawave.query.attributes.AttributeFactory;
 import datawave.query.attributes.Attributes;
 import datawave.query.attributes.TypeAttribute;
-import datawave.query.util.Composite;
+import datawave.query.composite.Composite;
 import datawave.query.util.TypeMetadata;
 
 import org.apache.accumulo.core.data.Key;

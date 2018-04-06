@@ -122,7 +122,7 @@ public interface IngestHelperInterface extends DataTypeHelper {
     
     boolean isDataTypeField(String fieldName);
     
-    Map<String,String[]> getCompositeNameAndIndex(String fieldName);
+    Map<String,String[]> getCompositeFieldDefinitions();
     
     boolean isVirtualIndexedField(String fieldName);
     

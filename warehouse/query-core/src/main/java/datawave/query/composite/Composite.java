@@ -1,4 +1,4 @@
-package datawave.query.util;
+package datawave.query.composite;
 
 import java.util.List;
 import java.util.Set;

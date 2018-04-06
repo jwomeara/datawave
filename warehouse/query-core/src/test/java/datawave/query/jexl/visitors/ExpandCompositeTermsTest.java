@@ -1,4 +1,4 @@
-package datawave.query;
+package datawave.query.jexl.visitors;
 
 import com.google.common.collect.LinkedListMultimap;
 import com.google.common.collect.Multimap;
@@ -6,12 +6,6 @@ import com.google.common.collect.Sets;
 import datawave.data.normalizer.Normalizer;
 import datawave.query.config.ShardQueryConfiguration;
 import datawave.query.jexl.JexlASTHelper;
-import datawave.query.jexl.visitors.ExpandCompositeTerms;
-import datawave.query.jexl.visitors.FunctionIndexQueryExpansionVisitor;
-import datawave.query.jexl.visitors.JexlStringBuildingVisitor;
-import datawave.query.jexl.visitors.PrintingVisitor;
-import datawave.query.jexl.visitors.TreeFlatteningRebuildingVisitor;
-import datawave.query.util.CompositeNameAndIndex;
 import datawave.query.util.DateIndexHelper;
 import datawave.query.util.MockMetadataHelper;
 import datawave.webservice.common.logging.ThreadConfigurableLogger;
@@ -23,7 +17,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -39,7 +32,6 @@ public class ExpandCompositeTermsTest {
     
     ShardQueryConfiguration conf = new ShardQueryConfiguration();
     Multimap<String,String> compositeToFieldMap = LinkedListMultimap.create();
-    Multimap<String,CompositeNameAndIndex> fieldToCompositeMap = LinkedListMultimap.create();
     
     String[] originalQueries = {"MAKE == 'Ford' && COLOR == 'red'", "MAKE -- 'Ford' && COLOR == 'red' && MAKE_COLOR == 'Fordred'",
             "(MAKE == 'Ford' && WHEELS == 3) && COLOR == 'red'"};
@@ -57,17 +49,6 @@ public class ExpandCompositeTermsTest {
         compositeToFieldMap.put("TEAM_POINTS", "TEAM");
         compositeToFieldMap.put("TEAM_POINTS", "POINTS");
         conf.setCompositeToFieldMap(compositeToFieldMap);
-        
-        fieldToCompositeMap.put("MAKE", new CompositeNameAndIndex("MAKE_COLOR", 0));
-        fieldToCompositeMap.put("COLOR", new CompositeNameAndIndex("MAKE_COLOR", 1));
-        fieldToCompositeMap.put("COLOR", new CompositeNameAndIndex("COLOR_WHEELS", 0));
-        fieldToCompositeMap.put("WHEELS", new CompositeNameAndIndex("COLOR_WHEELS", 1));
-        fieldToCompositeMap.put("TEAM", new CompositeNameAndIndex("TEAM_POINTS", 0));
-        fieldToCompositeMap.put("POINTS", new CompositeNameAndIndex("TEAM_POINTS", 1));
-        fieldToCompositeMap.put("TEAM", new CompositeNameAndIndex("TEAM_NAME_POINTS", 0));
-        fieldToCompositeMap.put("NAME", new CompositeNameAndIndex("TEAM_NAME_POINTS", 1));
-        fieldToCompositeMap.put("POINTS", new CompositeNameAndIndex("TEAM_NAME_POINTS", 2));
-        conf.setFieldToCompositeMap(fieldToCompositeMap);
     }
     
     @Test
@@ -197,11 +178,6 @@ public class ExpandCompositeTermsTest {
         fieldSet.add("GEO");
         conf.setFixedLengthFields(fieldSet);
         
-        Multimap<String,CompositeNameAndIndex> fieldToCompositeMap = LinkedListMultimap.create();
-        fieldToCompositeMap.put("GEO", new CompositeNameAndIndex("GEO", 0));
-        fieldToCompositeMap.put("WKT_BYTE_LENGTH", new CompositeNameAndIndex("GEO", 1));
-        conf.setFieldToCompositeMap(fieldToCompositeMap);
-        
         String query = "((GEO >= '1f0155640000000000' && GEO <= '1f01556bffffffffff') || GEO == '00' || (GEO >= '0100' && GEO <= '0103')) && (WKT_BYTE_LENGTH >= '"
                         + Normalizer.NUMBER_NORMALIZER.normalize("0") + "' && WKT_BYTE_LENGTH <= '" + Normalizer.NUMBER_NORMALIZER.normalize("12345") + "')";
         String expected = "(((GEO >= '1f0155640000000000􏿿+AE0' && GEO <= '1f01556bffffffffff􏿿+eE1.2345') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '1f0155640000000000' && GEO <= '1f01556bffffffffff') && (WKT_BYTE_LENGTH >= '+AE0' && WKT_BYTE_LENGTH <= '+eE1.2345')))))) || ((GEO >= '00􏿿+AE0' && GEO <= '00􏿿+eE1.2345') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && (GEO == '00' && (WKT_BYTE_LENGTH >= '+AE0' && WKT_BYTE_LENGTH <= '+eE1.2345')))))) || ((GEO >= '0100􏿿+AE0' && GEO <= '0103􏿿+eE1.2345') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '0100' && GEO <= '0103') && (WKT_BYTE_LENGTH >= '+AE0' && WKT_BYTE_LENGTH <= '+eE1.2345')))))))";
@@ -226,11 +202,6 @@ public class ExpandCompositeTermsTest {
         fieldSet.add("GEO");
         conf.setFixedLengthFields(fieldSet);
         
-        Multimap<String,CompositeNameAndIndex> fieldToCompositeMap = LinkedListMultimap.create();
-        fieldToCompositeMap.put("GEO", new CompositeNameAndIndex("GEO", 0));
-        fieldToCompositeMap.put("WKT_BYTE_LENGTH", new CompositeNameAndIndex("GEO", 1));
-        conf.setFieldToCompositeMap(fieldToCompositeMap);
-        
         String query = "(GEO >= '0100' && GEO <= '0103') && WKT_BYTE_LENGTH >= '" + Normalizer.NUMBER_NORMALIZER.normalize("0") + "'";
         String expected = "(GEO >= '0100􏿿+AE0' && GEO < '0104') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '0100' && GEO <= '0103') && WKT_BYTE_LENGTH >= '+AE0'))))";
         
@@ -253,11 +224,6 @@ public class ExpandCompositeTermsTest {
         Set<String> fieldSet = new HashSet<>();
         fieldSet.add("GEO");
         conf.setFixedLengthFields(fieldSet);
-        
-        Multimap<String,CompositeNameAndIndex> fieldToCompositeMap = LinkedListMultimap.create();
-        fieldToCompositeMap.put("GEO", new CompositeNameAndIndex("GEO", 0));
-        fieldToCompositeMap.put("WKT_BYTE_LENGTH", new CompositeNameAndIndex("GEO", 1));
-        conf.setFieldToCompositeMap(fieldToCompositeMap);
         
         String query = "(GEO >= '0100' && GEO <= '0103') && WKT_BYTE_LENGTH <= '" + Normalizer.NUMBER_NORMALIZER.normalize("12345") + "'";
         String expected = "(GEO >= '0100' && GEO <= '0103􏿿+eE1.2345') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '0100' && GEO <= '0103') && WKT_BYTE_LENGTH <= '+eE1.2345'))))";
@@ -282,11 +248,6 @@ public class ExpandCompositeTermsTest {
         fieldSet.add("GEO");
         conf.setFixedLengthFields(fieldSet);
         
-        Multimap<String,CompositeNameAndIndex> fieldToCompositeMap = LinkedListMultimap.create();
-        fieldToCompositeMap.put("GEO", new CompositeNameAndIndex("GEO", 0));
-        fieldToCompositeMap.put("WKT_BYTE_LENGTH", new CompositeNameAndIndex("GEO", 1));
-        conf.setFieldToCompositeMap(fieldToCompositeMap);
-        
         String query = "GEO >= '0100' && WKT_BYTE_LENGTH <= '" + Normalizer.NUMBER_NORMALIZER.normalize("12345") + "'";
         String expected = "(GEO >= '0100' && WKT_BYTE_LENGTH <= '" + Normalizer.NUMBER_NORMALIZER.normalize("12345") + "')";
         
@@ -310,11 +271,6 @@ public class ExpandCompositeTermsTest {
         fieldSet.add("GEO");
         conf.setFixedLengthFields(fieldSet);
         
-        Multimap<String,CompositeNameAndIndex> fieldToCompositeMap = LinkedListMultimap.create();
-        fieldToCompositeMap.put("GEO", new CompositeNameAndIndex("GEO", 0));
-        fieldToCompositeMap.put("WKT_BYTE_LENGTH", new CompositeNameAndIndex("GEO", 1));
-        conf.setFieldToCompositeMap(fieldToCompositeMap);
-        
         String query = "GEO <= '0103' && WKT_BYTE_LENGTH >= '" + Normalizer.NUMBER_NORMALIZER.normalize("12345") + "'";
         String expected = "(GEO < '0104' && WKT_BYTE_LENGTH >= '" + Normalizer.NUMBER_NORMALIZER.normalize("12345") + "')";
         
@@ -337,11 +293,6 @@ public class ExpandCompositeTermsTest {
         Set<String> fieldSet = new HashSet<>();
         fieldSet.add("GEO");
         conf.setFixedLengthFields(fieldSet);
-        
-        Multimap<String,CompositeNameAndIndex> fieldToCompositeMap = LinkedListMultimap.create();
-        fieldToCompositeMap.put("GEO", new CompositeNameAndIndex("GEO", 0));
-        fieldToCompositeMap.put("WKT_BYTE_LENGTH", new CompositeNameAndIndex("GEO", 1));
-        conf.setFieldToCompositeMap(fieldToCompositeMap);
         
         String query = "((((GEO >= '0202' && GEO <= '020d'))) || (((GEO >= '030a' && GEO <= '0335'))) || (((GEO >= '0428' && GEO <= '0483'))) || (((GEO >= '0500aa' && GEO <= '050355'))) || (((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO <= '1f36c71c71c71c71c7')))) && ((WKT_BYTE_LENGTH >= '+AE0' && WKT_BYTE_LENGTH <= '"
                         + Normalizer.NUMBER_NORMALIZER.normalize("12345") + "'))";
@@ -367,11 +318,6 @@ public class ExpandCompositeTermsTest {
         Set<String> fieldSet = new HashSet<>();
         fieldSet.add("GEO");
         conf.setFixedLengthFields(fieldSet);
-        
-        Multimap<String,CompositeNameAndIndex> fieldToCompositeMap = LinkedListMultimap.create();
-        fieldToCompositeMap.put("GEO", new CompositeNameAndIndex("GEO", 0));
-        fieldToCompositeMap.put("WKT", new CompositeNameAndIndex("GEO", 1));
-        conf.setFieldToCompositeMap(fieldToCompositeMap);
         
         String upperBound = Normalizer.NUMBER_NORMALIZER.normalize("12345");
         
@@ -576,11 +522,6 @@ public class ExpandCompositeTermsTest {
         compositeWithOldDataMap.put("GEO", new Date(TimeUnit.DAYS.toMillis(15)));
         conf.setCompositeTransitionDates(compositeWithOldDataMap);
         
-        Multimap<String,CompositeNameAndIndex> fieldToCompositeMap = LinkedListMultimap.create();
-        fieldToCompositeMap.put("GEO", new CompositeNameAndIndex("GEO", 0));
-        fieldToCompositeMap.put("WKT", new CompositeNameAndIndex("GEO", 1));
-        conf.setFieldToCompositeMap(fieldToCompositeMap);
-        
         String upperBound = Normalizer.NUMBER_NORMALIZER.normalize("12345");
         
         // COMPOSITE QUERY AGAINST THE COMPOSITE INDEX
@@ -778,11 +719,6 @@ public class ExpandCompositeTermsTest {
         fieldSet.add("GEO");
         conf.setFixedLengthFields(fieldSet);
         
-        Multimap<String,CompositeNameAndIndex> fieldToCompositeMap = LinkedListMultimap.create();
-        fieldToCompositeMap.put("GEO", new CompositeNameAndIndex("GEO_WKT", 0));
-        fieldToCompositeMap.put("WKT", new CompositeNameAndIndex("GEO_WKT", 1));
-        conf.setFieldToCompositeMap(fieldToCompositeMap);
-        
         String upperBound = Normalizer.NUMBER_NORMALIZER.normalize("12345");
         
         // COMPOSITE QUERY AGAINST THE COMPOSITE INDEX
@@ -979,11 +915,6 @@ public class ExpandCompositeTermsTest {
         fieldSet.add("GEO");
         conf.setFixedLengthFields(fieldSet);
         
-        Multimap<String,CompositeNameAndIndex> fieldToCompositeMap = LinkedListMultimap.create();
-        fieldToCompositeMap.put("GEO", new CompositeNameAndIndex("GEO", 0));
-        fieldToCompositeMap.put("WKT", new CompositeNameAndIndex("GEO", 1));
-        conf.setFieldToCompositeMap(fieldToCompositeMap);
-        
         String query = "((((GEO >= '0202' && GEO <= '020d'))) || (((GEO >= '030a' && GEO <= '0335'))) || (((GEO >= '0428' && GEO <= '0483'))) || (((GEO >= '0500aa' && GEO <= '050355'))) || (((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO <= '1f36c71c71c71c71c7'))))";
         String expected = "((((GEO >= '0202' && GEO < '020e'))) || (((GEO >= '030a' && GEO < '0336'))) || (((GEO >= '0428' && GEO < '0484'))) || (((GEO >= '0500aa' && GEO < '050356'))) || (((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO < '1f36c71c71c71c71c8'))))";
         
@@ -1007,11 +938,6 @@ public class ExpandCompositeTermsTest {
         fieldSet.add("GEO");
         conf.setFixedLengthFields(fieldSet);
         
-        Multimap<String,CompositeNameAndIndex> fieldToCompositeMap = LinkedListMultimap.create();
-        fieldToCompositeMap.put("GEO", new CompositeNameAndIndex("GEO", 0));
-        fieldToCompositeMap.put("WKT", new CompositeNameAndIndex("GEO", 1));
-        conf.setFieldToCompositeMap(fieldToCompositeMap);
-        
         String query = "((((GEO >= '0202' && GEO <= '020d'))) || (((GEO >= '030a' && GEO <= '0335'))) || (((GEO >= '0428' && GEO <= '0483'))) || (((GEO >= '0500aa' && GEO <= '050355'))) || (((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO <= '1f36c71c71c71c71c7')))) && ((WKT >= '+AE0' && WKT < '+bE4'))";
         String expected = "(((GEO >= '0202􏿿+AE0' && GEO < '020d􏿿+bE4') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '0202' && GEO <= '020d') && (WKT >= '+AE0' && WKT < '+bE4')))))) || ((GEO >= '030a􏿿+AE0' && GEO < '0335􏿿+bE4') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '030a' && GEO <= '0335') && (WKT >= '+AE0' && WKT < '+bE4')))))) || ((GEO >= '0428􏿿+AE0' && GEO < '0483􏿿+bE4') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '0428' && GEO <= '0483') && (WKT >= '+AE0' && WKT < '+bE4')))))) || ((GEO >= '0500aa􏿿+AE0' && GEO < '050355􏿿+bE4') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '0500aa' && GEO <= '050355') && (WKT >= '+AE0' && WKT < '+bE4')))))) || ((GEO >= '1f0aaaaaaaaaaaaaaa􏿿+AE0' && GEO < '1f36c71c71c71c71c7􏿿+bE4') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO <= '1f36c71c71c71c71c7') && (WKT >= '+AE0' && WKT < '+bE4')))))))";
         
@@ -1030,11 +956,6 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-        
-        Multimap<String,CompositeNameAndIndex> fieldToCompositeMap = LinkedListMultimap.create();
-        fieldToCompositeMap.put("GEO", new CompositeNameAndIndex("GEO", 0));
-        fieldToCompositeMap.put("WKT", new CompositeNameAndIndex("GEO", 1));
-        conf.setFieldToCompositeMap(fieldToCompositeMap);
         
         String query = "((((GEO >= '0202' && GEO <= '020d'))) || (((GEO >= '030a' && GEO <= '0335'))) || (((GEO >= '0428' && GEO <= '0483'))) || (((GEO >= '0500aa' && GEO <= '050355'))) || (((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO <= '1f36c71c71c71c71c7')))) && ((WKT >= '+AE0' && WKT < '+bE4'))";
         String expected = "((WKT >= '+AE0' && WKT < '+bE4') && ((GEO >= '0202' && GEO < '020e') || (GEO >= '030a' && GEO < '0336') || (GEO >= '0428' && GEO < '0484') || (GEO >= '0500aa' && GEO < '050356') || (GEO >= '1f0aaaaaaaaaaaaaaa' && GEO < '1f36c71c71c71c71c8')))";
@@ -1059,11 +980,6 @@ public class ExpandCompositeTermsTest {
         fieldSet.add("GEO");
         conf.setFixedLengthFields(fieldSet);
         
-        Multimap<String,CompositeNameAndIndex> fieldToCompositeMap = LinkedListMultimap.create();
-        fieldToCompositeMap.put("GEO", new CompositeNameAndIndex("GEO_WKT", 0));
-        fieldToCompositeMap.put("WKT", new CompositeNameAndIndex("GEO_WKT", 1));
-        conf.setFieldToCompositeMap(fieldToCompositeMap);
-        
         String query = "((((GEO >= '0202' && GEO <= '020d'))) || (((GEO >= '030a' && GEO <= '0335'))) || (((GEO >= '0428' && GEO <= '0483'))) || (((GEO >= '0500aa' && GEO <= '050355'))) || (((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO <= '1f36c71c71c71c71c7')))) && ((WKT >= '+AE0' && WKT < '+bE4'))";
         String expected = "(((GEO_WKT >= '0202􏿿+AE0' && GEO_WKT < '020d􏿿+bE4') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '0202' && GEO <= '020d') && (WKT >= '+AE0' && WKT < '+bE4')))))) || ((GEO_WKT >= '030a􏿿+AE0' && GEO_WKT < '0335􏿿+bE4') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '030a' && GEO <= '0335') && (WKT >= '+AE0' && WKT < '+bE4')))))) || ((GEO_WKT >= '0428􏿿+AE0' && GEO_WKT < '0483􏿿+bE4') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '0428' && GEO <= '0483') && (WKT >= '+AE0' && WKT < '+bE4')))))) || ((GEO_WKT >= '0500aa􏿿+AE0' && GEO_WKT < '050355􏿿+bE4') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '0500aa' && GEO <= '050355') && (WKT >= '+AE0' && WKT < '+bE4')))))) || ((GEO_WKT >= '1f0aaaaaaaaaaaaaaa􏿿+AE0' && GEO_WKT < '1f36c71c71c71c71c7􏿿+bE4') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO <= '1f36c71c71c71c71c7') && (WKT >= '+AE0' && WKT < '+bE4')))))))";
         
@@ -1087,11 +1003,6 @@ public class ExpandCompositeTermsTest {
         fieldSet.add("GEO");
         conf.setFixedLengthFields(fieldSet);
         
-        Multimap<String,CompositeNameAndIndex> fieldToCompositeMap = LinkedListMultimap.create();
-        fieldToCompositeMap.put("GEO", new CompositeNameAndIndex("GEO_WKT", 0));
-        fieldToCompositeMap.put("WKT", new CompositeNameAndIndex("GEO_WKT", 1));
-        conf.setFieldToCompositeMap(fieldToCompositeMap);
-        
         String query = "((((GEO >= '0202' && GEO <= '020d'))) || (((GEO >= '030a' && GEO <= '0335'))) || (((GEO >= '0428' && GEO <= '0483'))) || (((GEO >= '0500aa' && GEO <= '050355'))) || (((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO <= '1f36c71c71c71c71c7'))))";
         String expected = "((((GEO >= '0202' && GEO <= '020d'))) || (((GEO >= '030a' && GEO <= '0335'))) || (((GEO >= '0428' && GEO <= '0483'))) || (((GEO >= '0500aa' && GEO <= '050355'))) || (((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO <= '1f36c71c71c71c71c7'))))";
         
@@ -1110,11 +1021,6 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-        
-        Multimap<String,CompositeNameAndIndex> fieldToCompositeMap = LinkedListMultimap.create();
-        fieldToCompositeMap.put("GEO", new CompositeNameAndIndex("GEO_WKT", 0));
-        fieldToCompositeMap.put("WKT", new CompositeNameAndIndex("GEO_WKT", 1));
-        conf.setFieldToCompositeMap(fieldToCompositeMap);
         
         String query = "((((GEO >= '0202' && GEO <= '020d'))) || (((GEO >= '030a' && GEO <= '0335'))) || (((GEO >= '0428' && GEO <= '0483'))) || (((GEO >= '0500aa' && GEO <= '050355'))) || (((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO <= '1f36c71c71c71c71c7')))) && ((WKT >= '+AE0' && WKT < '+bE4'))";
         String expected = "((((GEO >= '0202' && GEO <= '020d'))) || (((GEO >= '030a' && GEO <= '0335'))) || (((GEO >= '0428' && GEO <= '0483'))) || (((GEO >= '0500aa' && GEO <= '050355'))) || (((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO <= '1f36c71c71c71c71c7')))) && ((WKT >= '+AE0' && WKT < '+bE4'))";

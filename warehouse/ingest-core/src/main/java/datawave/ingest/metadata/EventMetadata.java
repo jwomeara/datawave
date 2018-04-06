@@ -28,6 +28,7 @@ import org.apache.log4j.Logger;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import org.springframework.util.StringUtils;
 
 /**
  * Object that summarizes the events that are processed by the EventMapper. This object extracts metadata about the events (i.e. fields, indexed fields, field
@@ -192,8 +193,9 @@ public class EventMetadata implements RawRecordMetadata {
             }
             
             if (helper.isCompositeField(fieldName)) {
-                Map<String,String[]> map = helper.getCompositeNameAndIndex(fieldName);
-                update(map.get(fieldName), event, fields.get(fieldName), "", 0, null, this.compositeFieldsInfo, null);
+                String[] componentFields = helper.getCompositeFieldDefinitions().get(fieldName);
+                this.compositeFieldsInfo.createOrUpdate(fieldName, event.getDataType().outputName(), StringUtils.arrayToCommaDelimitedString(componentFields),
+                                event.getDate());
                 
                 // Add fixed fields and transition date if applicable
                 if (helper.isFixedLengthCompositeField(fieldName))

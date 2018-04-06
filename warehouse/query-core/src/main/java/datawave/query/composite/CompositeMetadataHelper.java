@@ -1,4 +1,4 @@
-package datawave.query.util;
+package datawave.query.composite;
 
 import java.text.ParseException;
 import java.util.Arrays;
@@ -9,7 +9,6 @@ import java.util.Set;
 
 import datawave.data.ColumnFamilyConstants;
 import datawave.ingest.data.config.ingest.CompositeIngest;
-import datawave.query.composite.CompositeMetadata;
 import datawave.security.util.ScannerHelper;
 
 import org.apache.accumulo.core.client.Connector;
@@ -106,44 +105,40 @@ public class CompositeMetadataHelper {
         for (Entry<Key,Value> entry : bs) {
             Text colFam = entry.getKey().getColumnFamily();
             
-            String row = entry.getKey().getRow().toString();
             String colq = entry.getKey().getColumnQualifier().toString();
             int idx = colq.indexOf(NULL_BYTE);
             String type = colq.substring(0, idx); // this is the datatype
             
-            if (colFam.equals(ColumnFamilyConstants.COLF_CITD)) {
+            if (datatypeFilter == null || datatypeFilter.isEmpty() || datatypeFilter.contains(type)) {
                 String fieldName = entry.getKey().getRow().toString();
-                if (null != entry.getKey().getColumnQualifier()) {
-                    if (idx != -1) {
-                        try {
-                            Date transitionDate = CompositeIngest.CompositeFieldNormalizer.formatter.parse(colq.substring(idx + 1));
-                            compositeMetadata.addCompositeTransitionDateByType(type, fieldName, transitionDate);
-                        } catch (ParseException e) {
-                            log.trace("Unable to parse composite field transition date", e);
+                if (colFam.equals(ColumnFamilyConstants.COLF_CITD)) {
+                    if (null != entry.getKey().getColumnQualifier()) {
+                        if (idx != -1) {
+                            try {
+                                Date transitionDate = CompositeIngest.CompositeFieldNormalizer.formatter.parse(colq.substring(idx + 1));
+                                compositeMetadata.addCompositeTransitionDateByType(type, fieldName, transitionDate);
+                            } catch (ParseException e) {
+                                log.trace("Unable to parse composite field transition date", e);
+                            }
+                        } else {
+                            log.warn("EventMetadata entry did not contain a null byte in the column qualifier: " + entry.getKey().toString());
                         }
                     } else {
-                        log.warn("EventMetadata entry did not contain a null byte in the column qualifier: " + entry.getKey().toString());
+                        log.warn("ColumnQualifier null in EventMetadata for key: " + entry.getKey().toString());
                     }
-                } else {
-                    log.warn("ColumnQualifier null in EventMetadata for key: " + entry.getKey().toString());
-                }
-            } else if (colFam.equals(ColumnFamilyConstants.COLF_CI)) {
-                // Get the column qualifier from the key. It contains the datatype
-                // and composite name,idx
-                if (null != entry.getKey().getColumnQualifier()) {
-                    if (idx != -1) {
-                        String componentField = entry.getKey().getRow().toString(); // this is the component of the composite
-                        if (datatypeFilter == null || datatypeFilter.isEmpty() || datatypeFilter.contains(type)) {
-                            // String compositeNameAndIndex = colq.substring(idx + 1); // this is the compositename,idx
-                            // compositeNameAndIndex = compositeNameAndIndex.replaceAll(",", "[") + "]";
-                            String compositeField = colq.substring(idx + 1, colq.indexOf(","));
-                            compositeMetadata.addCompositeFieldMapByType(type, compositeField, componentField);
+                } else if (colFam.equals(ColumnFamilyConstants.COLF_CI)) {
+                    // Get the column qualifier from the key. It contains the datatype
+                    // and composite name,idx
+                    if (null != entry.getKey().getColumnQualifier()) {
+                        if (idx != -1) {
+                            String[] componentFields = colq.substring(idx + 1).split(",");
+                            compositeMetadata.addCompositeFieldByType(type, fieldName, Arrays.asList(componentFields));
+                        } else {
+                            log.warn("EventMetadata entry did not contain a null byte in the column qualifier: " + entry.getKey().toString());
                         }
                     } else {
-                        log.warn("EventMetadata entry did not contain a null byte in the column qualifier: " + entry.getKey().toString());
+                        log.warn("ColumnQualifier null in EventMetadata for key: " + entry.getKey().toString());
                     }
-                } else {
-                    log.warn("ColumnQualifier null in EventMetadata for key: " + entry.getKey().toString());
                 }
             }
         }

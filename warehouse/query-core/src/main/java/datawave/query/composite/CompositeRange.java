@@ -1,8 +1,7 @@
-package datawave.query.util;
+package datawave.query.composite;
 
 import datawave.query.jexl.JexlNodeFactory;
 import org.apache.commons.jexl2.parser.ASTAndNode;
-import org.apache.commons.jexl2.parser.ASTEQNode;
 import org.apache.commons.jexl2.parser.ASTERNode;
 import org.apache.commons.jexl2.parser.ASTGENode;
 import org.apache.commons.jexl2.parser.ASTGTNode;

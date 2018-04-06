@@ -17,10 +17,12 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
+import com.google.common.collect.ArrayListMultimap;
 import datawave.data.ColumnFamilyConstants;
 import datawave.data.type.Type;
 import datawave.ingest.data.config.ingest.CompositeIngest;
 import datawave.query.composite.CompositeMetadata;
+import datawave.query.composite.CompositeMetadataHelper;
 import datawave.security.util.AuthorizationsUtil;
 import datawave.security.util.ScannerHelper;
 
@@ -51,7 +53,6 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.Sets;
-import com.google.common.collect.TreeMultimap;
 
 /**
  */
@@ -279,24 +280,24 @@ public class AllFieldMetadataHelper {
     }
     
     /**
-     * A map of composite name to the ordered list of it for example, mapping of {@code COLOR -> ['COLOR_WHEELS,0', 'MAKE_COLOR,1' ]}. If called multiple time,
-     * it returns the same cached map.
+     * A map of composite name to the ordered list of it for example, mapping of {@code COLOR -> ['COLOR_WHEELS', 'MAKE_COLOR' ]}. If called multiple time, it
+     * returns the same cached map.
      * 
      * @return An unmodifiable Multimap
      * @throws TableNotFoundException
      */
-    @Cacheable(value = "getFieldToCompositeMap", key = "{#root.target.auths,#root.target.metadataTableName}", cacheManager = "metadataHelperCacheManager")
-    public Multimap<String,CompositeNameAndIndex> getFieldToCompositeMap() throws TableNotFoundException {
-        log.debug("cache fault for getFieldToCompositeMap(" + this.auths + "," + this.metadataTableName + ")");
-        return this.getFieldToCompositeMap(null);
+    @Cacheable(value = "getCompositeToFieldMap", key = "{#root.target.auths,#root.target.metadataTableName}", cacheManager = "metadataHelperCacheManager")
+    public Multimap<String,String> getCompositeToFieldMap() throws TableNotFoundException {
+        log.debug("cache fault for getCompositeToFieldMap(" + this.auths + "," + this.metadataTableName + ")");
+        return this.getCompositeToFieldMap(null);
     }
     
-    @Cacheable(value = "getFieldToCompositeMap", key = "{#root.target.auths,#root.target.metadataTableName,#ingestTypeFilter}",
+    @Cacheable(value = "getCompositeToFieldMap", key = "{#root.target.auths,#root.target.metadataTableName,#ingestTypeFilter}",
                     cacheManager = "metadataHelperCacheManager")
-    public Multimap<String,CompositeNameAndIndex> getFieldToCompositeMap(Set<String> ingestTypeFilter) throws TableNotFoundException {
-        log.debug("cache fault for getFieldToCompositeMap(" + this.auths + "," + this.metadataTableName + "," + ingestTypeFilter + ")");
+    public Multimap<String,String> getCompositeToFieldMap(Set<String> ingestTypeFilter) throws TableNotFoundException {
+        log.debug("cache fault for getCompositeToFieldMap(" + this.auths + "," + this.metadataTableName + "," + ingestTypeFilter + ")");
         
-        TreeMultimap<String,CompositeNameAndIndex> mapForSorting = TreeMultimap.create();
+        ArrayListMultimap<String,String> compositeToFieldMap = ArrayListMultimap.create();
         
         Scanner bs = ScannerHelper.createScanner(connector, metadataTableName, auths);
         Range range = new Range();
@@ -323,9 +324,8 @@ public class AllFieldMetadataHelper {
                 }
                 
                 if (idx != -1) {
-                    String csv = colq.substring(idx + 1);
-                    CompositeNameAndIndex composite = new CompositeNameAndIndex(csv);
-                    mapForSorting.put(fieldName, composite);
+                    String[] componentFields = colq.substring(idx + 1).split(",");
+                    compositeToFieldMap.putAll(fieldName, Arrays.asList(componentFields));
                 } else {
                     log.warn("EventMetadata entry did not contain a null byte in the column qualifier: " + entry.getKey().toString());
                 }
@@ -334,7 +334,7 @@ public class AllFieldMetadataHelper {
             }
         }
         
-        return Multimaps.unmodifiableSortedSetMultimap(mapForSorting);
+        return Multimaps.unmodifiableMultimap(compositeToFieldMap);
     }
     
     /**
@@ -1000,7 +1000,7 @@ public class AllFieldMetadataHelper {
     /**
      * Invalidates all elements in all internal caches
      */
-    @CacheEvict(value = {"loadAllFields", "isIndexed", "getAllDatatypes", "getFieldToCompositeMap", "getFieldsToDatatypes", "getFieldsForDatatype",
+    @CacheEvict(value = {"loadAllFields", "isIndexed", "getAllDatatypes", "getCompositeToFieldMap", "getFieldsToDatatypes", "getFieldsForDatatype",
             "getIndexOnlyFields", "loadTermFrequencyFields", "loadIndexedFields", "loadExpansionFields", "loadContentFields", "loadDatatypes"},
                     allEntries = true, cacheManager = "metadataHelperCacheManager")
     public void evictCaches() {

@@ -143,7 +143,6 @@ public class IteratorBuildingVisitor extends BaseVisitor {
     protected FieldIndexAggregator fiAggregator = new IdentityAggregator(null);
     
     protected CompositeMetadata compositeMetadata;
-    protected Map<String,Long> compositeTransitionDates;
     
     protected Range rangeLimiter;
     
@@ -531,7 +530,6 @@ public class IteratorBuildingVisitor extends BaseVisitor {
         builder.setSource(source.deepCopy(env));
         builder.setTypeMetadata(typeMetadata);
         builder.setCompositeMetadata(compositeMetadata);
-        builder.setCompositeTransitionDates(compositeTransitionDates);
         builder.setFieldsToAggregate(fieldsToAggregate);
         builder.setTimeFilter(timeFilter);
         builder.setDatatypeFilter(datatypeFilter);
@@ -605,7 +603,6 @@ public class IteratorBuildingVisitor extends BaseVisitor {
         builder.setTimeFilter(getTimeFilter(node));
         builder.setTypeMetadata(typeMetadata);
         builder.setCompositeMetadata(compositeMetadata);
-        builder.setCompositeTransitionDates(compositeTransitionDates);
         builder.setFieldsToAggregate(fieldsToAggregate);
         builder.setDatatypeFilter(datatypeFilter);
         builder.setKeyTransform(fiAggregator);
@@ -861,7 +858,6 @@ public class IteratorBuildingVisitor extends BaseVisitor {
         builder.setTimeFilter(TimeFilter.alwaysTrue());
         builder.setTypeMetadata(typeMetadata);
         builder.setCompositeMetadata(compositeMetadata);
-        builder.setCompositeTransitionDates(compositeTransitionDates);
         builder.setFieldsToAggregate(fieldsToAggregate);
         builder.setDatatypeFilter(datatypeFilter);
         builder.setKeyTransform(fiAggregator);
@@ -895,7 +891,6 @@ public class IteratorBuildingVisitor extends BaseVisitor {
         builder.setTimeFilter(getTimeFilter(node));
         builder.setTypeMetadata(typeMetadata);
         builder.setCompositeMetadata(compositeMetadata);
-        builder.setCompositeTransitionDates(compositeTransitionDates);
         builder.setFieldsToAggregate(fieldsToAggregate);
         builder.setDatatypeFilter(datatypeFilter);
         builder.setKeyTransform(fiAggregator);
@@ -1232,7 +1227,6 @@ public class IteratorBuildingVisitor extends BaseVisitor {
         builder.setTimeFilter(timeFilter);
         builder.setTypeMetadata(typeMetadata);
         builder.setCompositeMetadata(compositeMetadata);
-        builder.setCompositeTransitionDates(compositeTransitionDates);
         builder.setFieldsToAggregate(fieldsToAggregate);
         builder.setDatatypeFilter(datatypeFilter);
         builder.setKeyTransform(fiAggregator);
@@ -1400,11 +1394,6 @@ public class IteratorBuildingVisitor extends BaseVisitor {
     
     public IteratorBuildingVisitor setCompositeMetadata(CompositeMetadata compositeMetadata) {
         this.compositeMetadata = compositeMetadata;
-        return this;
-    }
-    
-    public IteratorBuildingVisitor setCompositeTransitionDates(Map<String,Long> compositeTransitionDates) {
-        this.compositeTransitionDates = compositeTransitionDates;
         return this;
     }
     

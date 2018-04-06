@@ -1131,11 +1131,6 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
     }
     
     @Override
-    public Map<String,String[]> getCompositeNameAndIndex(String fieldName) {
-        return getCompositeIngest().getCompositeNameAndIndex(fieldName);
-    }
-    
-    @Override
     public Map<String,String[]> getCompositeFieldDefinitions() {
         return getCompositeIngest().getCompositeFieldDefinitions();
     }
