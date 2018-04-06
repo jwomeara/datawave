@@ -327,12 +327,6 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
             } else
                 andNode = nodeList.get(0);
             
-            // if (!goners.isEmpty()) {
-            // andNode = JexlNodeFactory.createUnwrappedAndNode(Arrays.asList(andNode,
-            // ASTDelayedPredicate.create(JexlNodeFactory.createUnwrappedAndNode(goners.stream().map(node ->
-            // JexlNodeFactory.wrap(node)).collect(Collectors.toList())))));
-            // }
-            
             if (log.isTraceEnabled()) {
                 PrintingVisitor.printQuery(andNode);
             }
@@ -397,8 +391,12 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
                     }
                 }
             }
-            
-            boolean isOverloadedComposite = CompositeIngest.isOverloadedCompositeField(config.getCompositeToFieldMap(), comp.compositeName)
+
+            // if this is true, then it indicates that we are dealing with a query containing an overloaded composite
+            // field which only contained the first component term.  This means that we are running a query against
+            // the base composite term, and thus need to expand our ranges to fully include both the composite and
+            // non-composite events in our range.
+            boolean expandRangeForBaseTerm = CompositeIngest.isOverloadedCompositeField(config.getCompositeToFieldMap(), comp.compositeName)
                             && comp.jexlNodeList.size() == 1;
             
             List<JexlNode> finalNodes = new ArrayList<>();
@@ -407,7 +405,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
                 String appendedExpression = appendedExpressions.get(i);
                 JexlNode newNode = null;
                 if (node instanceof ASTGTNode) {
-                    if (isOverloadedComposite)
+                    if (expandRangeForBaseTerm)
                         newNode = JexlNodeFactory.buildNode((ASTGENode) null, comp.compositeName, CompositeRange.getInclusiveLowerBound(appendedExpression));
                     else
                         newNode = JexlNodeFactory.buildNode((ASTGTNode) null, comp.compositeName, appendedExpression);
@@ -416,7 +414,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
                 } else if (node instanceof ASTLTNode) {
                     newNode = JexlNodeFactory.buildNode((ASTLTNode) null, comp.compositeName, appendedExpression);
                 } else if (node instanceof ASTLENode) {
-                    if (isOverloadedComposite)
+                    if (expandRangeForBaseTerm)
                         newNode = JexlNodeFactory.buildNode((ASTLTNode) null, comp.compositeName, CompositeRange.getExclusiveUpperBound(appendedExpression));
                     else
                         newNode = JexlNodeFactory.buildNode((ASTLENode) null, comp.compositeName, appendedExpression);
@@ -426,7 +424,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
                     newNode = JexlNodeFactory.buildNode((ASTNENode) null, comp.compositeName, appendedExpression);
                 } else if (node instanceof ASTEQNode) {
                     // if this is for an overloaded composite field, which only includes the base term, convert to range
-                    if (isOverloadedComposite) {
+                    if (expandRangeForBaseTerm) {
                         JexlNode lowerBound = JexlNodeFactory.buildNode((ASTGENode) null, comp.compositeName, appendedExpression);
                         JexlNode upperBound = JexlNodeFactory.buildNode((ASTLTNode) null, comp.compositeName,
                                         CompositeRange.getExclusiveUpperBound(appendedExpression));
@@ -479,13 +477,10 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
     private Multimap<String,Composite> getFoundCompositeMap(ASTAndNode child, Multimap<String,JexlNode> andChildrenEqualsNodes,
                     LinkedHashMultimap<String,String> orderedCompositeToFieldMap, Collection<JexlNode> childrenGoners, Collection<JexlNode> otherNodes,
                     Collection<JexlNode> descendantCompositeNodes) {
-        // All child eq and bounded range nodes if part of composite or not
-        // ex. [{id1=>[node1, boundedNode2]},{key1=>[node3, node4]},{key2=>[node5,node6]}]
-        // if Object is a List it is a bounded range otherwise JexlNode
         Multimap<String,JexlNode> childrenLeafNodes = getChildLeafNodes(child, otherNodes);
         searchDescendants(andChildrenEqualsNodes, orderedCompositeToFieldMap, childrenGoners, otherNodes, descendantCompositeNodes, childrenLeafNodes);
         
-        Multimap<String,Composite> leafFound = getFoundCompositeMapAnd(andChildrenEqualsNodes, childrenLeafNodes, orderedCompositeToFieldMap, childrenGoners);
+        Multimap<String,Composite> leafFound = getFoundCompositeMapAnd(andChildrenEqualsNodes, childrenLeafNodes, orderedCompositeToFieldMap);
         fixAndGoners(leafFound, andChildrenEqualsNodes, childrenGoners);
         
         cleanOtherNodes(childrenLeafNodes, otherNodes);
@@ -496,10 +491,6 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
     private Multimap<String,Composite> getFoundCompositeMap(ASTOrNode child, Multimap<String,JexlNode> andChildrenEqualsNodes,
                     LinkedHashMultimap<String,String> orderedCompositeToFieldMap, Collection<JexlNode> childrenGoners, Collection<JexlNode> otherNodes,
                     Collection<JexlNode> descendantCompositeNodes) {
-        
-        // All child eq and bounded range nodes if part of composite or not
-        // ex. [{id1=>[node1, boundedNode2]},{key1=>[node3, node4]},{key2=>[node5,node6]}]
-        // if Object is a List it is a bounded range otherwise JexlNode
         Multimap<String,JexlNode> childrenLeafNodes = getChildLeafNodes(child, otherNodes);
         searchDescendants(andChildrenEqualsNodes, orderedCompositeToFieldMap, childrenGoners, otherNodes, descendantCompositeNodes, null);
         
@@ -530,7 +521,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
      * @return valid matched composite indexes
      */
     private Multimap<String,Composite> getFoundCompositeMapAnd(Multimap<String,JexlNode> andChildNodeMap, Multimap<String,JexlNode> leafNodeMap,
-                    Multimap<String,String> compositeToFieldMap, Collection<JexlNode> goners) {
+                    Multimap<String,String> compositeToFieldMap) {
         
         Multimap<String,Composite> foundCompositeMap = ArrayListMultimap.create();
         
@@ -618,33 +609,15 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
                             break;
                         } else if (!(comp instanceof CompositeRange)) {
                             int nodeIdx = comp.jexlNodeList.indexOf(node);
-                            // if (nodeIdx >= 0) {
-                            // // If this node is preceeded by all ASTEQNodes, or it is the first
-                            // // term in the composite, then we can throw it out because then all
-                            // // of the values returned by our scan will be within range for this term
-                            // for (int i = 0; i < nodeIdx; i++) {
-                            // if (!(comp.jexlNodeList.get(i) instanceof ASTEQNode)) {
-                            // // If any of the preceeding nodes is NOT an ASTEQNode, then our scan is not guaranteed
-                            // // to strictly return results that fall within range for this term
-                            // isGoner = false;
-                            // break;
-                            // }
-                            // }
-                            // } else {
-                            // // If the node is not present, it can't be a goner
-                            // isGoner = false;
-                            // }
                             if (nodeIdx < 0) {
                                 isGoner = false;
-                            }
-                            if (isGoner == false)
                                 break;
+                            }
                         }
                     }
                     
                     if (isGoner) {
                         leafNodeMap.remove(compName, node);
-                        // goners.add(node);
                     }
                 }
                 
@@ -793,10 +766,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
             kidEqualsNodes.putAll(andChildrenEqualsNodes);
             if (childrenLeafNodes != null) {
                 for (Entry<String,JexlNode> leafNode : childrenLeafNodes.entries()) {
-                    // Only pass down eq nodes not bounded ranges
-                    if (leafNode.getValue() instanceof JexlNode) {
-                        kidEqualsNodes.put(leafNode.getKey(), leafNode.getValue());
-                    }
+                    kidEqualsNodes.put(leafNode.getKey(), leafNode.getValue());
                 }
             }
             
@@ -866,7 +836,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
             while (nodesIter.hasNext()) {
                 for (Composite comp : composites) {
                     JexlNode node = nodesIter.next();
-                    Composite newComp = null;
+                    Composite newComp;
                     comp.clone();
                     
                     if (node instanceof ASTAndNode) {
@@ -962,8 +932,6 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
         }
         
         composite.jexlNodeList.add(node);
-        String beginExpr = null;
-        String endExpr = null;
         
         for (int i = 0; i < nodes.size(); i++) {
             JexlNode theNode = nodes.get(i);
@@ -974,7 +942,6 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
             if (theNode instanceof ASTGENode || theNode instanceof ASTGTNode) {
                 composite.jexlNodeListLowerBound.add(theNode);
                 composite.expressionListLowerBound.add(lit.toString());
-                beginExpr = lit.toString();
                 if (nodes.size() < 2) {
                     composite.jexlNodeListUpperBound.add(null);
                     composite.expressionListUpperBound.add(null);
@@ -982,7 +949,6 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
             } else if (theNode instanceof ASTLENode || theNode instanceof ASTLTNode) {
                 composite.jexlNodeListUpperBound.add(theNode);
                 composite.expressionListUpperBound.add(lit.toString());
-                endExpr = lit.toString();
                 if (nodes.size() < 2) {
                     composite.jexlNodeListLowerBound.add(null);
                     composite.expressionListLowerBound.add(null);
@@ -992,7 +958,6 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
                 composite.jexlNodeListUpperBound.add(theNode);
                 composite.expressionListLowerBound.add(lit.toString());
                 composite.expressionListUpperBound.add(lit.toString());
-                beginExpr = endExpr = lit.toString();
             }
         }
     }
@@ -1134,38 +1099,6 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
     }
     
     /**
-     * Does the union of field sets contains more then one field in order
-     *
-     * @param fieldsInComposite
-     *            Field names to locate
-     * @param fieldSets
-     *            Sets of field names
-     * @return join(fieldSets...).containsAll(fieldsInComposite)
-     */
-    private boolean containsPartCompositeNodes(Collection<String> fieldsInComposite, Set<String>... fieldSets) {
-        int nodes = 0;
-        for (String fieldInComposite : fieldsInComposite) {
-            boolean found = false;
-            for (Set<String> fieldSet : fieldSets) {
-                if (fieldSet != null && fieldSet.contains(fieldInComposite)) {
-                    nodes++;
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                break;
-            }
-        }
-        
-        if (nodes >= 2) {
-            return true;
-        }
-        
-        return false;
-    }
-    
-    /**
      * This function is to order collections by size, this is useful so building composites can skip shorter composites ex. if KEY1_KEY2_KEY3 existed we would
      * not want to create KEY1_KEY2 or KEY1_KEY3 so could be skipped.
      * 
@@ -1192,25 +1125,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
         }
         return orderedMm;
     }
-    
-    /**
-     * Get a JexlNode from andChildNodeMap with fieldName
-     * 
-     * @param fieldName
-     * @param childNodeMap
-     * @return return the first JexlNode in {@code map->fieldName}
-     */
-    private JexlNode getNodeFromAndMap(String fieldName, Multimap<String,JexlNode> childNodeMap) {
-        JexlNode foundNode = null;
-        Collection<JexlNode> childJexlNodes = childNodeMap.get(fieldName);
-        
-        if (childJexlNodes.isEmpty() == false) {
-            foundNode = childJexlNodes.iterator().next();
-        }
-        
-        return foundNode;
-    }
-    
+
     private Multimap<String,JexlNode> getChildLeafNodes(JexlNode child, Collection<JexlNode> otherNodes) {
         Multimap<String,JexlNode> childrenLeafNodes = ArrayListMultimap.create();
         
@@ -1218,7 +1133,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
             // check to see if this node is a range node, if so, this is our leaf node
             JexlNode leafKid = getChildLeafNode(child);
             if (leafKid != null) {
-                String kidFieldName = null;
+                String kidFieldName;
                 if (leafKid instanceof ASTAndNode) {
                     kidFieldName = JexlASTHelper.getIdentifier(leafKid.jjtGetChild(0));
                 } else {
@@ -1232,7 +1147,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
             for (JexlNode kid : JexlNodes.children(child)) {
                 JexlNode leafKid = getChildLeafNode(kid);
                 if (leafKid != null) {
-                    String kidFieldName = null;
+                    String kidFieldName;
                     if (leafKid instanceof ASTAndNode) {
                         kidFieldName = JexlASTHelper.getIdentifier(leafKid.jjtGetChild(0));
                     } else {

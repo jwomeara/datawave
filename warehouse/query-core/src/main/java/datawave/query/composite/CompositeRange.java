@@ -131,7 +131,7 @@ public class CompositeRange extends Composite {
     
     // used to handle special case where our index is overloaded and runs against legacy (i.e. non-composite) data
     public String getFullyInclusiveLowerBoundExpression() {
-        String expression = null;
+        String expression;
         if (jexlNodeListLowerBound.get(0) instanceof ASTGTNode)
             expression = getInclusiveLowerBound(expressionListLowerBound.get(0));
         else
