@@ -236,19 +236,17 @@ public abstract class ValueToAttributesTest {
             runTestQuery(expectedLists[i], queryStrings[i], format.parse("20091231"), format.parse("20150101"), extraParameters);
         }
     }
-
+    
     @Test
     public void testComposites() {
         CompositeMetadata compositeMetadata = new CompositeMetadata();
-        for (String ingestType : new String[]{"test", "pilot", "work", "beep", "tw"}) {
-            compositeMetadata.addCompositeFieldMapByType(ingestType, "MAKE_COLOR", "MAKE");
-            compositeMetadata.addCompositeFieldMapByType(ingestType, "MAKE_COLOR", "COLOR");
-            compositeMetadata.addCompositeFieldMapByType(ingestType, "COLOR_WHEELS", "COLOR");
-            compositeMetadata.addCompositeFieldMapByType(ingestType, "COLOR_WHEELS", "WHEELS");
+        for (String ingestType : new String[] {"test", "pilot", "work", "beep", "tw"}) {
+            compositeMetadata.addCompositeFieldByType(ingestType, "MAKE_COLOR", Arrays.asList("MAKE", "COLOR"));
+            compositeMetadata.addCompositeFieldByType(ingestType, "COLOR_WHEELS", Arrays.asList("MAKE", "COLOR"));
         }
-
+        
         TypeMetadata typeMetadata = new TypeMetadata(
-                "MAKE:[beep:datawave.data.type.LcNoDiacriticsType];MAKE_COLOR:[beep:datawave.data.type.NoOpType];START_DATE:[beep:datawave.data.type.DateType];TYPE_NOEVAL:[beep:datawave.data.type.LcNoDiacriticsType];IP_ADDR:[beep:datawave.data.type.IpAddressType];WHEELS:[beep:datawave.data.type.LcNoDiacriticsType,datawave.data.type.NumberType];COLOR:[beep:datawave.data.type.LcNoDiacriticsType];COLOR_WHEELS:[beep:datawave.data.type.NoOpType];TYPE:[beep:datawave.data.type.LcNoDiacriticsType]");
+                        "MAKE:[beep:datawave.data.type.LcNoDiacriticsType];MAKE_COLOR:[beep:datawave.data.type.NoOpType];START_DATE:[beep:datawave.data.type.DateType];TYPE_NOEVAL:[beep:datawave.data.type.LcNoDiacriticsType];IP_ADDR:[beep:datawave.data.type.IpAddressType];WHEELS:[beep:datawave.data.type.LcNoDiacriticsType,datawave.data.type.NumberType];COLOR:[beep:datawave.data.type.LcNoDiacriticsType];COLOR_WHEELS:[beep:datawave.data.type.NoOpType];TYPE:[beep:datawave.data.type.LcNoDiacriticsType]");
         MarkingFunctions markingFunctions = new MarkingFunctions.NoOp();
         ValueToAttributes valueToAttributes = new ValueToAttributes(compositeMetadata, typeMetadata, null, markingFunctions);
     }

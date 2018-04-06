@@ -10,6 +10,7 @@ import java.util.concurrent.TimeUnit;
 import datawave.data.ColumnFamilyConstants;
 import datawave.marking.MarkingFunctions;
 import datawave.marking.MarkingFunctionsFactory;
+import datawave.query.composite.CompositeMetadataHelper;
 import datawave.security.util.ScannerHelper;
 import datawave.webservice.query.result.event.DefaultResponseObjectFactory;
 import datawave.webservice.query.result.event.ResponseObjectFactory;

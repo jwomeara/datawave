@@ -2,7 +2,7 @@ package datawave.core.iterators;
 
 import datawave.query.jexl.ArithmeticJexlEngines;
 import datawave.query.jexl.NormalizedValueArithmetic;
-import datawave.query.util.Composite;
+import datawave.query.composite.Composite;
 import org.apache.accumulo.core.data.Key;
 import org.apache.accumulo.core.data.Value;
 import org.apache.accumulo.core.iterators.Filter;

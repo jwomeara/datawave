@@ -12,9 +12,8 @@ import datawave.query.jexl.JexlASTHelper;
 import datawave.query.jexl.JexlNodeFactory;
 import datawave.query.exceptions.DatawaveFatalQueryException;
 import datawave.query.jexl.LiteralRange;
-import datawave.query.util.Composite;
-import datawave.query.util.CompositeNameAndIndex;
-import datawave.query.util.CompositeRange;
+import datawave.query.composite.Composite;
+import datawave.query.composite.CompositeRange;
 import datawave.query.util.MetadataHelper;
 import datawave.webservice.common.logging.ThreadConfigurableLogger;
 import datawave.webservice.query.exception.DatawaveErrorCode;
@@ -188,20 +187,20 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
             return this.visit(node, (ExpandData) data);
         }
         
-        Multimap<String,CompositeNameAndIndex> fieldToCompositeMap = config.getFieldToCompositeMap();
+        Set<String> componentFields = new HashSet<>(config.getCompositeToFieldMap().values());
         Collection<JexlNode> andChildrenGoners = Sets.newHashSet();
         boolean hasEqNode = false;
         for (JexlNode kid : JexlNodes.children(node)) {
             while ((kid instanceof ASTReference || kid instanceof ASTReferenceExpression || kid instanceof ASTAndNode) && kid.jjtGetNumChildren() == 1)
                 kid = kid.jjtGetChild(0);
-            if (Composite.LEAF_NODE_CLASSES.contains(kid.getClass()) && fieldToCompositeMap.containsKey(JexlASTHelper.getIdentifier(kid))) {
+            if (Composite.LEAF_NODE_CLASSES.contains(kid.getClass()) && componentFields.contains(JexlASTHelper.getIdentifier(kid))) {
                 hasEqNode = true;
                 break;
             } else if (kid instanceof ASTAndNode) {
                 List<JexlNode> others = new ArrayList<>();
                 Map<LiteralRange<?>,List<JexlNode>> boundedRangesIndexAgnostic = JexlASTHelper.getBoundedRangesIndexAgnostic(kid, others, true, 1);
                 for (LiteralRange range : boundedRangesIndexAgnostic.keySet()) {
-                    if (fieldToCompositeMap.containsKey(range.getFieldName())) {
+                    if (componentFields.contains(range.getFieldName())) {
                         hasEqNode = true;
                         break;
                     }

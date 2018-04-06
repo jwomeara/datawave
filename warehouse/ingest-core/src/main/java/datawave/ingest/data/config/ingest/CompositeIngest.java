@@ -66,8 +66,6 @@ public interface CompositeIngest {
     
     boolean isOverloadedCompositeField(String fieldName);
     
-    Map<String,String[]> getCompositeNameAndIndex(String compositeFieldName);
-    
     Multimap<String,NormalizedContentInterface> getCompositeFields(Multimap<String,NormalizedContentInterface> fields);
     
     static boolean isOverloadedCompositeField(Map<String,String[]> compositeFieldDefinitions, String compositeFieldName) {

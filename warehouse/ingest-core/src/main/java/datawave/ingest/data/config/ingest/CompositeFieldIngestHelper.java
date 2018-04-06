@@ -96,14 +96,4 @@ public class CompositeFieldIngestHelper implements CompositeIngest {
     public boolean isOverloadedCompositeField(String fieldName) {
         return CompositeIngest.isOverloadedCompositeField(getCompositeFieldDefinitions(), fieldName);
     }
-    
-    /*
-     * (non-Javadoc)
-     * 
-     * @see datawave.ingest.data.config.ingest.CompositeIngest#getCompositeNameAndIndex(java.lang.String)
-     */
-    @Override
-    public Map<String,String[]> getCompositeNameAndIndex(String compositeFieldName) {
-        return this.getCompositeFieldDefinitions();
-    }
 }

@@ -38,7 +38,6 @@ public class IndexIteratorBuilder extends AbstractIteratorBuilder {
     protected TimeFilter timeFilter = TimeFilter.alwaysTrue();
     protected FieldIndexAggregator keyTform;
     protected Set<String> fieldsToAggregate;
-    protected Map<String,Long> compositeTransitionDates;
     
     public void setSource(final SortedKeyValueIterator<Key,Value> source) {
         this.source = source;
@@ -66,14 +65,6 @@ public class IndexIteratorBuilder extends AbstractIteratorBuilder {
     
     public void setFieldsToAggregate(Set<String> fields) {
         fieldsToAggregate = fields;
-    }
-    
-    public Map<String,Long> getCompositeTransitionDates() {
-        return compositeTransitionDates;
-    }
-    
-    public void setCompositeTransitionDates(Map<String,Long> compositeTransitionDates) {
-        this.compositeTransitionDates = compositeTransitionDates;
     }
     
     public Predicate<Key> getDatatypeFilter() {
@@ -122,7 +113,13 @@ public class IndexIteratorBuilder extends AbstractIteratorBuilder {
                     }
                     
                     List<String> compFields = new ArrayList<>(entry.getValue().get(fieldName));
-                    Long transitionDateMillis = (compositeTransitionDates.containsKey(fieldName)) ? compositeTransitionDates.get(fieldName) : null;
+                    
+                    Long transitionDateMillis = null;
+                    if (compositeMetadata.getCompositeTransitionDatesByType().containsKey(ingestType)
+                                    && compositeMetadata.getCompositeTransitionDatesByType().get(ingestType).containsKey(fieldName)) {
+                        transitionDateMillis = compositeMetadata.getCompositeTransitionDatesByType().get(ingestType).get(fieldName).getTime();
+                    }
+                    
                     compositePredicateFilterMap.put(fieldName, new CompositePredicateFilter(compFields, transitionDateMillis));
                 }
             }

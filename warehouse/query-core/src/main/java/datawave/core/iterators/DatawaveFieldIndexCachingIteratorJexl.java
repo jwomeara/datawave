@@ -26,7 +26,7 @@ import datawave.query.iterator.profile.QuerySpan;
 import datawave.query.iterator.profile.QuerySpanCollector;
 import datawave.query.iterator.profile.SourceTrackingIterator;
 import datawave.query.predicate.TimeFilter;
-import datawave.query.util.Composite;
+import datawave.query.composite.Composite;
 import datawave.query.util.sortedset.HdfsBackedSortedSet;
 import datawave.query.util.sortedset.KeyValueSerializable;
 import org.apache.accumulo.core.data.ByteSequence;

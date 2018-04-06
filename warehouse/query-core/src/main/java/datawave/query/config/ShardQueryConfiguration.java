@@ -17,7 +17,6 @@ import datawave.query.iterator.PowerSet;
 import datawave.query.iterator.QueryIterator;
 import datawave.query.model.QueryModel;
 import datawave.query.tld.TLDQueryIterator;
-import datawave.query.util.CompositeNameAndIndex;
 import datawave.query.util.QueryStopwatch;
 import datawave.webservice.query.Query;
 import datawave.webservice.query.QueryImpl;
@@ -130,7 +129,6 @@ public class ShardQueryConfiguration extends GenericQueryConfiguration {
     private Multimap<String,Type<?>> queryFieldsDatatypes = HashMultimap.create();
     private Multimap<String,Type<?>> normalizedFieldsDatatypes = HashMultimap.create();
     
-    private Multimap<String,CompositeNameAndIndex> fieldToCompositeMap = ArrayListMultimap.create();
     private Multimap<String,String> compositeToFieldMap = ArrayListMultimap.create();
     private Multimap<String,String> currentCompositeToFieldMap = ArrayListMultimap.create();
     private Set<String> fixedLengthFields = new HashSet<>();
@@ -1050,14 +1048,6 @@ public class ShardQueryConfiguration extends GenericQueryConfiguration {
     
     public Multimap<String,String> getCompositeToFieldMap() {
         return compositeToFieldMap;
-    }
-    
-    public Multimap<String,CompositeNameAndIndex> getFieldToCompositeMap() {
-        return fieldToCompositeMap;
-    }
-    
-    public void setFieldToCompositeMap(Multimap<String,CompositeNameAndIndex> fieldToCompositeMap) {
-        this.fieldToCompositeMap = fieldToCompositeMap;
     }
     
     public Multimap<String,String> getCurrentCompositeToFieldMap() {

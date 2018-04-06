@@ -75,7 +75,6 @@ import datawave.query.planner.pushdown.rules.PushDownRule;
 import datawave.query.postprocessing.tf.Function;
 import datawave.query.postprocessing.tf.TermOffsetPopulator;
 import datawave.query.tables.ScannerFactory;
-import datawave.query.util.Composite;
 import datawave.query.util.DateIndexHelper;
 import datawave.query.util.MetadataHelper;
 import datawave.query.util.QueryStopwatch;
@@ -572,7 +571,6 @@ public class DefaultQueryPlanner extends QueryPlanner {
             
             try {
                 config.setCompositeToFieldMap(metadataHelper.getCompositeToFieldMap(config.getDatatypeFilter()));
-                config.setFieldToCompositeMap(metadataHelper.getFieldToCompositeMap(config.getDatatypeFilter()));
                 config.setCompositeTransitionDates(metadataHelper.getCompositeTransitionDateMap(config.getDatatypeFilter()));
                 config.setFixedLengthFields(metadataHelper.getFixedLengthCompositeFields(config.getDatatypeFilter()));
             } catch (TableNotFoundException ex) {
@@ -1534,7 +1532,7 @@ public class DefaultQueryPlanner extends QueryPlanner {
                 }
                 
                 try {
-                    CompositeMetadata compositeMetadata = metadataHelper.getCompositeMetadata();
+                    CompositeMetadata compositeMetadata = metadataHelper.getCompositeMetadata().filter(config.getQueryFieldsDatatypes().keySet());
                     if (compositeMetadata != null && !compositeMetadata.isEmpty())
                         addOption(cfg, QueryOptions.COMPOSITE_METADATA, new String(CompositeMetadata.toBytes(compositeMetadata)), false);
                 } catch (TableNotFoundException e) {
@@ -1560,24 +1558,6 @@ public class DefaultQueryPlanner extends QueryPlanner {
                 
                 if (config.isDataQueryExpressionFilterEnabled()) {
                     addOption(cfg, QueryOptions.DATA_QUERY_EXPRESSION_FILTER_ENABLED, Boolean.toString(config.isDataQueryExpressionFilterEnabled()), false);
-                }
-                
-                // if one of the fields we're querying against is a transitioned composite
-                // field, and our query date range spans the transition date, include the
-                // transition date which will be used by the composite predicate filter
-                if (!config.getCompositeTransitionDates().isEmpty()) {
-                    StringBuilder sb = new StringBuilder();
-                    for (Map.Entry<String,Date> entry : config.getCompositeTransitionDates().entrySet()) {
-                        if (config.getQueryFieldsDatatypes().containsKey(entry.getKey())) {
-                            Date transitionDate = entry.getValue();
-                            if (config.getBeginDate().compareTo(transitionDate) < 0 && config.getEndDate().compareTo(transitionDate) > 0) {
-                                sb.append(entry.getKey() + Composite.START_SEPARATOR + Long.toString(transitionDate.getTime()) + ",");
-                            }
-                        }
-                    }
-                    String compositeTransitionDates = sb.toString();
-                    if (compositeTransitionDates != null && !compositeTransitionDates.isEmpty())
-                        addOption(cfg, QueryOptions.COMPOSITE_TRANSITION_DATES, compositeTransitionDates, true);
                 }
                 
                 return cfg;

@@ -16,7 +16,7 @@ import datawave.query.Constants;
 import datawave.query.attributes.Document;
 import datawave.query.predicate.TimeFilter;
 import datawave.query.predicate.SeekingFilter;
-import datawave.query.util.Composite;
+import datawave.query.composite.Composite;
 import datawave.query.util.TypeMetadata;
 
 import org.apache.accumulo.core.data.ArrayByteSequence;
