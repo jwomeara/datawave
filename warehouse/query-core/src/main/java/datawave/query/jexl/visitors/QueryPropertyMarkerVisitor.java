@@ -79,17 +79,12 @@ public class QueryPropertyMarkerVisitor extends BaseVisitor {
     public Object visit(ASTAssignment node, Object data) {
         if (data != null) {
             Set foundIdentifiers = (Set) data;
-
+            
             String identifier = JexlASTHelper.getIdentifier(node);
             if (identifier != null) {
                 foundIdentifiers.add(identifier);
             }
         }
-        return null;
-    }
-    
-    @Override
-    public Object visit(ASTOrNode node, Object data) {
         return null;
     }
     
