@@ -40,6 +40,8 @@ public class AuditParameters implements ParameterValidator {
     protected AuditType auditType = null;
     protected ColumnVisibility colviz = null;
     
+    private double identifier = Math.random();
+    
     public void validate(Map<String,List<String>> parameters) throws IllegalArgumentException {
         this.queryDate = new Date();
         for (String param : REQUIRED_PARAMS) {
@@ -165,13 +167,17 @@ public class AuditParameters implements ParameterValidator {
         return p;
     }
     
-    public AuditParameters fromMap(Map<String,String> msg) {
+    private static AuditParameters fromMapInternal(Map<String,String> msg) {
         AuditParameters ap = new AuditParameters();
         Map<String,List<String>> p = parseMessage(msg);
         ap.validate(p);
         ap.setQueryDate(new Date(Long.parseLong(msg.get(QUERY_DATE))));
         ap.setSelectors(p.get(QUERY_SELECTORS));
         return ap;
+    }
+    
+    public AuditParameters fromMap(Map<String,String> msg) {
+        return fromMapInternal(msg);
     }
     
     @Override
