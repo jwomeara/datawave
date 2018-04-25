@@ -40,8 +40,6 @@ public class AuditParameters implements ParameterValidator {
     protected AuditType auditType = null;
     protected ColumnVisibility colviz = null;
     
-    private double identifier = Math.random();
-    
     public void validate(Map<String,List<String>> parameters) throws IllegalArgumentException {
         this.queryDate = new Date();
         for (String param : REQUIRED_PARAMS) {
