@@ -230,7 +230,7 @@ public class ParallelIndexExpansion extends RebuildingVisitor {
             
         }
         
-        return new IndexLookupCallable(task, node, positive, true);
+        return new IndexLookupCallable(task, node, positive, true, false);
     }
     
     /**
@@ -413,7 +413,7 @@ public class ParallelIndexExpansion extends RebuildingVisitor {
             }
             default: {
                 JexlNode[] children = children(node);
-                if (children.length == 1) {
+                if (children.length == 1 && !ASTDelayedPredicate.instanceOf(children[0])) {
                     boolean expand = descendIntoSubtree(children[0], visited);
                     visited.put(node, expand);
                     return expand;
@@ -567,21 +567,19 @@ public class ParallelIndexExpansion extends RebuildingVisitor {
         protected IndexLookup lookup;
         protected JexlNode node;
         protected boolean positive;
+        protected boolean ignoreComposites;
         
         protected JexlNode parentNode = null;
         private int id;
         private JexlNode newNode;
         protected boolean enforceTimeout;
         
-        public IndexLookupCallable(IndexLookup lookup, JexlNode currNode, boolean positive) {
-            this(lookup, currNode, positive, false);
-        }
-        
-        public IndexLookupCallable(IndexLookup lookup, JexlNode currNode, boolean positive, boolean enforceTimeout) {
+        public IndexLookupCallable(IndexLookup lookup, JexlNode currNode, boolean positive, boolean enforceTimeout, boolean ignoreComposites) {
             this.lookup = lookup;
             this.node = currNode;
             this.positive = positive;
             this.enforceTimeout = enforceTimeout;
+            this.ignoreComposites = ignoreComposites;
             parentNode = currNode.jjtGetParent();
         }
         
@@ -609,6 +607,9 @@ public class ParallelIndexExpansion extends RebuildingVisitor {
                 throw e;
             }
             newNode = null;
+            
+            if (ignoreComposites)
+                onlyRetainNonCompositeFieldNames(fieldsToValues);
             
             // If we have no children, it's impossible to find any records, so this query returns no results
             if (fieldsToValues.isEmpty()) {
@@ -656,6 +657,12 @@ public class ParallelIndexExpansion extends RebuildingVisitor {
             if (null != onlyUseThese) {
                 fieldsToValues.retainFields(onlyUseThese);
             }
+        }
+        
+        private void onlyRetainNonCompositeFieldNames(IndexLookupMap fieldsToValues) throws TableNotFoundException {
+            Set<String> fieldNames = new HashSet<>(fieldsToValues.keySet());
+            fieldNames.removeAll(helper.getCompositeToFieldMap().keySet());
+            fieldsToValues.retainFields(fieldNames);
         }
         
     }

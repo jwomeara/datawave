@@ -103,7 +103,7 @@ public class ExpandCompositeTermsTest {
     @Test
     public void test7a() throws Exception {
         String query = "WINNER == 'blue' && TEAM=='gold' && ( NAME=='gold-1' || NAME=='gold-2' && (POINTS > 10 && POINTS <= 11))";
-        String expected = "(WINNER == 'blue' && TEAM == 'gold' && (NAME == 'gold-1' || ((TEAM_NAME_POINTS > 'gold􏿿gold-2􏿿10' && TEAM_NAME_POINTS <= 'gold􏿿gold-2􏿿11') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && (TEAM == 'gold' && NAME == 'gold-2' && (POINTS > 10 && POINTS <= 11))))))))";
+        String expected = "(WINNER == 'blue' && ((TEAM == 'gold' && NAME == 'gold-1') || ((TEAM_NAME_POINTS > 'gold􏿿gold-2􏿿10' && TEAM_NAME_POINTS <= 'gold􏿿gold-2􏿿11') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && (TEAM == 'gold' && NAME == 'gold-2' && (POINTS > 10 && POINTS <= 11))))))))";
         runTestQuery(query, expected);
     }
     
@@ -136,7 +136,7 @@ public class ExpandCompositeTermsTest {
     @Test
     public void test8() throws Exception {
         String query = "COLOR =~ '.*ed' && (WHEELS == '4' || WHEELS == '+aE4') && (MAKE_COLOR == 'honda' || MAKE == 'honda') && TYPE == 'truck'";
-        String expected = "((WHEELS == '4' || WHEELS == '+aE4') && COLOR =~ '.*ed' && TYPE == 'truck' && ((MAKE_COLOR =~ 'honda􏿿.*ed' && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && (MAKE == 'honda' && COLOR =~ '.*ed'))))) || MAKE_COLOR == 'honda'))";
+        String expected = "(TYPE == 'truck' && (WHEELS == '4' || WHEELS == '+aE4') && ((MAKE_COLOR =~ 'honda􏿿.*ed' && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && (MAKE == 'honda' && COLOR =~ '.*ed'))))) || (COLOR =~ '.*ed' && MAKE_COLOR == 'honda')))";
         runTestQuery(query, expected);
     }
     
@@ -1023,7 +1023,7 @@ public class ExpandCompositeTermsTest {
         indexedFields.add("GEO");
         
         String query = "((((GEO >= '0202' && GEO <= '020d'))) || (((GEO >= '030a' && GEO <= '0335'))) || (((GEO >= '0428' && GEO <= '0483'))) || (((GEO >= '0500aa' && GEO <= '050355'))) || (((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO <= '1f36c71c71c71c71c7')))) && ((WKT >= '+AE0' && WKT < '+bE4'))";
-        String expected = "((((GEO >= '0202' && GEO <= '020d'))) || (((GEO >= '030a' && GEO <= '0335'))) || (((GEO >= '0428' && GEO <= '0483'))) || (((GEO >= '0500aa' && GEO <= '050355'))) || (((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO <= '1f36c71c71c71c71c7')))) && ((WKT >= '+AE0' && WKT < '+bE4'))";
+        String expected = "((WKT >= '+AE0' && WKT < '+bE4') && ((GEO >= '0202' && GEO <= '020d') || (GEO >= '030a' && GEO <= '0335') || (GEO >= '0428' && GEO <= '0483') || (GEO >= '0500aa' && GEO <= '050355') || (GEO >= '1f0aaaaaaaaaaaaaaa' && GEO <= '1f36c71c71c71c71c7')))";
         
         runTestQuery(query, expected, indexedFields, conf);
     }
@@ -1132,6 +1132,15 @@ public class ExpandCompositeTermsTest {
         String expected = "(GEO == '0202􏿿+bE5.5' || (GEO >= '030a􏿿+bE5.5' && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && (GEO >= '030a' && WKT == '+bE5.5'))))))";
         
         runTestQuery(query, expected, indexedFields, conf);
+    }
+    
+    // this is testing that distribution of anded nodes into an or node is working
+    @Test
+    public void test30() throws Exception {
+        String query = "MAKE == 'london' && ((CODE == 'ita' || CODE == 'iTa') || COLOR == 'missouri' || NUM == '+cE1')";
+        String expected = "(MAKE_COLOR == 'london􏿿missouri' || (MAKE == 'london' && (CODE == 'ita' || CODE == 'iTa' || NUM == '+cE1')))";
+        
+        runTestQuery(query, expected);
     }
     
     void runTestQuery(String query, String expected) throws ParseException {

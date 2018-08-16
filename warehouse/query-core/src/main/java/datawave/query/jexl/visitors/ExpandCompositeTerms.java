@@ -27,6 +27,7 @@ import org.apache.commons.jexl2.parser.ASTCompositePredicate;
 import org.apache.commons.jexl2.parser.ASTDelayedPredicate;
 import org.apache.commons.jexl2.parser.ASTEQNode;
 import org.apache.commons.jexl2.parser.ASTERNode;
+import org.apache.commons.jexl2.parser.ASTFunctionNode;
 import org.apache.commons.jexl2.parser.ASTGENode;
 import org.apache.commons.jexl2.parser.ASTGTNode;
 import org.apache.commons.jexl2.parser.ASTLENode;
@@ -150,7 +151,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
             Multimap<String,Composite> foundCompositeMaps = getFoundCompositeMap(node, eData.andEqualsNodes, eData.orderedCompositeToFieldMap, eData.goners,
                             kidOtherNodes, descendantCompositeNodes);
             
-            JexlNode rebuiltChildOr = rebuildOrNode(foundCompositeMaps, kidOtherNodes, descendantCompositeNodes, eData.goners);
+            JexlNode rebuiltChildOr = rebuildOrNode(foundCompositeMaps, kidOtherNodes, descendantCompositeNodes, eData.goners, eData.andEqualsNodes);
             
             if (rebuiltChildOr != null) {
                 this.printJexlNode(rebuiltChildOr, "New orNode: ");
@@ -164,6 +165,12 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
         }
         
         return super.visit(node, data);
+    }
+    
+    // ignore function nodes
+    @Override
+    public Object visit(ASTFunctionNode node, Object data) {
+        return node;
     }
     
     /**
@@ -306,13 +313,76 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
      * @return
      */
     private JexlNode rebuildOrNode(Multimap<String,Composite> foundCompositeMaps, Collection<JexlNode> otherNodes,
-                    Collection<JexlNode> descendantCompositeNodes, Collection<JexlNode> goners) {
-        List<JexlNode> nodeList = getNodeList(foundCompositeMaps);
-        if (nodeList.size() > 0 || descendantCompositeNodes.size() > 0) {
-            nodeList.addAll(otherNodes);
-            nodeList.addAll(descendantCompositeNodes);
-            nodeList.removeAll(goners);
+                    Collection<JexlNode> descendantCompositeNodes, Collection<JexlNode> goners, Multimap<String,JexlNode> andEqualsNodes) {
+        List<JexlNode> nodeList = new ArrayList<>();
+        
+        // separate the anded nodes which were used to make composites
+        List<JexlNode> andedGoners = new ArrayList<>(andEqualsNodes.values());
+        andedGoners.retainAll(goners);
+        
+        // first deal with composite nodes
+        for (Entry<String,Composite> compEntry : foundCompositeMaps.entries()) {
+            List<JexlNode> compNodeList = new ArrayList<>();
+            compNodeList.add(getNode(compEntry.getValue()));
             
+            // find any anded nodes which are not included in the composite
+            for (JexlNode andedNode : andedGoners)
+                if (!compEntry.getValue().contains(andedNode))
+                    compNodeList.add(andedNode);
+            
+            JexlNode finalNode;
+            if (compNodeList.size() > 1) {
+                for (int i = 0; i < compNodeList.size(); i++)
+                    if (compNodeList.get(i) instanceof ASTAndNode)
+                        compNodeList.set(i, JexlNodeFactory.wrap(compNodeList.get(i)));
+                finalNode = JexlNodeFactory.createAndNode(compNodeList);
+            } else
+                finalNode = compNodeList.get(0);
+            
+            nodeList.add(finalNode);
+        }
+        
+        // next, deal with the remaining child nodes
+        if (!otherNodes.isEmpty()) {
+            List<JexlNode> remainingNodeList = new ArrayList<>();
+            remainingNodeList.addAll(otherNodes);
+            remainingNodeList.removeAll(goners);
+            
+            // first, create the or node from the remaining children
+            JexlNode finalNode;
+            if (remainingNodeList.size() > 1) {
+                for (int i = 0; i < remainingNodeList.size(); i++)
+                    if (remainingNodeList.get(i) instanceof ASTAndNode)
+                        remainingNodeList.set(i, JexlNodeFactory.wrap(remainingNodeList.get(i)));
+                finalNode = JexlNodeFactory.createOrNode(remainingNodeList);
+            } else
+                finalNode = remainingNodeList.get(0);
+            
+            // next, and the or'd children with the anded goners
+            if (!andedGoners.isEmpty()) {
+                List<JexlNode> finalNodeList = new ArrayList<>();
+                finalNodeList.addAll(andedGoners);
+                finalNodeList.add(finalNode);
+                
+                if (finalNodeList.size() > 1) {
+                    for (int i = 0; i < finalNodeList.size(); i++)
+                        if (finalNodeList.get(i) instanceof ASTAndNode)
+                            finalNodeList.set(i, JexlNodeFactory.wrap(finalNodeList.get(i)));
+                    finalNode = JexlNodeFactory.createAndNode(finalNodeList);
+                } else
+                    finalNode = finalNodeList.get(0);
+            }
+            
+            nodeList.add(finalNode);
+        }
+        
+        // add any descendant nodes separately
+        if (!descendantCompositeNodes.isEmpty()) {
+            nodeList.addAll(descendantCompositeNodes);
+        }
+        
+        // finally, create the new or node from the composites and the remaining child nodes
+        if (!nodeList.isEmpty()) {
             JexlNode orNode;
             // if there's more than one node, wrap any and nodes
             if (nodeList.size() > 1) {
@@ -366,90 +436,98 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
      */
     private List<JexlNode> getNodeList(Multimap<String,Composite> foundCompositeMaps) {
         List<JexlNode> nodeList = Lists.newArrayList();
-        for (Composite comp : foundCompositeMaps.values()) {
-            List<JexlNode> nodes = new ArrayList<>();
-            List<String> appendedExpressions = new ArrayList<>();
-            
-            boolean includeOldData = false;
-            if (config.getCompositeTransitionDates().containsKey(comp.compositeName)) {
-                Date transitionDate = config.getCompositeTransitionDates().get(comp.compositeName);
-                if (config.getBeginDate().compareTo(transitionDate) < 0)
-                    includeOldData = true;
-            }
-            
-            comp.getNodesAndExpressions(nodes, appendedExpressions, includeOldData);
-            
-            // if this is true, then it indicates that we are dealing with a query containing an overloaded composite
-            // field which only contained the first component term. This means that we are running a query against
-            // the base composite term, and thus need to expand our ranges to fully include both the composite and
-            // non-composite events in our range.
-            boolean expandRangeForBaseTerm = CompositeIngest.isOverloadedCompositeField(config.getCompositeToFieldMap(), comp.compositeName)
-                            && comp.jexlNodeList.size() == 1;
-            
-            List<JexlNode> finalNodes = new ArrayList<>();
-            for (int i = 0; i < nodes.size(); i++) {
-                JexlNode node = nodes.get(i);
-                String appendedExpression = appendedExpressions.get(i);
-                JexlNode newNode = null;
-                if (node instanceof ASTGTNode) {
-                    if (expandRangeForBaseTerm)
-                        newNode = JexlNodeFactory.buildNode((ASTGENode) null, comp.compositeName, CompositeUtils.getInclusiveLowerBound(appendedExpression));
-                    else
-                        newNode = JexlNodeFactory.buildNode((ASTGTNode) null, comp.compositeName, appendedExpression);
-                } else if (node instanceof ASTGENode) {
-                    newNode = JexlNodeFactory.buildNode((ASTGENode) null, comp.compositeName, appendedExpression);
-                } else if (node instanceof ASTLTNode) {
-                    newNode = JexlNodeFactory.buildNode((ASTLTNode) null, comp.compositeName, appendedExpression);
-                } else if (node instanceof ASTLENode) {
-                    if (expandRangeForBaseTerm)
-                        newNode = JexlNodeFactory.buildNode((ASTLTNode) null, comp.compositeName, CompositeUtils.getExclusiveUpperBound(appendedExpression));
-                    else
-                        newNode = JexlNodeFactory.buildNode((ASTLENode) null, comp.compositeName, appendedExpression);
-                } else if (node instanceof ASTERNode) {
-                    newNode = JexlNodeFactory.buildERNode(comp.compositeName, appendedExpression);
-                } else if (node instanceof ASTNENode) {
-                    newNode = JexlNodeFactory.buildNode((ASTNENode) null, comp.compositeName, appendedExpression);
-                } else if (node instanceof ASTEQNode) {
-                    // if this is for an overloaded composite field, which only includes the base term, convert to range
-                    if (expandRangeForBaseTerm) {
-                        JexlNode lowerBound = JexlNodeFactory.buildNode((ASTGENode) null, comp.compositeName, appendedExpression);
-                        JexlNode upperBound = JexlNodeFactory.buildNode((ASTLTNode) null, comp.compositeName,
-                                        CompositeUtils.getExclusiveUpperBound(appendedExpression));
-                        newNode = JexlNodeFactory.createAndNode(Arrays.asList(lowerBound, upperBound));
-                    } else {
-                        newNode = JexlNodeFactory.buildEQNode(comp.compositeName, appendedExpression);
-                    }
+        for (Composite comp : foundCompositeMaps.values())
+            nodeList.add(getNode(comp));
+        return nodeList;
+    }
+    
+    private JexlNode getNode(Composite foundComposite) {
+        List<JexlNode> nodes = new ArrayList<>();
+        List<String> appendedExpressions = new ArrayList<>();
+        
+        boolean includeOldData = false;
+        if (config.getCompositeTransitionDates().containsKey(foundComposite.compositeName)) {
+            Date transitionDate = config.getCompositeTransitionDates().get(foundComposite.compositeName);
+            if (config.getBeginDate().compareTo(transitionDate) < 0)
+                includeOldData = true;
+        }
+        
+        foundComposite.getNodesAndExpressions(nodes, appendedExpressions, includeOldData);
+        
+        // if this is true, then it indicates that we are dealing with a query containing an overloaded composite
+        // field which only contained the first component term. This means that we are running a query against
+        // the base composite term, and thus need to expand our ranges to fully include both the composite and
+        // non-composite events in our range.
+        boolean expandRangeForBaseTerm = CompositeIngest.isOverloadedCompositeField(config.getCompositeToFieldMap(), foundComposite.compositeName)
+                        && foundComposite.jexlNodeList.size() == 1;
+        
+        List<JexlNode> finalNodes = new ArrayList<>();
+        for (int i = 0; i < nodes.size(); i++) {
+            JexlNode node = nodes.get(i);
+            String appendedExpression = appendedExpressions.get(i);
+            JexlNode newNode = null;
+            if (node instanceof ASTGTNode) {
+                if (expandRangeForBaseTerm)
+                    newNode = JexlNodeFactory.buildNode((ASTGENode) null, foundComposite.compositeName,
+                                    CompositeUtils.getInclusiveLowerBound(appendedExpression));
+                else
+                    newNode = JexlNodeFactory.buildNode((ASTGTNode) null, foundComposite.compositeName, appendedExpression);
+            } else if (node instanceof ASTGENode) {
+                newNode = JexlNodeFactory.buildNode((ASTGENode) null, foundComposite.compositeName, appendedExpression);
+            } else if (node instanceof ASTLTNode) {
+                newNode = JexlNodeFactory.buildNode((ASTLTNode) null, foundComposite.compositeName, appendedExpression);
+            } else if (node instanceof ASTLENode) {
+                if (expandRangeForBaseTerm)
+                    newNode = JexlNodeFactory.buildNode((ASTLTNode) null, foundComposite.compositeName,
+                                    CompositeUtils.getExclusiveUpperBound(appendedExpression));
+                else
+                    newNode = JexlNodeFactory.buildNode((ASTLENode) null, foundComposite.compositeName, appendedExpression);
+            } else if (node instanceof ASTERNode) {
+                newNode = JexlNodeFactory.buildERNode(foundComposite.compositeName, appendedExpression);
+            } else if (node instanceof ASTNENode) {
+                newNode = JexlNodeFactory.buildNode((ASTNENode) null, foundComposite.compositeName, appendedExpression);
+            } else if (node instanceof ASTEQNode) {
+                // if this is for an overloaded composite field, which only includes the base term, convert to range
+                if (expandRangeForBaseTerm) {
+                    JexlNode lowerBound = JexlNodeFactory.buildNode((ASTGENode) null, foundComposite.compositeName, appendedExpression);
+                    JexlNode upperBound = JexlNodeFactory.buildNode((ASTLTNode) null, foundComposite.compositeName,
+                                    CompositeUtils.getExclusiveUpperBound(appendedExpression));
+                    newNode = JexlNodeFactory.createAndNode(Arrays.asList(lowerBound, upperBound));
                 } else {
-                    log.error("Invalid or unknown node type for composite map.");
+                    newNode = JexlNodeFactory.buildEQNode(foundComposite.compositeName, appendedExpression);
                 }
-                
-                finalNodes.add(newNode);
-            }
-            
-            if (finalNodes.size() > 1) {
-                JexlNode finalNode = JexlNodeFactory.createUnwrappedAndNode(finalNodes);
-                if (comp.jexlNodeList.size() > 1) {
-                    JexlNode delayedNode = ASTDelayedPredicate.create(ASTCompositePredicate.create(JexlNodeFactory.createUnwrappedAndNode(comp.jexlNodeList
-                                    .stream().map(JexlNodeFactory::wrap).collect(Collectors.toList()))));
-                    finalNode = JexlNodeFactory.createUnwrappedAndNode(Arrays.asList(JexlNodeFactory.wrap(finalNode), delayedNode));
-                }
-                nodeList.add(finalNode);
             } else {
-                JexlNode finalNode = finalNodes.get(0);
-                if (comp.jexlNodeList.size() > 1 && !(finalNode instanceof ASTEQNode)) {
-                    JexlNode delayedNode = ASTDelayedPredicate.create(ASTCompositePredicate.create(JexlNodeFactory.createUnwrappedAndNode(comp.jexlNodeList
-                                    .stream().map(JexlNodeFactory::wrap).collect(Collectors.toList()))));
-                    finalNode = JexlNodeFactory.createUnwrappedAndNode(Arrays.asList(finalNode, delayedNode));
-                }
-                nodeList.add(finalNode);
+                log.error("Invalid or unknown node type for composite map.");
             }
             
-            if (!CompositeIngest.isOverloadedCompositeField(config.getCompositeToFieldMap(), comp.compositeName)) {
-                config.getIndexedFields().add(comp.compositeName);
-                config.getQueryFieldsDatatypes().put(comp.compositeName, new NoOpType());
+            finalNodes.add(newNode);
+        }
+        
+        JexlNode finalNode;
+        if (finalNodes.size() > 1) {
+            finalNode = JexlNodeFactory.createUnwrappedAndNode(finalNodes);
+            if (foundComposite.jexlNodeList.size() > 1) {
+                JexlNode delayedNode = ASTDelayedPredicate.create(ASTCompositePredicate.create(JexlNodeFactory
+                                .createUnwrappedAndNode(foundComposite.jexlNodeList.stream().map(node -> JexlNodeFactory.wrap(node))
+                                                .collect(Collectors.toList()))));
+                finalNode = JexlNodeFactory.createUnwrappedAndNode(Arrays.asList(JexlNodeFactory.wrap(finalNode), delayedNode));
+            }
+        } else {
+            finalNode = finalNodes.get(0);
+            if (foundComposite.jexlNodeList.size() > 1 && !(finalNode instanceof ASTEQNode)) {
+                JexlNode delayedNode = ASTDelayedPredicate.create(ASTCompositePredicate.create(JexlNodeFactory
+                                .createUnwrappedAndNode(foundComposite.jexlNodeList.stream().map(node -> JexlNodeFactory.wrap(node))
+                                                .collect(Collectors.toList()))));
+                finalNode = JexlNodeFactory.createUnwrappedAndNode(Arrays.asList(finalNode, delayedNode));
             }
         }
-        return nodeList;
+        
+        if (!CompositeIngest.isOverloadedCompositeField(config.getCompositeToFieldMap(), foundComposite.compositeName)) {
+            config.getIndexedFields().add(foundComposite.compositeName);
+            config.getQueryFieldsDatatypes().put(foundComposite.compositeName, new NoOpType());
+        }
+        
+        return finalNode;
     }
     
     /**
@@ -485,13 +563,6 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
         fixOrGoners(leafFound, andChildrenEqualsNodes, childrenGoners);
         
         cleanOtherNodes(childrenLeafNodes, otherNodes);
-        
-        // Other nodes exist restore all and goners
-        if (otherNodes.size() > 0 && !childrenGoners.isEmpty()) {
-            for (Entry<String,JexlNode> andChildEqualsNode : andChildrenEqualsNodes.entries()) {
-                childrenGoners.remove(andChildEqualsNode.getValue());
-            }
-        }
         
         return leafFound;
     }
