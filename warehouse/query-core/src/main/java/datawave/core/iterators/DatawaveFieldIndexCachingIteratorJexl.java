@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
@@ -647,6 +648,7 @@ public abstract class DatawaveFieldIndexCachingIteratorJexl extends WrappingIter
                     // no need to check containership if not returning sorted uids
                     if (!sortedUIDs || this.lastRangeSeeked.contains(kv.getKey())) {
                         if (compositePredicateFilters != null && !compositePredicateFilters.isEmpty()) {
+                            // TODO: Add logic which KNOWS what the next possible key should be and CONTINUES until it is found or exceeded
                             String colFam = kv.getKey().getColumnFamily().toString();
                             String ingestType = colFam.substring(0, colFam.indexOf('\0'));
                             String colQual = kv.getKey().getColumnQualifier().toString();
@@ -655,8 +657,21 @@ public abstract class DatawaveFieldIndexCachingIteratorJexl extends WrappingIter
                             
                             CompositePredicateFilter compositePredicateFilter = (compositePredicateFilters.get(ingestType) != null) ? compositePredicateFilters
                                             .get(ingestType).get(fieldName) : null;
-                            if (compositePredicateFilter != null && !compositePredicateFilter.keep(terms, kv.getKey().getTimestamp()))
-                                continue;
+                            
+                            if (compositePredicateFilter != null) {
+                                if (this instanceof DatawaveFieldIndexRangeIteratorJexl) {
+                                    DatawaveFieldIndexRangeIteratorJexl _this = (DatawaveFieldIndexRangeIteratorJexl) this;
+                                    
+                                    List<String> startValues = Arrays.asList(_this.getFieldValue().toString().split(CompositeUtils.SEPARATOR));
+                                    List<String> endValues = Arrays.asList(_this.upperBound.toString().split(CompositeUtils.SEPARATOR));
+                                    
+                                    if (!compositeInBounds(terms, startValues, endValues, compositePredicateFilter.getCompositeFields()))
+                                        continue;
+                                }
+                            }
+                            
+                            // if (compositePredicateFilter != null && !compositePredicateFilter.keep(terms, kv.getKey().getTimestamp()))
+                            // continue;
                         }
                         
                         this.topKey = kv.getKey();
@@ -724,6 +739,19 @@ public abstract class DatawaveFieldIndexCachingIteratorJexl extends WrappingIter
             }
             
         }
+    }
+    
+    private boolean compositeInBounds(String[] values, List<String> startValues, List<String> endValues, List<String> fieldNames) {
+        for (int i = fieldNames.size() - 1; i >= 0; i--) {
+            String value = (i < values.length) ? values[i] : null;
+            String start = (i < startValues.size()) ? startValues.get(i) : null;
+            String end = (i < endValues.size()) ? endValues.get(i) : null;
+            
+            if (value != null)
+                if ((start != null && value.compareTo(start) < 0) || (end != null && value.compareTo(end) > 0))
+                    return false;
+        }
+        return true;
     }
     
     private void fillSortedSets() throws IOException {

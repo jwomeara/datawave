@@ -2,6 +2,8 @@ package datawave.query.jexl.visitors;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
+import datawave.query.Constants;
+import datawave.query.composite.CompositeUtils;
 import datawave.query.config.ShardQueryConfiguration;
 import datawave.query.exceptions.DatawaveFatalQueryException;
 import datawave.query.exceptions.IllegalRangeArgumentException;
@@ -24,6 +26,8 @@ import datawave.webservice.common.logging.ThreadConfigurableLogger;
 import datawave.webservice.query.exception.DatawaveErrorCode;
 import datawave.webservice.query.exception.QueryException;
 import org.apache.accumulo.core.client.TableNotFoundException;
+import org.apache.accumulo.core.data.Key;
+import org.apache.accumulo.core.data.Range;
 import org.apache.commons.jexl2.parser.ASTAndNode;
 import org.apache.commons.jexl2.parser.ASTDelayedPredicate;
 import org.apache.commons.jexl2.parser.ASTEQNode;
@@ -35,10 +39,13 @@ import org.apache.commons.jexl2.parser.ASTReference;
 import org.apache.commons.jexl2.parser.JexlNode;
 import org.apache.commons.jexl2.parser.JexlNodes;
 import org.apache.commons.jexl2.parser.ParserTreeConstants;
+import org.apache.hadoop.io.Text;
 import org.apache.log4j.Logger;
+import org.javatuples.Pair;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -135,10 +142,210 @@ public class RangeConjunctionRebuildingVisitor extends RebuildingVisitor {
         return node;
     }
     
+    // public Map<LiteralRange<?>,List<JexlNode>> expandCompositeRanges(Map<LiteralRange<?>,List<JexlNode>> ranges) throws Exception {
+    // Map<LiteralRange<?>,List<JexlNode>> expandedRanges = new HashMap<>();
+    // for (Map.Entry<LiteralRange<?>,List<JexlNode>> range : ranges.entrySet()) {
+    // String fieldName = range.getKey().getFieldName();
+    // LiteralRange<?> litRange = range.getKey();
+    // String[] lowerBound = litRange.getLower() instanceof String ? ((String) litRange.getLower()).split(Constants.MAX_UNICODE_STRING) : null;
+    // String[] upperBound = litRange.getUpper() instanceof String ? ((String) litRange.getUpper()).split(Constants.MAX_UNICODE_STRING) : null;
+    //
+    // if (config.getCompositeToFieldMap().keySet().contains(fieldName) && lowerBound != null && lowerBound.length > 0 && upperBound != null
+    // && upperBound.length > 0) {
+    // boolean lowerInclusive = litRange.isLowerInclusive();
+    // boolean upperInclusive = litRange.isUpperInclusive();
+    // LiteralRange.NodeOperand operand = litRange.getNodeOperand();
+    //
+    // List<Pair<String,String>> newRanges = new ArrayList<>();
+    // Collection<String> componentFields = config.getCompositeToFieldMap().get(fieldName);
+    // int fieldIdx = 0;
+    // for (String compField : componentFields) {
+    // String lowerComp = (lowerBound.length > fieldIdx) ? lowerBound[fieldIdx] : null;
+    // String upperComp = (upperBound.length > fieldIdx) ? upperBound[fieldIdx] : null;
+    //
+    // if (helper.getFixedLengthCompositeFields().contains(compField) && lowerComp != null && upperComp != null) {
+    // List<String> values = expandRange(lowerComp, upperComp);
+    //
+    // if (newRanges.size() > 0) {
+    // newRanges = newRanges.stream().flatMap(x -> buildRanges(x, values).stream()).collect(Collectors.toList());
+    // } else {
+    // newRanges = values.stream().map(x -> new Pair<>(x, x)).collect(Collectors.toList());
+    // }
+    // fieldIdx++;
+    // } else {
+    // StringBuilder lowerBoundTail = new StringBuilder();
+    // for (int i = fieldIdx; i < lowerBound.length; i++)
+    // lowerBoundTail.append(Constants.MAX_UNICODE_STRING).append(lowerBound[i]);
+    // StringBuilder upperBoundTail = new StringBuilder();
+    // for (int i = fieldIdx; i < upperBound.length; i++)
+    // upperBoundTail.append(Constants.MAX_UNICODE_STRING).append(upperBound[i]);
+    //
+    // newRanges = newRanges.stream()
+    // .map(x -> new Pair<>(x.getValue0() + lowerBoundTail.toString(), x.getValue1() + upperBoundTail.toString()))
+    // .collect(Collectors.toList());
+    // break;
+    // }
+    // }
+    // newRanges.forEach(x -> expandedRanges.put(new LiteralRange<String>(x.getValue0(), lowerInclusive, x.getValue1(), upperInclusive, fieldName,
+    // operand), buildRangeNodes(x.getValue0(), lowerInclusive, x.getValue1(), upperInclusive, fieldName)));
+    // } else {
+    // expandedRanges.put(range.getKey(), range.getValue());
+    // }
+    // }
+    // return expandedRanges;
+    // }
+    
+    // public List<LiteralRange<?>> expandCompositeRange(LiteralRange<?> range) throws Exception {
+    // List<Range> batchedRanges = new ArrayList<>();
+    //
+    // Key startKey = range.getStartKey();
+    // Key endKey = range.getEndKey();
+    //
+    // String fieldName = startKey.getColumnFamily().toString();
+    //
+    // String[] lowerBound = startKey.getRow().toString().split(Constants.MAX_UNICODE_STRING);
+    // String[] upperBound = endKey.getRow().toString().split(Constants.MAX_UNICODE_STRING);
+    //
+    // if (config.getCompositeToFieldMap().keySet().contains(fieldName)) {
+    // List<Pair<String,String>> newRanges = new ArrayList<>();
+    // Collection<String> componentFields = config.getCompositeToFieldMap().get(fieldName);
+    // int fieldIdx = 0;
+    // for (String compField : componentFields) {
+    // String lowerComp = (lowerBound.length > fieldIdx) ? lowerBound[fieldIdx] : null;
+    // String upperComp = (upperBound.length > fieldIdx) ? upperBound[fieldIdx] : null;
+    //
+    // if (helper.getFixedLengthCompositeFields().contains(compField) && lowerComp != null && upperComp != null) {
+    // List<String> values = expandRange(lowerComp, upperComp);
+    //
+    // if (newRanges.size() > 0) {
+    // newRanges = newRanges.stream().flatMap(x -> buildRanges(x, values).stream()).collect(Collectors.toList());
+    // } else {
+    // newRanges = values.stream().map(x -> new Pair<>(x, x)).collect(Collectors.toList());
+    // }
+    // fieldIdx++;
+    // } else {
+    // StringBuilder lowerBoundTail = new StringBuilder();
+    // for (int i = fieldIdx; i < lowerBound.length; i++)
+    // lowerBoundTail.append(Constants.MAX_UNICODE_STRING).append(lowerBound[i]);
+    // StringBuilder upperBoundTail = new StringBuilder();
+    // for (int i = fieldIdx; i < upperBound.length; i++)
+    // upperBoundTail.append(Constants.MAX_UNICODE_STRING).append(upperBound[i]);
+    //
+    // newRanges = newRanges.stream()
+    // .map(x -> new Pair<>(x.getValue0() + lowerBoundTail.toString(), x.getValue1() + upperBoundTail.toString()))
+    // .collect(Collectors.toList());
+    // break;
+    // }
+    // }
+    // newRanges.forEach(x -> batchedRanges.add(
+    // new Range(
+    // new Key(new Text(x.getValue0()), startKey.getColumnFamily(), startKey.getColumnQualifier(), startKey.getColumnVisibility(), startKey.getTimestamp()),
+    // new Key(new Text(x.getValue1()), endKey.getColumnFamily(), endKey.getColumnQualifier(), endKey.getColumnVisibility(), endKey.getTimestamp()))));
+    // } else {
+    // batchedRanges.add(range);
+    // }
+    // return batchedRanges;
+    // }
+    
+    public List<LiteralRange<?>> expandCompositeRanges(LiteralRange<?> range) {
+        List<LiteralRange<?>> batchedRanges = new ArrayList<>();
+        // String fieldName = range.getFieldName();
+        // String[] lowerBound = range.getLower() instanceof String ? ((String) range.getLower()).split(Constants.MAX_UNICODE_STRING) : null;
+        // String[] upperBound = range.getUpper() instanceof String ? ((String) range.getUpper()).split(Constants.MAX_UNICODE_STRING) : null;
+        
+        // if (config.getCompositeToFieldMap().keySet().contains(fieldName) && lowerBound != null && lowerBound.length > 0 && upperBound != null
+        // && upperBound.length > 0) {
+        // boolean lowerInclusive = range.isLowerInclusive();
+        // boolean upperInclusive = range.isUpperInclusive();
+        // LiteralRange.NodeOperand operand = range.getNodeOperand();
+        //
+        // List<Pair<String,String>> newRanges = new ArrayList<>();
+        // Collection<String> componentFields = config.getCompositeToFieldMap().get(fieldName);
+        // int fieldIdx = 0;
+        // for (String compField : componentFields) {
+        // String lowerComp = (lowerBound.length > fieldIdx) ? lowerBound[fieldIdx] : null;
+        // String upperComp = (upperBound.length > fieldIdx) ? upperBound[fieldIdx] : null;
+        //
+        // if (config.getFixedLengthFields().contains(compField) && lowerComp != null && upperComp != null) {
+        // List<String> values = expandHexRange(lowerComp, upperComp);
+        //
+        // if (newRanges.size() > 0) {
+        // newRanges = newRanges.stream().flatMap(x -> buildRanges(x, values).stream()).collect(Collectors.toList());
+        // } else {
+        // newRanges = values.stream().map(x -> new Pair<>(x, x)).collect(Collectors.toList());
+        // }
+        // fieldIdx++;
+        // } else {
+        // StringBuilder lowerBoundTail = new StringBuilder();
+        // for (int i = fieldIdx; i < lowerBound.length; i++)
+        // lowerBoundTail.append(Constants.MAX_UNICODE_STRING).append(lowerBound[i]);
+        // StringBuilder upperBoundTail = new StringBuilder();
+        // for (int i = fieldIdx; i < upperBound.length; i++)
+        // upperBoundTail.append(Constants.MAX_UNICODE_STRING).append(upperBound[i]);
+        //
+        // newRanges = newRanges.stream().map(x -> new Pair<>(x.getValue0() + lowerBoundTail.toString(), x.getValue1() + upperBoundTail.toString()))
+        // .collect(Collectors.toList());
+        // break;
+        // }
+        // }
+        // newRanges.forEach(x -> batchedRanges.add(new LiteralRange<String>(x.getValue0(), lowerInclusive, x.getValue1(), upperInclusive, fieldName,
+        // operand)));
+        // } else {
+        batchedRanges.add(range);
+        // }
+        return batchedRanges;
+    }
+    
+    // TODO: Change this back so it works for all types, not just hex
+    // private List<String> expandRange(String lower, String upper) {
+    // List<String> values = new ArrayList<>();
+    // for (String value = lower; value.compareTo(upper) <= 0; value = CompositeUtils.incrementBound(value)) {
+    // char lastChar = value.charAt(value.length() - 1);
+    // if ((lastChar >= 'a' && lastChar <= 'f') || (lastChar >= '0' && lastChar <= '9'))
+    // values.add(value);
+    // }
+    // return values;
+    // }
+    
+    private List<String> expandHexRange(String lower, String upper) {
+        int startInt = Integer.parseInt(lower, 16);
+        int finishInt = Integer.parseInt(upper, 16);
+        
+        String format = "%0" + lower.length() + "x";
+        
+        List<String> result = new ArrayList<>();
+        for (int i = startInt; i <= finishInt; i++)
+            result.add(String.format(format, i));
+        return result;
+    }
+    
+    private List<Pair<String,String>> buildRanges(Pair<String,String> srcRange, List<String> values) {
+        List<Pair<String,String>> newRanges = new ArrayList<>();
+        for (String value : values)
+            newRanges.add(new Pair<>(srcRange.getValue0() + Constants.MAX_UNICODE_STRING + value, srcRange.getValue1() + Constants.MAX_UNICODE_STRING + value));
+        return newRanges;
+    }
+    
+    // private List<JexlNode> buildRangeNodes(String lower, boolean lowerInclusive, String upper, boolean upperInclusive, String fieldName) {
+    // List<JexlNode> nodes = new ArrayList<>();
+    // nodes.add((lowerInclusive ? JexlNodeFactory.buildNode((ASTGENode) null, fieldName, lower) : JexlNodeFactory.buildNode((ASTGTNode) null, fieldName,
+    // lower)));
+    // nodes.add((upperInclusive ? JexlNodeFactory.buildNode((ASTLENode) null, fieldName, upper) : JexlNodeFactory.buildNode((ASTLTNode) null, fieldName,
+    // upper)));
+    // return nodes;
+    // }
+    
     @Override
     public Object visit(ASTAndNode node, Object data) {
         List<JexlNode> leaves = new ArrayList<>();
         Map<LiteralRange<?>,List<JexlNode>> ranges = JexlASTHelper.getBoundedRanges(node, this.config.getDatatypeFilter(), this.helper, leaves, false);
+        
+        // THIS IS TOO EXPENSIVE. TRY USING ORIGINAL RANGES AND SEEKING INSTEAD
+        // try {
+        // ranges = expandCompositeRanges(ranges);
+        // } catch (Exception e) {
+        // System.out.println("WHITNEY: BUMMER!! Could not create sub ranges.");
+        // }
         
         JexlNode andNode = JexlNodes.newInstanceOfType(node);
         andNode.image = node.image;
@@ -181,6 +388,8 @@ public class RangeConjunctionRebuildingVisitor extends RebuildingVisitor {
             return currentNode;
         }
         
+        // TODO: This is where we need to take a single composite range and BREAK IT UP into MULTIPLE SMALLER RANGES
+        // TODO: Hopefully this will help us to skip more entries, and get a result faster
         for (Map.Entry<LiteralRange<?>,List<JexlNode>> range : ranges.entrySet()) {
             JexlNode compositePredicate = null;
             
@@ -195,7 +404,7 @@ public class RangeConjunctionRebuildingVisitor extends RebuildingVisitor {
                     compositePredicate = delayedCompositePredicates.stream().findFirst().get();
             }
             
-            IndexLookup lookup = ShardIndexQueryTableStaticMethods.expandRange(range.getKey(), compositePredicate);
+            IndexLookup lookup = ShardIndexQueryTableStaticMethods.expandRange(expandCompositeRanges(range.getKey()), compositePredicate);
             
             IndexLookupMap fieldsToTerms = null;
             

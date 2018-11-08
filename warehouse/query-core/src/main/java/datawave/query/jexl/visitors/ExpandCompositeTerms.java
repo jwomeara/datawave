@@ -224,7 +224,11 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
                     // first we need to trim the used nodes to eliminate any wrapping nodes
                     // i.e. reference, reference expression, or single child and/or nodes
                     List<JexlNode> leafNodesToDistribute = usedLeafNodes.values().stream().map(this::getLeafNode).collect(Collectors.toList());
-                    rebuiltNode = DistributeAndedNodes.distributeAndedNode(rebuiltNode, leafNodesToDistribute, jexlNodeToCompMap);
+                    
+                    // add the anded nodes as delayed nodes
+                    rebuiltNode = createUnwrappedAndNode(Arrays.asList(rebuiltNode, ASTDelayedPredicate.create(createUnwrappedAndNode(leafNodesToDistribute))));
+                    
+                    // rebuiltNode = DistributeAndedNodes.distributeAndedNode(rebuiltNode, leafNodesToDistribute, jexlNodeToCompMap);
                 }
                 
                 return rebuiltNode;
@@ -506,18 +510,18 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
         JexlNode finalNode;
         if (finalNodes.size() > 1) {
             finalNode = createUnwrappedAndNode(finalNodes);
-            if (composite.jexlNodeList.size() > 1) {
-                JexlNode delayedNode = ASTDelayedPredicate.create(ASTCompositePredicate.create(createUnwrappedAndNode(composite.jexlNodeList.stream()
-                                .map(node -> JexlNodeFactory.wrap(copy(node))).collect(Collectors.toList()))));
-                finalNode = createUnwrappedAndNode(Arrays.asList(JexlNodeFactory.wrap(finalNode), delayedNode));
-            }
+            // if (composite.jexlNodeList.size() > 1) {
+            // JexlNode delayedNode = ASTDelayedPredicate.create(ASTCompositePredicate.create(createUnwrappedAndNode(composite.jexlNodeList.stream()
+            // .map(node -> JexlNodeFactory.wrap(copy(node))).collect(Collectors.toList()))));
+            // finalNode = createUnwrappedAndNode(Arrays.asList(JexlNodeFactory.wrap(finalNode), delayedNode));
+            // }
         } else {
             finalNode = finalNodes.get(0);
-            if (composite.jexlNodeList.size() > 1 && !(finalNode instanceof ASTEQNode)) {
-                JexlNode delayedNode = ASTDelayedPredicate.create(ASTCompositePredicate.create(createUnwrappedAndNode(composite.jexlNodeList.stream()
-                                .map(node -> JexlNodeFactory.wrap(copy(node))).collect(Collectors.toList()))));
-                finalNode = createUnwrappedAndNode(Arrays.asList(finalNode, delayedNode));
-            }
+            // if (composite.jexlNodeList.size() > 1 && !(finalNode instanceof ASTEQNode)) {
+            // JexlNode delayedNode = ASTDelayedPredicate.create(ASTCompositePredicate.create(createUnwrappedAndNode(composite.jexlNodeList.stream()
+            // .map(node -> JexlNodeFactory.wrap(copy(node))).collect(Collectors.toList()))));
+            // finalNode = createUnwrappedAndNode(Arrays.asList(finalNode, delayedNode));
+            // }
         }
         
         if (!CompositeIngest.isOverloadedCompositeField(config.getCompositeToFieldMap(), composite.compositeName)) {
@@ -1282,7 +1286,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
             
             rebuiltChildren.add(createUnwrappedAndNode(nodeList));
             
-            // for children with everything -> keep those as-is
+            // for children with everything -> and them with the delayed version of the anded nodes
             rebuiltChildren.addAll(nodesWithEverything);
             
             parentData.usedAndedNodes.addAll(andedNodes);

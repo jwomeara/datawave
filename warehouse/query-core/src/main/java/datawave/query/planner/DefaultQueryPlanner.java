@@ -1333,7 +1333,7 @@ public class DefaultQueryPlanner extends QueryPlanner {
     }
     
     public static void logQuery(ASTJexlScript queryTree, String message) {
-        logDebug(PrintingVisitor.formattedQueryStringList(queryTree), message);
+        // logDebug(PrintingVisitor.formattedQueryStringList(queryTree), message);
     }
     
     /**

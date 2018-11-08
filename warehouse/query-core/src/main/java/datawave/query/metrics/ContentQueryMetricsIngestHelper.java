@@ -173,7 +173,7 @@ public class ContentQueryMetricsIngestHelper extends CSVIngestHelper implements 
                 fields.put("QUERY", updatedQueryMetric.getQuery());
             }
             if (updatedQueryMetric.getPlan() != null) {
-                fields.put("PLAN", updatedQueryMetric.getPlan());
+                fields.put("PLAN", updatedQueryMetric.getPlan().substring(0, Math.min(updatedQueryMetric.getPlan().length(), 1000000)));
             }
             if (updatedQueryMetric.getQueryId() != null) {
                 fields.put("QUERY_ID", updatedQueryMetric.getQueryId());

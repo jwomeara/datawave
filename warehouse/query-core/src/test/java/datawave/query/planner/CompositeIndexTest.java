@@ -273,7 +273,7 @@ public class CompositeIndexTest {
         String compositeFieldName = GEO_FIELD;
         conf.set(DATA_TYPE_NAME + BaseIngestHelper.COMPOSITE_FIELD_NAMES, compositeFieldName);
         conf.set(DATA_TYPE_NAME + BaseIngestHelper.COMPOSITE_FIELD_MEMBERS, GEO_FIELD + "." + WKT_BYTE_LENGTH_FIELD);
-        conf.set(DATA_TYPE_NAME + BaseIngestHelper.COMPOSITE_FIELDS_FIXED_LENGTH, compositeFieldName);
+        conf.set(DATA_TYPE_NAME + BaseIngestHelper.FIELDS_FIXED_LENGTH, compositeFieldName);
         conf.set(DATA_TYPE_NAME + BaseIngestHelper.COMPOSITE_FIELDS_TRANSITION_DATES, compositeFieldName + "|" + COMPOSITE_BEGIN_DATE);
         
         conf.set(DATA_TYPE_NAME + BaseIngestHelper.INDEX_FIELDS, GEO_FIELD + ((!compositeFieldName.equals(GEO_FIELD)) ? "," + compositeFieldName : ""));
@@ -334,7 +334,7 @@ public class CompositeIndexTest {
         // @formatter:on
         
         List<QueryData> queries = getQueryRanges(query, false);
-        Assert.assertEquals(11, queries.size());
+        Assert.assertEquals(12, queries.size());
         
         List<DefaultEvent> events = getQueryResults(query, false);
         

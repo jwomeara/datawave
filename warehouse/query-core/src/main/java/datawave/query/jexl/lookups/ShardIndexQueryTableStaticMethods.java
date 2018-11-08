@@ -262,6 +262,11 @@ public class ShardIndexQueryTableStaticMethods {
         return new LookupBoundedRangeForTerms(range, compositePredicate);
     }
     
+    public static IndexLookup expandRange(List<LiteralRange<?>> ranges, JexlNode compositePredicate) {
+        
+        return new LookupBoundedRangeForTerms(ranges, compositePredicate);
+    }
+    
     /**
      * Get a range description for a specified query term which is a literal.
      *

@@ -321,6 +321,10 @@ public class ThreadedRangeBundlerIterator implements Iterator<QueryData>, Closea
             }
         }
         
+        if (current != null && current.getQuery() != null) {
+            System.out.println("WHITNEY: NEXT QUERY -> " + current.getQuery());
+        }
+        
         return current;
     }
     

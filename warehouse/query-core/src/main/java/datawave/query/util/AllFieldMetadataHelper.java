@@ -419,7 +419,7 @@ public class AllFieldMetadataHelper {
         
         bs.setRange(range);
         
-        bs.fetchColumnFamily(ColumnFamilyConstants.COLF_CIFL);
+        bs.fetchColumnFamily(ColumnFamilyConstants.COLF_FL);
         
         for (Entry<Key,Value> entry : bs) {
             String fieldName = entry.getKey().getRow().toString();

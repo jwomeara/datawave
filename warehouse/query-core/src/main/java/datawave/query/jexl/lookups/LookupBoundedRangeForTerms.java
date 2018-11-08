@@ -3,13 +3,15 @@ package datawave.query.jexl.lookups;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
 import datawave.core.iterators.ColumnQualifierRangeIterator;
-import datawave.core.iterators.CompositeRangeFilterIterator;
+import datawave.core.iterators.CompositeSkippingIterator;
 import datawave.core.iterators.TimeoutExceptionIterator;
 import datawave.core.iterators.TimeoutIterator;
 import datawave.query.Constants;
+import datawave.query.composite.CompositeUtils;
 import datawave.query.config.ShardQueryConfiguration;
 import datawave.query.exceptions.DatawaveFatalQueryException;
 import datawave.query.exceptions.IllegalRangeArgumentException;
+import datawave.query.jexl.JexlNodeFactory;
 import datawave.query.jexl.LiteralRange;
 import datawave.query.jexl.visitors.JexlStringBuildingVisitor;
 import datawave.query.tables.ScannerFactory;
@@ -25,27 +27,39 @@ import org.apache.accumulo.core.data.Key;
 import org.apache.accumulo.core.data.Range;
 import org.apache.accumulo.core.data.Value;
 import org.apache.accumulo.core.iterators.user.WholeRowIterator;
+import org.apache.commons.jexl2.parser.ASTGENode;
+import org.apache.commons.jexl2.parser.ASTGTNode;
+import org.apache.commons.jexl2.parser.ASTLENode;
+import org.apache.commons.jexl2.parser.ASTLTNode;
 import org.apache.commons.jexl2.parser.JexlNode;
 import org.apache.hadoop.io.Text;
 import org.apache.log4j.Logger;
+import org.javatuples.Pair;
 import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.text.MessageFormat;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 
 public class LookupBoundedRangeForTerms extends IndexLookup {
     private static final Logger log = ThreadConfigurableLogger.getLogger(LookupBoundedRangeForTerms.class);
     
     protected Set<String> datatypeFilter;
     protected Set<Text> fields;
-    private final LiteralRange<?> literalRange;
+    private final List<LiteralRange<?>> literalRanges;
+    protected String fieldName;
     private final JexlNode compositePredicate;
     
     public LookupBoundedRangeForTerms(LiteralRange<?> literalRange) {
@@ -53,10 +67,26 @@ public class LookupBoundedRangeForTerms extends IndexLookup {
     }
     
     public LookupBoundedRangeForTerms(LiteralRange<?> literalRange, JexlNode compositePredicate) {
-        this.literalRange = literalRange;
+        this(Collections.singletonList(literalRange), compositePredicate);
+    }
+    
+    public LookupBoundedRangeForTerms(List<LiteralRange<?>> literalRanges, JexlNode compositePredicate) {
+        this.literalRanges = literalRanges;
         this.compositePredicate = compositePredicate;
         datatypeFilter = Sets.newHashSet();
         fields = Sets.newHashSet();
+        init();
+    }
+    
+    private void init() {
+        List<String> fieldNames = literalRanges.stream().map(LiteralRange::getFieldName).distinct().collect(Collectors.toList());
+        if (fieldNames.size() != 1) {
+            QueryException qe = new QueryException(DatawaveErrorCode.RANGE_CREATE_ERROR, "Field name mismatch for batched ranges.");
+            log.debug(qe);
+            throw new IllegalRangeArgumentException(qe);
+        } else {
+            this.fieldName = fieldNames.get(0);
+        }
     }
     
     @Override
@@ -83,44 +113,63 @@ public class LookupBoundedRangeForTerms extends IndexLookup {
             
         }
         
-        String lower = literalRange.getLower().toString(), upper = literalRange.getUpper().toString();
-        
-        fields.add(new Text(literalRange.getFieldName()));
-        Key startKey;
-        if (literalRange.isLowerInclusive()) { // inclusive
-            startKey = new Key(new Text(lower));
-        } else { // non-inclusive
-            startKey = new Key(new Text(lower + "\0"));
+        List<Range> ranges = new ArrayList<>();
+        Key minKey = null, maxKey = null;
+        for (LiteralRange<?> literalRange : literalRanges) {
+            String lower = literalRange.getLower().toString(), upper = literalRange.getUpper().toString();
+            
+            fields.add(new Text(literalRange.getFieldName()));
+            Key startKey;
+            if (literalRange.isLowerInclusive()) { // inclusive
+                startKey = new Key(new Text(lower));
+            } else { // non-inclusive
+                startKey = new Key(new Text(lower + "\0"));
+            }
+            
+            Key endKey;
+            if (literalRange.isUpperInclusive()) {
+                // we should have our end key be the end of the range if we are going to use the WRI
+                endKey = new Key(new Text(upper), new Text(literalRange.getFieldName()), new Text(endDay + Constants.MAX_UNICODE_STRING));
+            } else {
+                endKey = new Key(new Text(upper));
+            }
+            
+            if (minKey == null || startKey.compareTo(minKey) < 0)
+                minKey = startKey;
+            
+            if (maxKey == null || endKey.compareTo(maxKey) > 0)
+                maxKey = endKey;
+            
+            Range range = null;
+            try {
+                range = new Range(startKey, true, endKey, literalRange.isUpperInclusive());
+            } catch (IllegalArgumentException e) {
+                QueryException qe = new QueryException(DatawaveErrorCode.RANGE_CREATE_ERROR, e, MessageFormat.format("{0}", literalRange));
+                log.debug(qe);
+                throw new IllegalRangeArgumentException(qe);
+            }
+            
+            ranges.add(range);
         }
         
-        Key endKey;
-        if (literalRange.isUpperInclusive()) {
-            // we should have our end key be the end of the range if we are going to use the WRI
-            endKey = new Key(new Text(upper), new Text(literalRange.getFieldName()), new Text(endDay + Constants.MAX_UNICODE_STRING));
-        } else {
-            endKey = new Key(new Text(upper));
-        }
+        if (ranges.size() == 1)
+            log.debug("Range: " + ranges.get(0));
+        else
+            log.debug("Batched Range: " + new Range(minKey, maxKey));
         
-        Range range = null;
-        try {
-            range = new Range(startKey, true, endKey, literalRange.isUpperInclusive());
-        } catch (IllegalArgumentException e) {
-            QueryException qe = new QueryException(DatawaveErrorCode.RANGE_CREATE_ERROR, e, MessageFormat.format("{0}", this.literalRange));
-            log.debug(qe);
-            throw new IllegalRangeArgumentException(qe);
-        }
-        
-        log.debug("Range: " + range);
         BatchScanner bs = null;
         try {
             bs = scannerFactory.newScanner(config.getIndexTableName(), config.getAuthorizations(), config.getNumQueryThreads(), config.getQuery());
             
             if (log.isDebugEnabled()) {
-                log.debug("Range: " + range);
+                if (ranges.size() == 1)
+                    log.debug("Range: " + ranges.get(0));
+                else
+                    log.debug("Batched Range: " + new Range(minKey, maxKey));
             }
             
-            bs.setRanges(Collections.singleton(range));
-            bs.fetchColumnFamily(new Text(literalRange.getFieldName()));
+            bs.setRanges(ranges);
+            bs.fetchColumnFamily(new Text(fieldName));
             
             if (config.getDatatypeFilter() != null && !config.getDatatypeFilter().isEmpty()) {
                 datatypeFilter.addAll(config.getDatatypeFilter());
@@ -139,29 +188,32 @@ public class LookupBoundedRangeForTerms extends IndexLookup {
             bs.addScanIterator(cfg);
             
             // If this is a composite range, we need to setup our query to filter based on each component of the composite range
-            if (config.getCompositeToFieldMap().get(literalRange.getFieldName()) != null && compositePredicate != null) {
+            if (config.getCompositeToFieldMap().get(fieldName) != null && compositePredicate != null) {
                 Date transitionDate = null;
-                if (config.getCompositeTransitionDates().containsKey(literalRange.getFieldName()))
-                    transitionDate = config.getCompositeTransitionDates().get(literalRange.getFieldName());
+                // if (config.getCompositeTransitionDates().containsKey(fieldName))
+                // transitionDate = config.getCompositeTransitionDates().get(fieldName);
                 
                 // if this is a transitioned composite field, don't add the iterator if our date range preceeds the transition date
-                if (transitionDate == null || config.getEndDate().compareTo(transitionDate) > 0) {
-                    
-                    IteratorSetting compositeIterator = new IteratorSetting(config.getBaseIteratorPriority() + 51, CompositeRangeFilterIterator.class);
-                    
-                    compositeIterator.addOption(CompositeRangeFilterIterator.COMPOSITE_FIELDS,
-                                    StringUtils.collectionToCommaDelimitedString(config.getCompositeToFieldMap().get(literalRange.getFieldName())));
-                    
-                    compositeIterator.addOption(CompositeRangeFilterIterator.COMPOSITE_PREDICATE, JexlStringBuildingVisitor.buildQuery(compositePredicate));
-                    
-                    if (transitionDate != null) {
-                        // Ensure iterator runs before wholerowiterator so we get valid timestamps
-                        compositeIterator.setPriority(config.getBaseIteratorPriority() + 49);
-                        compositeIterator.addOption(CompositeRangeFilterIterator.COMPOSITE_TRANSITION_DATE, Long.toString(transitionDate.getTime()));
-                    }
-                    
-                    bs.addScanIterator(compositeIterator);
-                }
+                // if (transitionDate == null || config.getEndDate().compareTo(transitionDate) > 0) {
+                
+                IteratorSetting compositeIterator = new IteratorSetting(config.getBaseIteratorPriority() + 51, CompositeSkippingIterator.class);
+                
+                compositeIterator.addOption(CompositeSkippingIterator.COMPOSITE_FIELDS,
+                                StringUtils.collectionToCommaDelimitedString(config.getCompositeToFieldMap().get(fieldName)));
+                
+                compositeIterator.addOption(CompositeSkippingIterator.FIXED_LENGTH_FIELDS,
+                                StringUtils.collectionToCommaDelimitedString(config.getFixedLengthFields()));
+                
+                // compositeIterator.addOption(CompositeSkippingIterator.COMPOSITE_PREDICATE, JexlStringBuildingVisitor.buildQuery(compositePredicate));
+                //
+                // if (transitionDate != null) {
+                // // Ensure iterator runs before wholerowiterator so we get valid timestamps
+                // compositeIterator.setPriority(config.getBaseIteratorPriority() + 49);
+                // compositeIterator.addOption(CompositeSkippingIterator.COMPOSITE_TRANSITION_DATE, Long.toString(transitionDate.getTime()));
+                // }
+                
+                bs.addScanIterator(compositeIterator);
+                // }
             }
             
             if (null != fairnessIterator) {
@@ -182,7 +234,7 @@ public class LookupBoundedRangeForTerms extends IndexLookup {
             throw new DatawaveFatalQueryException(qe);
             
         } catch (IOException e) {
-            QueryException qe = new QueryException(DatawaveErrorCode.RANGE_CREATE_ERROR, e, MessageFormat.format("{0}", this.literalRange));
+            QueryException qe = new QueryException(DatawaveErrorCode.RANGE_CREATE_ERROR, e);
             log.debug(qe);
             throw new IllegalRangeArgumentException(qe);
         } finally {
@@ -269,8 +321,7 @@ public class LookupBoundedRangeForTerms extends IndexLookup {
                         fieldsToValues.put(field, uniqueTerm);
                         
                         // safety check...
-                        Preconditions.checkState(field.equals(literalRange.getFieldName()), "Got an unexpected field name when expanding range" + field + " "
-                                        + literalRange.getFieldName());
+                        Preconditions.checkState(field.equals(fieldName), "Got an unexpected field name when expanding range" + field + " " + fieldName);
                         
                         // If this range expands into to many values, we can
                         // stop

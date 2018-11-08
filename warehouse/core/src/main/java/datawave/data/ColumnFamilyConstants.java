@@ -62,9 +62,9 @@ public interface ColumnFamilyConstants {
     Text COLF_CI = new Text("ci");
     
     /**
-     * a colf of 'cifl' denotes whether a composite field is of fixed length
+     * a colf of 'fl' denotes whether a field (typically a composite component) is of fixed length
      */
-    Text COLF_CIFL = new Text("cifl");
+    Text COLF_FL = new Text("fl");
     
     /**
      * a colf of 'citd' denotes whether a composite field has a transition date

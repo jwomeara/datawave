@@ -57,16 +57,18 @@ public class NYCTLCReader extends CSVReaderBase {
                 // update value to be list of field/value pairings
                 StringBuffer fvBuf = new StringBuffer();
                 String[] values = this.value.toString().split(((NYCTLCHelper) helper).getSeparator());
-                if (values.length == ((NYCTLCHelper) helper).getParsedHeader().length) {
-                    completeRecord = true;
-                    for (int fieldIdx = 0; fieldIdx < values.length; fieldIdx++) {
-                        fvBuf.append(((NYCTLCHelper) helper).getParsedHeader()[fieldIdx] + "=" + values[fieldIdx]);
-                        if ((fieldIdx + 1) < values.length)
-                            fvBuf.append(((NYCTLCHelper) helper).getSeparator());
-                    }
-                    this.value = new Text(fvBuf.toString());
-                } else
-                    completeRecord = false;
+                if (values.length > ((NYCTLCHelper) helper).getParsedHeader().length)
+                    System.out.println("More values present than expected.");
+                
+                int numFields = Math.min(values.length, ((NYCTLCHelper) helper).getParsedHeader().length);
+                
+                completeRecord = true;
+                for (int fieldIdx = 0; fieldIdx < numFields; fieldIdx++) {
+                    fvBuf.append(((NYCTLCHelper) helper).getParsedHeader()[fieldIdx] + "=" + values[fieldIdx]);
+                    if ((fieldIdx + 1) < numFields)
+                        fvBuf.append(((NYCTLCHelper) helper).getSeparator());
+                }
+                this.value = new Text(fvBuf.toString());
             } else
                 completeRecord = false;
         } while (hasNext && !completeRecord);

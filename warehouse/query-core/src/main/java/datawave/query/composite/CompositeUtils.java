@@ -42,55 +42,53 @@ public class CompositeUtils {
         return incrementBound(upperBound);
     }
     
+    // NOTE: The output string will have the same number of characters as the input string.
+    // An exception will be thrown if we can't decrement without maintaining the number of characters
     public static String decrementBound(String orig) {
         // decrement string
         int[] codePoints = orig.codePoints().toArray();
         int length = codePoints.length;
         int lastCodePoint = codePoints[length - 1];
-        if (lastCodePoint == Character.MIN_CODE_POINT) {
-            length = Math.max(1, length - 1);
-        } else {
-            // keep decrementing until we reach a calid code point
-            while (!Character.isValidCodePoint(--lastCodePoint))
-                ;
-            codePoints[length - 1] = lastCodePoint;
+        while (lastCodePoint == Character.MIN_CODE_POINT) {
+            if (length == 1)
+                throw new RuntimeException("Cannot decrement bound without decreasing the number of characters.");
+            codePoints[length - 1] = Character.MAX_CODE_POINT;
+            lastCodePoint = codePoints[--length - 1];
         }
         
+        // keep decrementing until we reach a valid code point
+        while (!Character.isValidCodePoint(--lastCodePoint))
+            ;
+        codePoints[length - 1] = lastCodePoint;
+        
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < length; i++)
+        for (int i = 0; i < codePoints.length; i++)
             sb.appendCodePoint(codePoints[i]);
         
         return sb.toString();
     }
     
+    // NOTE: The output string will have the same number of characters as the input string.
+    // An exception will be thrown if we can't increment without maintaining the number of characters
     public static String incrementBound(String orig) {
         // increment string
         int[] codePoints = orig.codePoints().toArray();
         int length = codePoints.length;
         int lastCodePoint = codePoints[length - 1];
-        boolean isMaxedOut = false;
         while (lastCodePoint == Character.MAX_CODE_POINT) {
-            if (length == 1) {
-                isMaxedOut = true;
-                break;
-            }
+            if (length == 1)
+                throw new RuntimeException("Cannot increment bound without increasing the number of characters.");
+            codePoints[length - 1] = Character.MIN_CODE_POINT;
             lastCodePoint = codePoints[--length - 1];
         }
         
-        // this means that the entire string consisted of MAX_CODE_POINT characters
-        if (isMaxedOut) {
-            codePoints = Arrays.copyOf(codePoints, codePoints.length + 1);
-            codePoints[codePoints.length - 1] = Character.MIN_CODE_POINT;
-            length = codePoints.length;
-        } else {
-            // keep incrementing until we reach a valid code point
-            while (!Character.isValidCodePoint(++lastCodePoint))
-                ;
-            codePoints[length - 1] = lastCodePoint;
-        }
+        // keep incrementing until we reach a valid code point
+        while (!Character.isValidCodePoint(++lastCodePoint))
+            ;
+        codePoints[length - 1] = lastCodePoint;
         
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < length; i++)
+        for (int i = 0; i < codePoints.length; i++)
             sb.appendCodePoint(codePoints[i]);
         
         return sb.toString();

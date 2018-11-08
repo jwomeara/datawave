@@ -432,7 +432,7 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
             }
         }
         
-        String fixedLengthFields = config.get(this.getType().typeName() + CompositeIngest.COMPOSITE_FIELDS_FIXED_LENGTH);
+        String fixedLengthFields = config.get(this.getType().typeName() + CompositeIngest.FIELDS_FIXED_LENGTH);
         if (null != fixedLengthFields) {
             for (String s : fixedLengthFields.split(",")) {
                 
@@ -611,7 +611,7 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
     }
     
     @Override
-    public boolean isFixedLengthCompositeField(String fieldName) {
+    public boolean isFixedLengthField(String fieldName) {
         return fixedLengthFields != null && fixedLengthFields.contains(fieldName);
     }
     

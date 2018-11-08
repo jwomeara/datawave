@@ -29,8 +29,11 @@ import org.apache.hadoop.io.Text;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
+import java.math.BigInteger;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -343,12 +346,27 @@ public class IndexIterator implements SortedKeyValueIterator<Key,Value>, Documen
                 
                 CompositePredicateFilter compositePredicateFilter = (compositePredicateFilters.get(ingestType) != null) ? compositePredicateFilters.get(
                                 ingestType).get(fieldName) : null;
-                if (compositePredicateFilter != null && !compositePredicateFilter.keep(terms, top.getTimestamp())) {
-                    if (log.isTraceEnabled())
-                        log.trace("Ignoring key due to not passing the composite predicate filter: " + top);
-                    source.next();
-                    continue;
+                
+                if (compositePredicateFilter != null) {
+                    List<String> startValues = Arrays.asList(scanRange.getStartKey().getColumnQualifier().toString().split("\0")[0]
+                                    .split(CompositeUtils.SEPARATOR));
+                    List<String> endValues = Arrays
+                                    .asList(scanRange.getEndKey().getColumnQualifier().toString().split("\0")[0].split(CompositeUtils.SEPARATOR));
+                    
+                    if (compositeSeek(top, compositePredicateFilter.getCompositeFields(), Arrays.asList("GEO", "ALL_LOCATIONS"), startValues, endValues,
+                                    scanRange, seekColumnFamilies, includeColumnFamilies)) {
+                        source.next();
+                        continue;
+                    }
                 }
+                
+                // if (compositePredicateFilter != null && !compositePredicateFilter.keep(terms, top.getTimestamp())) {
+                // if (log.isTraceEnabled())
+                // log.trace("Ignoring key due to not passing the composite predicate filter: " + top);
+                // // TODO: FROM HERE, MOVE TO THE NEXT KNOWN KEY IN THE RANGE
+                // source.next();
+                // continue;
+                // }
             }
             
             // Aggregate the document. NOTE: This will advance the source iterator
@@ -359,6 +377,154 @@ public class IndexIterator implements SortedKeyValueIterator<Key,Value>, Documen
                 log.trace("Returning pointer " + tk.toStringNoTime());
             }
         }
+    }
+    
+    private String incrementHexRange(String hexValue) {
+        int length = hexValue.length();
+        String format = "%0" + hexValue.length() + "x";
+        if (length < 8) {
+            return incrementHexRangeInteger(hexValue, format);
+        } else if (length < 16) {
+            return incrementHexRangeLong(hexValue, format);
+        } else {
+            return incrementHexRangeBigInteger(hexValue, format);
+        }
+    }
+    
+    private boolean compositeSeek(Key topKey, List<String> fieldNames, List<String> fixedLengthFields, List<String> startValues, List<String> endValues,
+                    Range originalRange, Collection<ByteSequence> columnFamilies, boolean inclusive) throws IOException {
+        String origColQual = topKey.getColumnQualifier().toString();
+        String[] colQualParts = origColQual.split("\0");
+        String[] values = colQualParts[0].split(CompositeUtils.SEPARATOR);
+        
+        String[] newValues = new String[fieldNames.size()];
+        
+        boolean carryOver = false;
+        for (int i = fieldNames.size() - 1; i >= 0; i--) {
+            boolean fixedLengthField = fixedLengthFields.contains(fieldNames.get(i));
+            String value = (i < values.length) ? values[i] : null;
+            String start = (i < startValues.size()) ? startValues.get(i) : null;
+            String end = (i < endValues.size()) ? endValues.get(i) : null;
+            
+            if (value != null) {
+                // if it's not fixed length, check to see if we are in range
+                if (!fixedLengthField) {
+                    // value preceeds start value. need to seek forward.
+                    if (start != null && value.compareTo(start) < 0) {
+                        newValues[i] = start;
+                        
+                        // subsequent values set to start
+                        for (int j = i + 1; j < newValues.length; j++)
+                            newValues[j] = startValues.get(j);
+                    }
+                    // value exceeds end value. need to seek forward, and carry over.
+                    else if (end != null && value.compareTo(end) > 0) {
+                        newValues[i] = start;
+                        carryOver = true;
+                        
+                        // subsequent values set to start
+                        for (int j = i + 1; j < newValues.length; j++)
+                            newValues[j] = startValues.get(j);
+                    }
+                    // value is in range.
+                    else {
+                        newValues[i] = values[i];
+                    }
+                }
+                // if it's fixed length, determine whether or not we need to increment
+                else {
+                    // carry over means we need to increase our value
+                    if (carryOver) {
+                        // value preceeds start value. just seek forward and ignore previous carry over.
+                        if (start != null && value.compareTo(start) < 0) {
+                            newValues[i] = start;
+                            carryOver = false;
+                            
+                            // subsequent values set to start
+                            for (int j = i + 1; j < startValues.size(); j++)
+                                newValues[j] = startValues.get(j);
+                        }
+                        // value is at or exceeds end value. need to seek forward, and maintain carry over.
+                        else if (end != null && value.compareTo(end) >= 0) {
+                            newValues[i] = start;
+                            carryOver = true;
+                            
+                            // subsequent values set to start
+                            for (int j = i + 1; j < startValues.size(); j++)
+                                newValues[j] = startValues.get(j);
+                        }
+                        // value is in range. just increment, and finish carry over
+                        else {
+                            newValues[i] = incrementHexRange(values[i]);
+                            carryOver = false;
+                        }
+                    } else {
+                        // value preceeds start value. need to seek forward.
+                        if (start != null && value.compareTo(start) < 0) {
+                            newValues[i] = start;
+                            
+                            // subsequent values set to start
+                            for (int j = i + 1; j < startValues.size(); j++)
+                                newValues[j] = startValues.get(j);
+                        }
+                        // value exceeds end value. need to seek forward, and carry over.
+                        else if (end != null && value.compareTo(end) > 0) {
+                            newValues[i] = start;
+                            carryOver = true;
+                            
+                            // subsequent values set to start
+                            for (int j = i + 1; j < startValues.size(); j++)
+                                newValues[j] = startValues.get(j);
+                        }
+                        // value is in range.
+                        else {
+                            newValues[i] = values[i];
+                        }
+                    }
+                }
+            }
+        }
+        
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < newValues.length; i++) {
+            if (newValues[i] != null)
+                if (i > 0)
+                    builder.append(CompositeUtils.SEPARATOR).append(newValues[i]);
+                else
+                    builder.append(newValues[i]);
+            else
+                break;
+        }
+        
+        for (int i = 1; i < colQualParts.length; i++) {
+            builder.append("\0").append(colQualParts[i]);
+        }
+        
+        String newColQual = builder.toString();
+        
+        // if the new row exceeds the row of the key, and it doesn't exceed the end row, we need to seek and call next again. otherwise, keep the
+        // existing
+        // row
+        if (newColQual.compareTo(origColQual) > 0 && newColQual.compareTo(originalRange.getEndKey().getRow().toString()) <= 0) {
+            Key origStartKey = originalRange.getStartKey();
+            Key startKey = new Key(origStartKey.getRow(), origStartKey.getColumnFamily(), new Text(newColQual), origStartKey.getColumnVisibility(),
+                            origStartKey.getTimestamp());
+            source.seek(new Range(startKey, originalRange.getEndKey()), columnFamilies, inclusive);
+            return true;
+        }
+        return false;
+    }
+    
+    private String incrementHexRangeInteger(String hexValue, String format) {
+        return String.format(format, Integer.parseInt(hexValue, 16) + 1);
+    }
+    
+    private String incrementHexRangeLong(String hexValue, String format) {
+        return String.format(format, Long.parseLong(hexValue, 16) + 1L);
+    }
+    
+    private String incrementHexRangeBigInteger(String hexValue, String format) {
+        return String.format(format, new BigInteger(hexValue, 16).add(BigInteger.ONE));
     }
     
     @Override

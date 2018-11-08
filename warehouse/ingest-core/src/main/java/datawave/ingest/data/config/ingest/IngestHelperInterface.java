@@ -102,7 +102,7 @@ public interface IngestHelperInterface extends DataTypeHelper {
     
     boolean isCompositeField(String fieldName);
     
-    boolean isFixedLengthCompositeField(String fieldName);
+    boolean isFixedLengthField(String fieldName);
     
     boolean isTransitionedCompositeField(String fieldName);
     

@@ -37,7 +37,7 @@ public interface CompositeIngest {
     
     String COMPOSITE_FIELD_NAMES = CompositeFieldNormalizer.COMPOSITE_FIELD_NAMES;
     String COMPOSITE_FIELD_MEMBERS = CompositeFieldNormalizer.COMPOSITE_FIELD_MEMBERS;
-    String COMPOSITE_FIELDS_FIXED_LENGTH = CompositeFieldNormalizer.COMPOSITE_FIELDS_FIXED_LENGTH;
+    String FIELDS_FIXED_LENGTH = CompositeFieldNormalizer.FIELDS_FIXED_LENGTH;
     String COMPOSITE_FIELDS_TRANSITION_DATES = CompositeFieldNormalizer.COMPOSITE_FIELDS_TRANSITION_DATES;
     String COMPOSITE_FIELD_ALLOW_MISSING = CompositeFieldNormalizer.COMPOSITE_FIELD_ALLOW_MISSING;
     String COMPOSITE_FIELD_GROUPING_POLICY = CompositeFieldNormalizer.COMPOSITE_FIELD_GROUPING_POLICY;
@@ -55,7 +55,7 @@ public interface CompositeIngest {
     
     boolean isCompositeField(String fieldName);
     
-    boolean isFixedLengthCompositeField(String fieldName);
+    boolean isFixedLengthField(String fieldName);
     
     boolean isTransitionedCompositeField(String fieldName);
     
@@ -111,7 +111,7 @@ public interface CompositeIngest {
          *
          * This is represented as a comma separated list of said fields.
          */
-        public static final String COMPOSITE_FIELDS_FIXED_LENGTH = ".data.composite.fields.fixed.length";
+        public static final String FIELDS_FIXED_LENGTH = ".data.fields.fixed.length";
         
         /**
          * Parameter for specifying which fields have been transitioned from non-composite to overloaded composite fields, and when. The 'when' is important,
@@ -164,7 +164,7 @@ public interface CompositeIngest {
             String[] fieldNames = getStrings(type, instance, config, COMPOSITE_FIELD_NAMES, null);
             String[] fieldMembers = getStrings(type, instance, config, COMPOSITE_FIELD_MEMBERS, null);
             
-            String[] fixedLengthFields = getStrings(type, instance, config, COMPOSITE_FIELDS_FIXED_LENGTH, null);
+            String[] fixedLengthFields = getStrings(type, instance, config, FIELDS_FIXED_LENGTH, null);
             if (fixedLengthFields != null)
                 this.fixedLengthFields.addAll(Arrays.asList(fixedLengthFields));
             

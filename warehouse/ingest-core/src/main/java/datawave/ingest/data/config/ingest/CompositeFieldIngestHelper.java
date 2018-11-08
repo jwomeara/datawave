@@ -72,10 +72,10 @@ public class CompositeFieldIngestHelper implements CompositeIngest {
     /*
      * (non-Javadoc)
      * 
-     * @see datawave.ingest.data.config.ingest.CompositeIngest#isFixedLengthCompositeField(java.lang.String)
+     * @see datawave.ingest.data.config.ingest.CompositeIngest#isFixedLengthField(java.lang.String)
      */
     @Override
-    public boolean isFixedLengthCompositeField(String fieldName) {
+    public boolean isFixedLengthField(String fieldName) {
         Set<String> fixedLengthFields = compositeFieldNormalizer.getFixedLengthFields();
         return fixedLengthFields != null && fixedLengthFields.contains(fieldName);
     }
