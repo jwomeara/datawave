@@ -140,7 +140,6 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
     protected Set<String> indexOnlyFields = Sets.newHashSet();
     
     protected Set<String> compositeFields = Sets.newHashSet();
-    protected Set<String> fixedLengthFields = Sets.newHashSet();
     protected Map<String,Date> fieldTransitionDateMap = Maps.newHashMap();
     
     protected Set<String> indexedFields = Sets.newHashSet();
@@ -432,19 +431,6 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
             }
         }
         
-        String fixedLengthFields = config.get(this.getType().typeName() + CompositeIngest.FIELDS_FIXED_LENGTH);
-        if (null != fixedLengthFields) {
-            for (String s : fixedLengthFields.split(",")) {
-                
-                String fieldName = s.trim();
-                
-                if (!fieldName.isEmpty()) {
-                    
-                    this.fixedLengthFields.add(fieldName);
-                }
-            }
-        }
-        
         String transitionedCompositeFields = config.get(this.getType().typeName() + CompositeIngest.COMPOSITE_FIELDS_TRANSITION_DATES);
         if (null != transitionedCompositeFields) {
             for (String s : transitionedCompositeFields.split(",")) {
@@ -608,11 +594,6 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
     @Override
     public boolean isCompositeField(String fieldName) {
         return this.compositeFields.contains(fieldName);
-    }
-    
-    @Override
-    public boolean isFixedLengthField(String fieldName) {
-        return fixedLengthFields != null && fixedLengthFields.contains(fieldName);
     }
     
     @Override

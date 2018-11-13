@@ -23,6 +23,7 @@ import java.util.concurrent.TimeUnit;
 
 import datawave.data.type.Type;
 import datawave.query.QueryParameters;
+import datawave.query.composite.CompositeUtils;
 import datawave.query.config.ShardQueryConfiguration;
 import datawave.query.discovery.DiscoveredThing;
 import datawave.query.discovery.DiscoveryIterator;
@@ -278,7 +279,10 @@ public class ShardIndexQueryTable extends BaseQueryLogic<DiscoveredThing> {
         Multimap<String,Type<?>> fieldToDataTypeMap = FetchDataTypesVisitor.fetchDataTypes(metadataHelper, config.getDatatypeFilter(), script);
         config.setDataTypes(fieldToDataTypeMap);
         config.setQueryFieldsDatatypes(fieldToDataTypeMap);
-        
+
+        // determine and set the discrete index types
+        config.setFieldToDiscreteIndexTypes(CompositeUtils.getFieldToDiscreteIndexTypeMap(fieldToDataTypeMap));
+
         final Set<String> indexedFields = metadataHelper.getIndexedFields(dataTypes);
         config.setIndexedFields(indexedFields);
         

@@ -37,7 +37,6 @@ public interface CompositeIngest {
     
     String COMPOSITE_FIELD_NAMES = CompositeFieldNormalizer.COMPOSITE_FIELD_NAMES;
     String COMPOSITE_FIELD_MEMBERS = CompositeFieldNormalizer.COMPOSITE_FIELD_MEMBERS;
-    String FIELDS_FIXED_LENGTH = CompositeFieldNormalizer.FIELDS_FIXED_LENGTH;
     String COMPOSITE_FIELDS_TRANSITION_DATES = CompositeFieldNormalizer.COMPOSITE_FIELDS_TRANSITION_DATES;
     String COMPOSITE_FIELD_ALLOW_MISSING = CompositeFieldNormalizer.COMPOSITE_FIELD_ALLOW_MISSING;
     String COMPOSITE_FIELD_GROUPING_POLICY = CompositeFieldNormalizer.COMPOSITE_FIELD_GROUPING_POLICY;
@@ -54,9 +53,7 @@ public interface CompositeIngest {
     void setCompositeFieldDefinitions(Map<String,String[]> compositeFieldDefinitions);
     
     boolean isCompositeField(String fieldName);
-    
-    boolean isFixedLengthField(String fieldName);
-    
+
     boolean isTransitionedCompositeField(String fieldName);
     
     Date getCompositeFieldTransitionDate(String fieldName);
@@ -105,15 +102,6 @@ public interface CompositeIngest {
         public static final String COMPOSITE_FIELD_MEMBERS = ".data.composite.fields";
         
         /**
-         * Parameter for specifying which fields generate queries against ranges whose terms are of fixed length. This becomes important during the query
-         * planning phase when trying to create composite ranges. Composite ranges will only be generated if all terms in the composite but the final term
-         * generate queries against ranges whose terms and values are of fixed length. GeoWave query ranges are a good example of this.
-         *
-         * This is represented as a comma separated list of said fields.
-         */
-        public static final String FIELDS_FIXED_LENGTH = ".data.fields.fixed.length";
-        
-        /**
          * Parameter for specifying which fields have been transitioned from non-composite to overloaded composite fields, and when. The 'when' is important,
          * because for queries which span the transition date, we will need to expand our composite range to include both composite and non-composite terms.
          * This also affects how and which iterators will be run against the data.
@@ -149,7 +137,6 @@ public interface CompositeIngest {
         
         protected Map<String,String[]> compositeFieldDefinitions = new HashMap<>();
         protected Map<String,Pattern> compiledFieldPatterns = null;
-        protected Set<String> fixedLengthFields = new HashSet<>();
         protected Map<String,Date> fieldTransitionDateMap = null;
         protected Map<String,GroupingPolicy> grouping = new HashMap<>();
         protected Map<String,Boolean> allowMissing = new HashMap<>();
@@ -163,11 +150,7 @@ public interface CompositeIngest {
             
             String[] fieldNames = getStrings(type, instance, config, COMPOSITE_FIELD_NAMES, null);
             String[] fieldMembers = getStrings(type, instance, config, COMPOSITE_FIELD_MEMBERS, null);
-            
-            String[] fixedLengthFields = getStrings(type, instance, config, FIELDS_FIXED_LENGTH, null);
-            if (fixedLengthFields != null)
-                this.fixedLengthFields.addAll(Arrays.asList(fixedLengthFields));
-            
+
             String[] fieldTransitionDates = getStrings(type, instance, config, COMPOSITE_FIELDS_TRANSITION_DATES, null);
             if (fieldTransitionDates != null) {
                 try {
@@ -570,15 +553,7 @@ public interface CompositeIngest {
         public void setCompositeFieldDefinitions(Map<String,String[]> compositeFieldDefinitions) {
             this.compositeFieldDefinitions = compositeFieldDefinitions;
         }
-        
-        public Set<String> getFixedLengthFields() {
-            return fixedLengthFields;
-        }
-        
-        public void setFixedLengthFields(Set<String> fixedLengthFields) {
-            this.fixedLengthFields = fixedLengthFields;
-        }
-        
+
         public Map<String,Date> getFieldTransitionDateMap() {
             return fieldTransitionDateMap;
         }

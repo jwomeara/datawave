@@ -1,5 +1,6 @@
 package datawave.core.iterators;
 
+import datawave.data.type.DiscreteIndexType;
 import datawave.query.composite.CompositeUtils;
 import org.apache.accumulo.core.data.ByteSequence;
 import org.apache.accumulo.core.data.Key;
@@ -9,23 +10,26 @@ import org.apache.accumulo.core.iterators.IteratorEnvironment;
 import org.apache.accumulo.core.iterators.SortedKeyValueIterator;
 import org.apache.accumulo.core.iterators.WrappingIterator;
 import org.apache.hadoop.io.Text;
+import org.apache.log4j.Logger;
 
 import java.io.IOException;
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class CompositeSkippingIterator extends WrappingIterator {
-    
-    public static final String FIXED_LENGTH_FIELDS = "fixed.fields";
+
+    private static final Logger log = Logger.getLogger(CompositeSkippingIterator.class);
+
     public static final String COMPOSITE_FIELDS = "composite.fields";
+    public static final String DISCRETE_INDEX_TYPE = ".discrete.index.type";
     
-    protected List<String> fixedLengthFields = new ArrayList<>();
     protected List<String> fieldNames = new ArrayList<>();
+    protected Map<String,DiscreteIndexType<?>> discreteIndexTypeMap = new HashMap<>();
     
     protected Range originalRange = null;
     protected List<String> startValues = new ArrayList<>();
@@ -39,9 +43,9 @@ public class CompositeSkippingIterator extends WrappingIterator {
         CompositeSkippingIterator to = new CompositeSkippingIterator();
         to.setSource(getSource().deepCopy(env));
         
-        Collections.copy(to.fixedLengthFields, fixedLengthFields);
         Collections.copy(to.fieldNames, fieldNames);
-        
+        to.discreteIndexTypeMap = new HashMap<>(discreteIndexTypeMap);
+
         return to;
     }
     
@@ -49,13 +53,24 @@ public class CompositeSkippingIterator extends WrappingIterator {
     public void init(SortedKeyValueIterator<Key,Value> source, Map<String,String> options, IteratorEnvironment env) throws IOException {
         super.init(source, options, env);
         
-        final String fixedFields = options.get(FIXED_LENGTH_FIELDS);
-        if (fixedFields != null)
-            this.fixedLengthFields = Arrays.asList(fixedFields.split(","));
-        
         final String compFields = options.get(COMPOSITE_FIELDS);
         if (compFields != null)
             this.fieldNames = Arrays.asList(compFields.split(","));
+
+        for (String fieldName : fieldNames) {
+            DiscreteIndexType type = null;
+            String typeClass = options.get(fieldName + DISCRETE_INDEX_TYPE);
+            if (typeClass != null) {
+                try {
+                    type = Class.forName(typeClass).asSubclass(DiscreteIndexType.class).newInstance();
+                } catch (Exception e) {
+                    log.warn("Unable to create DiscreteIndexType for class name: " + typeClass);
+                }
+            }
+
+            if (type != null)
+                discreteIndexTypeMap.put(fieldName, type);
+        }
     }
     
     @Override
@@ -67,19 +82,18 @@ public class CompositeSkippingIterator extends WrappingIterator {
             if (hasTop()) {
                 String origRow = getTopKey().getRow().toString();
                 String[] values = origRow.split(CompositeUtils.SEPARATOR);
-                
                 String[] newValues = new String[fieldNames.size()];
                 
                 boolean carryOver = false;
                 for (int i = fieldNames.size() - 1; i >= 0; i--) {
-                    boolean fixedLengthField = fixedLengthFields.contains(fieldNames.get(i));
+                    DiscreteIndexType discreteIndexType = discreteIndexTypeMap.get(fieldNames.get(i));
                     String value = (i < values.length) ? values[i] : null;
                     String start = (i < startValues.size()) ? startValues.get(i) : null;
                     String end = (i < endValues.size()) ? endValues.get(i) : null;
                     
                     if (value != null) {
                         // if it's not fixed length, check to see if we are in range
-                        if (!fixedLengthField) {
+                        if (discreteIndexType == null) {
                             // value preceeds start value. need to seek forward.
                             if (start != null && value.compareTo(start) < 0) {
                                 newValues[i] = start;
@@ -126,7 +140,7 @@ public class CompositeSkippingIterator extends WrappingIterator {
                                 }
                                 // value is in range. just increment, and finish carry over
                                 else {
-                                    newValues[i] = incrementHexRange(values[i]);
+                                    newValues[i] = discreteIndexType.incrementIndex(values[i]);
                                     carryOver = false;
                                 }
                             } else {
@@ -169,9 +183,7 @@ public class CompositeSkippingIterator extends WrappingIterator {
                 
                 String newRow = builder.toString();
                 
-                // if the new row exceeds the row of the key, and it doesn't exceed the end row, we need to seek and call next again. otherwise, keep the
-                // existing
-                // row
+                // if the new row exceeds the original row of the key, and it doesn't exceed the end row, we need to seek and call next again. otherwise, keep the original row
                 if (newRow.compareTo(origRow) > 0 && newRow.compareTo(originalRange.getEndKey().getRow().toString()) <= 0) {
                     Key origStartKey = originalRange.getStartKey();
                     Key startKey = new Key(new Text(newRow), origStartKey.getColumnFamily(), origStartKey.getColumnQualifier(),
@@ -196,29 +208,5 @@ public class CompositeSkippingIterator extends WrappingIterator {
             this.inclusive = inclusive;
         }
         super.seek(range, columnFamilies, inclusive);
-    }
-    
-    private String incrementHexRange(String hexValue) {
-        int length = hexValue.length();
-        String format = "%0" + hexValue.length() + "x";
-        if (length < 8) {
-            return incrementHexRangeInteger(hexValue, format);
-        } else if (length < 16) {
-            return incrementHexRangeLong(hexValue, format);
-        } else {
-            return incrementHexRangeBigInteger(hexValue, format);
-        }
-    }
-    
-    private String incrementHexRangeInteger(String hexValue, String format) {
-        return String.format(format, Integer.parseInt(hexValue, 16) + 1);
-    }
-    
-    private String incrementHexRangeLong(String hexValue, String format) {
-        return String.format(format, Long.parseLong(hexValue, 16) + 1L);
-    }
-    
-    private String incrementHexRangeBigInteger(String hexValue, String format) {
-        return String.format(format, new BigInteger(hexValue, 16).add(BigInteger.ONE));
     }
 }

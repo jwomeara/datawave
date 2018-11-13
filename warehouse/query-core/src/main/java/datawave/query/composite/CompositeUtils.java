@@ -1,6 +1,9 @@
 package datawave.query.composite;
 
+import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
+import datawave.data.type.DiscreteIndexType;
+import datawave.data.type.Type;
 import datawave.query.Constants;
 import org.apache.commons.jexl2.parser.ASTAndNode;
 import org.apache.commons.jexl2.parser.ASTEQNode;
@@ -13,6 +16,8 @@ import org.apache.commons.jexl2.parser.ASTNENode;
 import org.apache.commons.jexl2.parser.ASTNRNode;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -25,20 +30,61 @@ public class CompositeUtils {
     public static final Set<Class<?>> INVALID_LEAF_NODE_CLASSES = Sets.<Class<?>> newHashSet(ASTNENode.class);
     public static final Set<Class<?>> VALID_LEAF_NODE_CLASSES = Sets.<Class<?>> newHashSet(ASTEQNode.class, ASTERNode.class, ASTGTNode.class, ASTGENode.class,
                     ASTLTNode.class, ASTLENode.class, ASTAndNode.class);
-    
-    public static String getInclusiveLowerBound(String lowerBound) {
+
+    public static Map<String,DiscreteIndexType<?>> getFieldToDiscreteIndexTypeMap(Multimap<String,Type<?>> fieldDatatypes) {
+        Map<String,DiscreteIndexType<?>> fieldToDiscreteIndexTypeMap = new HashMap<>();
+        for (String field : fieldDatatypes.keySet()) {
+            DiscreteIndexType discreteIndexType = null;
+            for (Type type : fieldDatatypes.get(field)) {
+                if (type instanceof DiscreteIndexType && ((DiscreteIndexType) type).producesFixedLengthRanges()) {
+                    if (discreteIndexType == null) {
+                        discreteIndexType = (DiscreteIndexType) type;
+                    } else if (!discreteIndexType.getClass().equals(type.getClass())) {
+                        discreteIndexType = null;
+                        break;
+                    }
+                }
+            }
+
+            if (discreteIndexType != null)
+                fieldToDiscreteIndexTypeMap.put(field, discreteIndexType);
+        }
+        return fieldToDiscreteIndexTypeMap;
+    }
+
+    public static String getInclusiveLowerBound(String lowerBound, DiscreteIndexType discreteIndexType) {
+        if (discreteIndexType != null) {
+            String newLowerBound = discreteIndexType.incrementIndex(lowerBound);
+            if (newLowerBound.compareTo(lowerBound) > 0)
+                return newLowerBound;
+        }
         return incrementBound(lowerBound);
     }
     
-    public static String getExclusiveLowerBound(String lowerBound) {
+    public static String getExclusiveLowerBound(String lowerBound, DiscreteIndexType discreteIndexType) {
+        if (discreteIndexType != null) {
+            String newLowerBound = discreteIndexType.decrementIndex(lowerBound);
+            if (newLowerBound.compareTo(lowerBound) < 0)
+                return newLowerBound;
+        }
         return decrementBound(lowerBound);
     }
     
-    public static String getInclusiveUpperBound(String upperBound) {
+    public static String getInclusiveUpperBound(String upperBound, DiscreteIndexType discreteIndexType) {
+        if (discreteIndexType != null) {
+            String newUpperBound = discreteIndexType.decrementIndex(upperBound);
+            if (newUpperBound.compareTo(upperBound) < 0)
+                return newUpperBound;
+        }
         return decrementBound(upperBound);
     }
     
-    public static String getExclusiveUpperBound(String upperBound) {
+    public static String getExclusiveUpperBound(String upperBound, DiscreteIndexType discreteIndexType) {
+        if (discreteIndexType != null) {
+            String newUpperBound = discreteIndexType.incrementIndex(upperBound);
+            if (newUpperBound.compareTo(upperBound) > 0)
+                return newUpperBound;
+        }
         return incrementBound(upperBound);
     }
     

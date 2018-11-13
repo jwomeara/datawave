@@ -391,20 +391,20 @@ public class RangeConjunctionRebuildingVisitor extends RebuildingVisitor {
         // TODO: This is where we need to take a single composite range and BREAK IT UP into MULTIPLE SMALLER RANGES
         // TODO: Hopefully this will help us to skip more entries, and get a result faster
         for (Map.Entry<LiteralRange<?>,List<JexlNode>> range : ranges.entrySet()) {
-            JexlNode compositePredicate = null;
+//            JexlNode compositePredicate = null;
+//
+//            // if this is a composite field, find the composite predicate, which will be
+//            // used to filter out composite terms which fall outside of our range
+//            String fieldName = range.getKey().getFieldName();
+//            if (config.getCompositeToFieldMap().keySet().contains(fieldName)) {
+//                Set<JexlNode> delayedCompositePredicates = leaves.stream()
+//                                .map(leaf -> CompositePredicateVisitor.findCompositePredicates(leaf, config.getCompositeToFieldMap().get(fieldName)))
+//                                .flatMap(Collection::stream).collect(Collectors.toSet());
+//                if (delayedCompositePredicates != null && delayedCompositePredicates.size() == 1)
+//                    compositePredicate = delayedCompositePredicates.stream().findFirst().get();
+//            }
             
-            // if this is a composite field, find the composite predicate, which will be
-            // used to filter out composite terms which fall outside of our range
-            String fieldName = range.getKey().getFieldName();
-            if (config.getCompositeToFieldMap().keySet().contains(fieldName)) {
-                Set<JexlNode> delayedCompositePredicates = leaves.stream()
-                                .map(leaf -> CompositePredicateVisitor.findCompositePredicates(leaf, config.getCompositeToFieldMap().get(fieldName)))
-                                .flatMap(Collection::stream).collect(Collectors.toSet());
-                if (delayedCompositePredicates != null && delayedCompositePredicates.size() == 1)
-                    compositePredicate = delayedCompositePredicates.stream().findFirst().get();
-            }
-            
-            IndexLookup lookup = ShardIndexQueryTableStaticMethods.expandRange(expandCompositeRanges(range.getKey()), compositePredicate);
+            IndexLookup lookup = ShardIndexQueryTableStaticMethods.expandRange(range.getKey());
             
             IndexLookupMap fieldsToTerms = null;
             

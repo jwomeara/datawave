@@ -394,41 +394,6 @@ public class AllFieldMetadataHelper {
         return Collections.unmodifiableMap(tdMap);
     }
     
-    /**
-     * A set of fixed length composite fields
-     *
-     * @return An unmodifiable Set
-     * @throws TableNotFoundException
-     */
-    @Cacheable(value = "getFixedLengthCompositeFields", key = "{#root.target.auths,#root.target.metadataTableName}",
-                    cacheManager = "metadataHelperCacheManager")
-    public Set<String> getFixedLengthCompositeFields() throws TableNotFoundException {
-        log.debug("cache fault for getFixedLengthCompositeFields(" + this.auths + "," + this.metadataTableName + ")");
-        return this.getFixedLengthCompositeFields(null);
-    }
-    
-    @Cacheable(value = "getFixedLengthCompositeFields", key = "{#root.target.auths,#root.target.metadataTableName,#ingestTypeFilter}",
-                    cacheManager = "metadataHelperCacheManager")
-    public Set<String> getFixedLengthCompositeFields(Set<String> ingestTypeFilter) throws TableNotFoundException {
-        log.debug("cache fault for getFixedLengthCompositeFields(" + this.auths + "," + this.metadataTableName + "," + ingestTypeFilter + ")");
-        
-        Set<String> fixedLengthFields = new HashSet<>();
-        
-        Scanner bs = ScannerHelper.createScanner(connector, metadataTableName, auths);
-        Range range = new Range();
-        
-        bs.setRange(range);
-        
-        bs.fetchColumnFamily(ColumnFamilyConstants.COLF_FL);
-        
-        for (Entry<Key,Value> entry : bs) {
-            String fieldName = entry.getKey().getRow().toString();
-            fixedLengthFields.add(fieldName);
-        }
-        
-        return Collections.unmodifiableSet(fixedLengthFields);
-    }
-    
     public TypeMetadata getTypeMetadata() throws TableNotFoundException {
         return this.typeMetadataHelper.getTypeMetadata(null);
     }

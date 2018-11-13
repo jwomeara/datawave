@@ -904,20 +904,6 @@ public class MetadataHelper implements ApplicationContextAware {
     }
     
     /**
-     * A set of fixed length composite fields.
-     *
-     * @return An unmodifiable Set
-     * @throws TableNotFoundException
-     */
-    public Set<String> getFixedLengthCompositeFields() throws TableNotFoundException {
-        return this.allFieldMetadataHelper.getFixedLengthCompositeFields();
-    }
-    
-    public Set<String> getFixedLengthCompositeFields(Set<String> ingestTypeFilter) throws TableNotFoundException {
-        return this.allFieldMetadataHelper.getFixedLengthCompositeFields(ingestTypeFilter);
-    }
-    
-    /**
      * Fetch the set of {@link Type}s that are configured for this <code>fieldName</code> as specified in the table pointed to by the
      * <code>metadataTableName</code> parameter.
      *

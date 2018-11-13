@@ -18,6 +18,7 @@ import datawave.query.CloseableIterable;
 import datawave.query.Constants;
 import datawave.query.QueryParameters;
 import datawave.query.composite.CompositeMetadata;
+import datawave.query.composite.CompositeUtils;
 import datawave.query.config.ShardQueryConfiguration;
 import datawave.query.exceptions.CannotExpandUnfieldedTermFatalException;
 import datawave.query.exceptions.DatawaveFatalQueryException;
@@ -578,7 +579,6 @@ public class DefaultQueryPlanner extends QueryPlanner {
             try {
                 config.setCompositeToFieldMap(metadataHelper.getCompositeToFieldMap(config.getDatatypeFilter()));
                 config.setCompositeTransitionDates(metadataHelper.getCompositeTransitionDateMap(config.getDatatypeFilter()));
-                config.setFixedLengthFields(metadataHelper.getFixedLengthCompositeFields(config.getDatatypeFilter()));
             } catch (TableNotFoundException ex) {
                 QueryException qe = new QueryException(DatawaveErrorCode.COMPOSITES_RETRIEVAL_ERROR, ex);
                 log.warn(qe);
@@ -1062,6 +1062,7 @@ public class DefaultQueryPlanner extends QueryPlanner {
         
         if (!disableCompositeFields) {
             stopwatch = timers.newStartedStopwatch("DefaultQueryPlanner - Expand composite terms");
+            config.setFieldToDiscreteIndexTypes(CompositeUtils.getFieldToDiscreteIndexTypeMap(config.getQueryFieldsDatatypes()));
             queryTree = ExpandCompositeTerms.expandTerms(config, metadataHelper, queryTree);
             stopwatch.stop();
         }
@@ -2104,7 +2105,7 @@ public class DefaultQueryPlanner extends QueryPlanner {
         
         config.setQueryFieldsDatatypes(HashMultimap.create(Multimaps.filterKeys(fieldToDatatypeMap, input -> !normalizedFields.contains(input))));
         log.debug("IndexedFields Datatypes: " + config.getQueryFieldsDatatypes());
-        
+
         config.setNormalizedFieldsDatatypes(HashMultimap.create(Multimaps.filterKeys(fieldToDatatypeMap, normalizedFields::contains)));
         log.debug("NormalizedFields Datatypes: " + config.getNormalizedFieldsDatatypes());
         if (log.isTraceEnabled()) {

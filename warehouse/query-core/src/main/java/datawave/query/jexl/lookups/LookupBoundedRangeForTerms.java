@@ -6,14 +6,12 @@ import datawave.core.iterators.ColumnQualifierRangeIterator;
 import datawave.core.iterators.CompositeSkippingIterator;
 import datawave.core.iterators.TimeoutExceptionIterator;
 import datawave.core.iterators.TimeoutIterator;
+import datawave.data.type.DiscreteIndexType;
 import datawave.query.Constants;
-import datawave.query.composite.CompositeUtils;
 import datawave.query.config.ShardQueryConfiguration;
 import datawave.query.exceptions.DatawaveFatalQueryException;
 import datawave.query.exceptions.IllegalRangeArgumentException;
-import datawave.query.jexl.JexlNodeFactory;
 import datawave.query.jexl.LiteralRange;
-import datawave.query.jexl.visitors.JexlStringBuildingVisitor;
 import datawave.query.tables.ScannerFactory;
 import datawave.util.time.DateHelper;
 import datawave.webservice.common.logging.ThreadConfigurableLogger;
@@ -27,26 +25,17 @@ import org.apache.accumulo.core.data.Key;
 import org.apache.accumulo.core.data.Range;
 import org.apache.accumulo.core.data.Value;
 import org.apache.accumulo.core.iterators.user.WholeRowIterator;
-import org.apache.commons.jexl2.parser.ASTGENode;
-import org.apache.commons.jexl2.parser.ASTGTNode;
-import org.apache.commons.jexl2.parser.ASTLENode;
-import org.apache.commons.jexl2.parser.ASTLTNode;
-import org.apache.commons.jexl2.parser.JexlNode;
 import org.apache.hadoop.io.Text;
 import org.apache.log4j.Logger;
-import org.javatuples.Pair;
 import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.SortedMap;
@@ -60,19 +49,13 @@ public class LookupBoundedRangeForTerms extends IndexLookup {
     protected Set<Text> fields;
     private final List<LiteralRange<?>> literalRanges;
     protected String fieldName;
-    private final JexlNode compositePredicate;
-    
+
     public LookupBoundedRangeForTerms(LiteralRange<?> literalRange) {
-        this(literalRange, null);
+        this(Collections.singletonList(literalRange));
     }
     
-    public LookupBoundedRangeForTerms(LiteralRange<?> literalRange, JexlNode compositePredicate) {
-        this(Collections.singletonList(literalRange), compositePredicate);
-    }
-    
-    public LookupBoundedRangeForTerms(List<LiteralRange<?>> literalRanges, JexlNode compositePredicate) {
+    public LookupBoundedRangeForTerms(List<LiteralRange<?>> literalRanges) {
         this.literalRanges = literalRanges;
-        this.compositePredicate = compositePredicate;
         datatypeFilter = Sets.newHashSet();
         fields = Sets.newHashSet();
         init();
@@ -186,9 +169,10 @@ public class LookupBoundedRangeForTerms extends IndexLookup {
             cfg.addOption(ColumnQualifierRangeIterator.RANGE_NAME, ColumnQualifierRangeIterator.encodeRange(new Range(startDay, end)));
             
             bs.addScanIterator(cfg);
-            
+
+            // TODO: Make sure this is a composite range, and not just an expanded (overloaded) base term before adding the iterator
             // If this is a composite range, we need to setup our query to filter based on each component of the composite range
-            if (config.getCompositeToFieldMap().get(fieldName) != null && compositePredicate != null) {
+            if (config.getCompositeToFieldMap().get(fieldName) != null) {
                 Date transitionDate = null;
                 // if (config.getCompositeTransitionDates().containsKey(fieldName))
                 // transitionDate = config.getCompositeTransitionDates().get(fieldName);
@@ -200,10 +184,13 @@ public class LookupBoundedRangeForTerms extends IndexLookup {
                 
                 compositeIterator.addOption(CompositeSkippingIterator.COMPOSITE_FIELDS,
                                 StringUtils.collectionToCommaDelimitedString(config.getCompositeToFieldMap().get(fieldName)));
-                
-                compositeIterator.addOption(CompositeSkippingIterator.FIXED_LENGTH_FIELDS,
-                                StringUtils.collectionToCommaDelimitedString(config.getFixedLengthFields()));
-                
+
+                for (String fieldName : config.getCompositeToFieldMap().get(fieldName)) {
+                    DiscreteIndexType type = config.getFieldToDiscreteIndexTypes().get(fieldName);
+                    if (type != null)
+                        compositeIterator.addOption(fieldName + CompositeSkippingIterator.DISCRETE_INDEX_TYPE, type.getClass().getName());
+                }
+
                 // compositeIterator.addOption(CompositeSkippingIterator.COMPOSITE_PREDICATE, JexlStringBuildingVisitor.buildQuery(compositePredicate));
                 //
                 // if (transitionDate != null) {

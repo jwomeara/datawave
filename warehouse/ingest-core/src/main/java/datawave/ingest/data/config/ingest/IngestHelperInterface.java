@@ -101,9 +101,7 @@ public interface IngestHelperInterface extends DataTypeHelper {
     void addIndexOnlyField(String fieldName);
     
     boolean isCompositeField(String fieldName);
-    
-    boolean isFixedLengthField(String fieldName);
-    
+
     boolean isTransitionedCompositeField(String fieldName);
     
     Date getCompositeFieldTransitionDate(String fieldName);

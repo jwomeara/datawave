@@ -1,5 +1,6 @@
 package datawave.query.composite;
 
+import datawave.data.type.DiscreteIndexType;
 import datawave.query.jexl.JexlNodeFactory;
 import org.apache.commons.jexl2.parser.ASTAndNode;
 import org.apache.commons.jexl2.parser.ASTERNode;
@@ -12,6 +13,7 @@ import org.apache.commons.jexl2.parser.JexlNode;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * A composite range is a special type of composite which is used to create a single bounded or unbounded range from multiple terms. Composite ranges can only
@@ -31,9 +33,7 @@ public class CompositeRange extends Composite {
     
     public static CompositeRange clone(Composite other) {
         final CompositeRange clone = new CompositeRange(other.compositeName);
-        for (String fieldName : other.fieldNameList) {
-            clone.fieldNameList.add(new String(fieldName));
-        }
+        clone.fieldNameList.addAll(other.fieldNameList);
         
         for (JexlNode jexlNode : other.jexlNodeList) {
             clone.jexlNodeList.add(jexlNode);
@@ -44,30 +44,19 @@ public class CompositeRange extends Composite {
         }
         
         for (String expression : other.expressionList) {
-            clone.expressionList.add(new String(expression));
+            clone.expressionList.add(expression);
             if (!(other instanceof CompositeRange)) {
-                clone.expressionListLowerBound.add(new String(expression));
-                clone.expressionListUpperBound.add(new String(expression));
+                clone.expressionListLowerBound.add(expression);
+                clone.expressionListUpperBound.add(expression);
             }
         }
         
         if (other instanceof CompositeRange) {
             CompositeRange otherRange = (CompositeRange) other;
-            for (JexlNode jexlNode : otherRange.jexlNodeListLowerBound) {
-                clone.jexlNodeListLowerBound.add(jexlNode);
-            }
-            
-            for (String expression : otherRange.expressionListLowerBound) {
-                clone.expressionListLowerBound.add(new String(expression));
-            }
-            
-            for (JexlNode jexlNode : otherRange.jexlNodeListUpperBound) {
-                clone.jexlNodeListUpperBound.add(jexlNode);
-            }
-            
-            for (String expression : otherRange.expressionListUpperBound) {
-                clone.expressionListUpperBound.add(new String(expression));
-            }
+            clone.jexlNodeListLowerBound.addAll(otherRange.jexlNodeListLowerBound);
+            clone.expressionListLowerBound.addAll(otherRange.expressionListLowerBound);
+            clone.jexlNodeListUpperBound.addAll(otherRange.jexlNodeListUpperBound);
+            clone.expressionListUpperBound.addAll(otherRange.expressionListUpperBound);
         }
         
         return clone;
@@ -100,21 +89,21 @@ public class CompositeRange extends Composite {
     }
     
     @Override
-    public void getNodesAndExpressions(List<Class<? extends JexlNode>> nodeClasses, List<String> expressions, boolean includeOldData) {
+    public void getNodesAndExpressions(List<Class<? extends JexlNode>> nodeClasses, List<String> expressions, Map<String,DiscreteIndexType<?>> discreteIndexTypeMap, boolean includeOldData) {
         if (includeOldData) {
-            expressions.add(getFullyInclusiveLowerBoundExpression());
+            expressions.add(getFullyInclusiveLowerBoundExpression(discreteIndexTypeMap));
             nodeClasses.add(ASTGENode.class);
         } else {
             Class<? extends JexlNode> lowerBoundNodeClass = getLowerBoundNodeClass();
-            String lowerBoundExpression = getLowerBoundExpression();
-            if (lowerBoundNodeClass != null && lowerBoundExpression != null && !lowerBoundExpression.equals("")) {
+            String lowerBoundExpression = getLowerBoundExpression(discreteIndexTypeMap);
+            if (lowerBoundNodeClass != null && !lowerBoundExpression.equals("")) {
                 nodeClasses.add(lowerBoundNodeClass);
                 expressions.add(lowerBoundExpression);
             }
         }
         Class<? extends JexlNode> upperBoundNodeClass = getUpperBoundNodeClass();
-        String upperBoundExpression = getUpperBoundExpression();
-        if (upperBoundNodeClass != null && upperBoundExpression != null && !upperBoundExpression.equals("")) {
+        String upperBoundExpression = getUpperBoundExpression(discreteIndexTypeMap);
+        if (upperBoundNodeClass != null && !upperBoundExpression.equals("")) {
             nodeClasses.add(upperBoundNodeClass);
             expressions.add(upperBoundExpression);
         }
@@ -137,16 +126,16 @@ public class CompositeRange extends Composite {
     }
     
     // used to handle special case where our index is overloaded and runs against legacy (i.e. non-composite) data
-    private String getFullyInclusiveLowerBoundExpression() {
+    private String getFullyInclusiveLowerBoundExpression(Map<String,DiscreteIndexType<?>> discreteIndexTypeMap) {
         String expression;
         if (jexlNodeListLowerBound.get(0) instanceof ASTGTNode)
-            expression = CompositeUtils.getInclusiveLowerBound(expressionListLowerBound.get(0));
+            expression = CompositeUtils.getInclusiveLowerBound(expressionListLowerBound.get(0), discreteIndexTypeMap.get(fieldNameList.get(0)));
         else
             expression = expressionListLowerBound.get(0);
         return expression;
     }
     
-    private String getLowerBoundExpression() {
+    private String getLowerBoundExpression(Map<String,DiscreteIndexType<?>> discreteIndexTypeMap) {
         boolean isUnbounded = isLowerUnbounded();
         StringBuilder buf = new StringBuilder();
         boolean lastNode = false;
@@ -159,7 +148,7 @@ public class CompositeRange extends Composite {
             // node, so we don't need any special handling
             String nextExpression = ((i + 1) < expressionListLowerBound.size()) ? expressionListLowerBound.get(i + 1) : null;
             if (node instanceof ASTGTNode && i != (expressionListLowerBound.size() - 1) && nextExpression != null) {
-                String inclusiveLowerBound = CompositeUtils.getInclusiveLowerBound(expression);
+                String inclusiveLowerBound = CompositeUtils.getInclusiveLowerBound(expression, discreteIndexTypeMap.get(fieldNameList.get(i)));
                 
                 // if the length of the term changed, use the original exclusive
                 // bound, and signal that this is the last expression
@@ -168,7 +157,7 @@ public class CompositeRange extends Composite {
                 else
                     expression = inclusiveLowerBound;
             } else if (isUnbounded && node instanceof ASTGTNode && nextExpression == null) {
-                expression = CompositeUtils.getInclusiveLowerBound(expression);
+                expression = CompositeUtils.getInclusiveLowerBound(expression, discreteIndexTypeMap.get(fieldNameList.get(i)));
                 lastNode = true;
             }
             
@@ -187,7 +176,7 @@ public class CompositeRange extends Composite {
         return buf.toString();
     }
     
-    private String getUpperBoundExpression() {
+    private String getUpperBoundExpression(Map<String,DiscreteIndexType<?>> discreteIndexTypeMap) {
         boolean isUnbounded = isUpperUnbounded();
         StringBuilder buf = new StringBuilder();
         boolean lastNode = false;
@@ -200,7 +189,7 @@ public class CompositeRange extends Composite {
             // node, so we don't need any special handling
             String nextExpression = ((i + 1) < expressionListUpperBound.size()) ? expressionListUpperBound.get(i + 1) : null;
             if (node instanceof ASTLTNode && i != (expressionListUpperBound.size() - 1) && nextExpression != null) {
-                String inclusiveUpperBound = CompositeUtils.getInclusiveUpperBound(expression);
+                String inclusiveUpperBound = CompositeUtils.getInclusiveUpperBound(expression, discreteIndexTypeMap.get(fieldNameList.get(i)));
                 
                 // if the length of the term changed, use the original exclusive
                 // bound, and signal that this is the last expression
@@ -209,7 +198,7 @@ public class CompositeRange extends Composite {
                 else
                     expression = inclusiveUpperBound;
             } else if (isUnbounded && node instanceof ASTLENode && nextExpression == null) {
-                expression = CompositeUtils.getExclusiveUpperBound(expression);
+                expression = CompositeUtils.getExclusiveUpperBound(expression, discreteIndexTypeMap.get(fieldNameList.get(i)));
                 lastNode = true;
             }
             

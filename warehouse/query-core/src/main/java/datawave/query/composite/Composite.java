@@ -1,6 +1,7 @@
 package datawave.query.composite;
 
 import com.google.common.collect.Lists;
+import datawave.data.type.DiscreteIndexType;
 import datawave.query.jexl.JexlNodeFactory;
 import org.apache.commons.jexl2.parser.ASTEQNode;
 import org.apache.commons.jexl2.parser.ASTERNode;
@@ -11,7 +12,9 @@ import org.apache.commons.jexl2.parser.ASTLTNode;
 import org.apache.commons.jexl2.parser.JexlNode;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * A composite is used to combine multiple terms into a single term.
@@ -30,17 +33,9 @@ public class Composite {
     
     public Composite clone() {
         final Composite clone = new Composite(this.compositeName);
-        for (String fieldName : this.fieldNameList) {
-            clone.fieldNameList.add(new String(fieldName));
-        }
-        
-        for (JexlNode jexlNode : this.jexlNodeList) {
-            clone.jexlNodeList.add(jexlNode);
-        }
-        
-        for (String expression : this.expressionList) {
-            clone.expressionList.add(new String(expression));
-        }
+        clone.fieldNameList.addAll(this.fieldNameList);
+        clone.jexlNodeList.addAll(this.jexlNodeList);
+        clone.expressionList.addAll(this.expressionList);
         
         return clone;
     }
@@ -74,9 +69,9 @@ public class Composite {
         return lastNode.getClass();
     }
     
-    public void getNodesAndExpressions(List<Class<? extends JexlNode>> nodeClasses, List<String> expressions, boolean includeOldData) {
-        nodeClasses.addAll(Arrays.asList(getNodeClass(jexlNodeList)));
-        expressions.addAll(Arrays.asList(getAppendedExpressions()));
+    public void getNodesAndExpressions(List<Class<? extends JexlNode>> nodeClasses, List<String> expressions, Map<String,DiscreteIndexType<?>> discreteIndexFieldMap, boolean includeOldData) {
+        nodeClasses.addAll(Collections.singletonList(getNodeClass(jexlNodeList)));
+        expressions.addAll(Collections.singletonList(getAppendedExpressions()));
         
         if (includeOldData) {
             JexlNode node = jexlNodeList.get(0);
@@ -84,7 +79,7 @@ public class Composite {
                 nodeClasses.clear();
                 expressions.clear();
                 
-                expressions.add(CompositeUtils.getInclusiveLowerBound(expressionList.get(0)));
+                expressions.add(CompositeUtils.getInclusiveLowerBound(expressionList.get(0), discreteIndexFieldMap.get(fieldNameList.get(0))));
                 nodeClasses.add(ASTGENode.class);
             } else if (node instanceof ASTGENode || node instanceof ASTEQNode) {
                 String origExpression = expressions.get(0);

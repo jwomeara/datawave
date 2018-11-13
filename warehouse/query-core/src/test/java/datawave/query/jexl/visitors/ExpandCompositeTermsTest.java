@@ -4,14 +4,17 @@ import com.google.common.collect.LinkedListMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.Sets;
+import datawave.data.normalizer.NoOpNormalizer;
 import datawave.data.normalizer.Normalizer;
+import datawave.data.type.BaseType;
+import datawave.data.type.DiscreteIndexType;
+import datawave.data.type.GeometryType;
 import datawave.query.config.ShardQueryConfiguration;
 import datawave.query.jexl.JexlASTHelper;
 import datawave.query.util.DateIndexHelper;
 import datawave.query.util.MockMetadataHelper;
 import datawave.webservice.common.logging.ThreadConfigurableLogger;
 import org.apache.commons.jexl2.parser.ASTJexlScript;
-import org.apache.commons.jexl2.parser.JexlNode;
 import org.apache.commons.jexl2.parser.ParseException;
 import org.apache.log4j.Logger;
 import org.junit.Assert;
@@ -19,9 +22,11 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -147,11 +152,9 @@ public class ExpandCompositeTermsTest {
     public void test7d() throws Exception {
         String query = "(TEAM >= 'gold' && TEAM <= 'silver') && (POINTS > 10 && POINTS <= 11)";
         String expected = "(TEAM_POINTS > 'gold􏿿10' && TEAM_POINTS <= 'silver􏿿11') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((TEAM >= 'gold' && TEAM <= 'silver') && (POINTS > 10 && POINTS <= 11)))))";
-        
-        Set<String> fieldSet = new HashSet<>();
-        fieldSet.add("TEAM");
-        this.conf.setFixedLengthFields(fieldSet);
-        
+
+        conf.getFieldToDiscreteIndexTypes().put("TEAM", new MockDiscreteIndexType());
+
         runTestQuery(query, expected);
     }
     
@@ -195,11 +198,9 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-        
-        Set<String> fieldSet = new HashSet<>();
-        fieldSet.add("GEO");
-        conf.setFixedLengthFields(fieldSet);
-        
+
+        conf.getFieldToDiscreteIndexTypes().put("GEO", new GeometryType());
+
         String query = "((GEO >= '1f0155640000000000' && GEO <= '1f01556bffffffffff') || GEO == '00' || (GEO >= '0100' && GEO <= '0103')) && (WKT_BYTE_LENGTH >= '"
                         + Normalizer.NUMBER_NORMALIZER.normalize("0") + "' && WKT_BYTE_LENGTH <= '" + Normalizer.NUMBER_NORMALIZER.normalize("12345") + "')";
         String expected = "(((GEO >= '1f0155640000000000􏿿+AE0' && GEO <= '1f01556bffffffffff􏿿+eE1.2345') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '1f0155640000000000' && GEO <= '1f01556bffffffffff') && (WKT_BYTE_LENGTH >= '+AE0' && WKT_BYTE_LENGTH <= '+eE1.2345')))))) || ((GEO >= '00􏿿+AE0' && GEO <= '00􏿿+eE1.2345') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && (GEO == '00' && (WKT_BYTE_LENGTH >= '+AE0' && WKT_BYTE_LENGTH <= '+eE1.2345')))))) || ((GEO >= '0100􏿿+AE0' && GEO <= '0103􏿿+eE1.2345') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '0100' && GEO <= '0103') && (WKT_BYTE_LENGTH >= '+AE0' && WKT_BYTE_LENGTH <= '+eE1.2345')))))))";
@@ -219,11 +220,9 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-        
-        Set<String> fieldSet = new HashSet<>();
-        fieldSet.add("GEO");
-        conf.setFixedLengthFields(fieldSet);
-        
+
+        conf.getFieldToDiscreteIndexTypes().put("GEO", new GeometryType());
+
         String query = "(GEO >= '0100' && GEO <= '0103') && WKT_BYTE_LENGTH >= '" + Normalizer.NUMBER_NORMALIZER.normalize("0") + "'";
         String expected = "(GEO >= '0100􏿿+AE0' && GEO < '0104') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '0100' && GEO <= '0103') && WKT_BYTE_LENGTH >= '+AE0'))))";
         
@@ -242,11 +241,9 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-        
-        Set<String> fieldSet = new HashSet<>();
-        fieldSet.add("GEO");
-        conf.setFixedLengthFields(fieldSet);
-        
+
+        conf.getFieldToDiscreteIndexTypes().put("GEO", new GeometryType());
+
         String query = "(GEO >= '0100' && GEO <= '0103') && WKT_BYTE_LENGTH <= '" + Normalizer.NUMBER_NORMALIZER.normalize("12345") + "'";
         String expected = "(GEO >= '0100' && GEO <= '0103􏿿+eE1.2345') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '0100' && GEO <= '0103') && WKT_BYTE_LENGTH <= '+eE1.2345'))))";
         
@@ -265,11 +262,9 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-        
-        Set<String> fieldSet = new HashSet<>();
-        fieldSet.add("GEO");
-        conf.setFixedLengthFields(fieldSet);
-        
+
+        conf.getFieldToDiscreteIndexTypes().put("GEO", new GeometryType());
+
         String query = "GEO >= '0100' && WKT_BYTE_LENGTH <= '" + Normalizer.NUMBER_NORMALIZER.normalize("12345") + "'";
         String expected = "WKT_BYTE_LENGTH <= '" + Normalizer.NUMBER_NORMALIZER.normalize("12345") + "' && GEO >= '0100'";
         
@@ -288,11 +283,9 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-        
-        Set<String> fieldSet = new HashSet<>();
-        fieldSet.add("GEO");
-        conf.setFixedLengthFields(fieldSet);
-        
+
+        conf.getFieldToDiscreteIndexTypes().put("GEO", new GeometryType());
+
         String query = "GEO <= '0103' && WKT_BYTE_LENGTH >= '" + Normalizer.NUMBER_NORMALIZER.normalize("12345") + "'";
         String expected = "WKT_BYTE_LENGTH >= '" + Normalizer.NUMBER_NORMALIZER.normalize("12345") + "' && GEO < '0104'";
         
@@ -311,11 +304,9 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-        
-        Set<String> fieldSet = new HashSet<>();
-        fieldSet.add("GEO");
-        conf.setFixedLengthFields(fieldSet);
-        
+
+        conf.getFieldToDiscreteIndexTypes().put("GEO", new GeometryType());
+
         String query = "((((GEO >= '0202' && GEO <= '020d'))) || (((GEO >= '030a' && GEO <= '0335'))) || (((GEO >= '0428' && GEO <= '0483'))) || (((GEO >= '0500aa' && GEO <= '050355'))) || (((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO <= '1f36c71c71c71c71c7')))) && ((WKT_BYTE_LENGTH >= '+AE0' && WKT_BYTE_LENGTH <= '"
                         + Normalizer.NUMBER_NORMALIZER.normalize("12345") + "'))";
         String expected = "(((((GEO >= '0202􏿿+AE0' && GEO <= '020d􏿿+eE1.2345') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '0202' && GEO <= '020d') && (WKT_BYTE_LENGTH >= '+AE0' && WKT_BYTE_LENGTH <= '+eE1.2345')))))))) || ((((GEO >= '030a􏿿+AE0' && GEO <= '0335􏿿+eE1.2345') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '030a' && GEO <= '0335') && (WKT_BYTE_LENGTH >= '+AE0' && WKT_BYTE_LENGTH <= '+eE1.2345')))))))) || ((((GEO >= '0428􏿿+AE0' && GEO <= '0483􏿿+eE1.2345') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '0428' && GEO <= '0483') && (WKT_BYTE_LENGTH >= '+AE0' && WKT_BYTE_LENGTH <= '+eE1.2345')))))))) || ((((GEO >= '0500aa􏿿+AE0' && GEO <= '050355􏿿+eE1.2345') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '0500aa' && GEO <= '050355') && (WKT_BYTE_LENGTH >= '+AE0' && WKT_BYTE_LENGTH <= '+eE1.2345')))))))) || ((((GEO >= '1f0aaaaaaaaaaaaaaa􏿿+AE0' && GEO <= '1f36c71c71c71c71c7􏿿+eE1.2345') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO <= '1f36c71c71c71c71c7') && (WKT_BYTE_LENGTH >= '+AE0' && WKT_BYTE_LENGTH <= '+eE1.2345')))))))))";
@@ -336,11 +327,9 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-        
-        Set<String> fieldSet = new HashSet<>();
-        fieldSet.add("GEO");
-        conf.setFixedLengthFields(fieldSet);
-        
+
+        conf.getFieldToDiscreteIndexTypes().put("GEO", new GeometryType());
+
         String upperBound = Normalizer.NUMBER_NORMALIZER.normalize("12345");
         
         // COMPOSITE QUERY AGAINST THE COMPOSITE INDEX
@@ -535,11 +524,9 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-        
-        Set<String> fieldSet = new HashSet<>();
-        fieldSet.add("GEO");
-        conf.setFixedLengthFields(fieldSet);
-        
+
+        conf.getFieldToDiscreteIndexTypes().put("GEO", new GeometryType());
+
         Map<String,Date> compositeWithOldDataMap = new HashMap<>();
         compositeWithOldDataMap.put("GEO", new Date(TimeUnit.DAYS.toMillis(15)));
         conf.setCompositeTransitionDates(compositeWithOldDataMap);
@@ -736,11 +723,9 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-        
-        Set<String> fieldSet = new HashSet<>();
-        fieldSet.add("GEO");
-        conf.setFixedLengthFields(fieldSet);
-        
+
+        conf.getFieldToDiscreteIndexTypes().put("GEO", new GeometryType());
+
         String upperBound = Normalizer.NUMBER_NORMALIZER.normalize("12345");
         
         // COMPOSITE QUERY AGAINST THE COMPOSITE INDEX
@@ -932,11 +917,9 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-        
-        Set<String> fieldSet = new HashSet<>();
-        fieldSet.add("GEO");
-        conf.setFixedLengthFields(fieldSet);
-        
+
+        conf.getFieldToDiscreteIndexTypes().put("GEO", new GeometryType());
+
         String query = "((((GEO >= '0202' && GEO <= '020d'))) || (((GEO >= '030a' && GEO <= '0335'))) || (((GEO >= '0428' && GEO <= '0483'))) || (((GEO >= '0500aa' && GEO <= '050355'))) || (((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO <= '1f36c71c71c71c71c7'))))";
         String expected = "((((GEO >= '0202' && GEO < '020e'))) || (((GEO >= '030a' && GEO < '0336'))) || (((GEO >= '0428' && GEO < '0484'))) || (((GEO >= '0500aa' && GEO < '050356'))) || (((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO < '1f36c71c71c71c71c8'))))";
         
@@ -955,11 +938,9 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-        
-        Set<String> fieldSet = new HashSet<>();
-        fieldSet.add("GEO");
-        conf.setFixedLengthFields(fieldSet);
-        
+
+        conf.getFieldToDiscreteIndexTypes().put("GEO", new GeometryType());
+
         String query = "((((GEO >= '0202' && GEO <= '020d'))) || (((GEO >= '030a' && GEO <= '0335'))) || (((GEO >= '0428' && GEO <= '0483'))) || (((GEO >= '0500aa' && GEO <= '050355'))) || (((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO <= '1f36c71c71c71c71c7')))) && ((WKT >= '+AE0' && WKT < '+bE4'))";
         String expected = "(((((GEO >= '0202􏿿+AE0' && GEO < '020d􏿿+bE4') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '0202' && GEO <= '020d') && (WKT >= '+AE0' && WKT < '+bE4')))))))) || ((((GEO >= '030a􏿿+AE0' && GEO < '0335􏿿+bE4') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '030a' && GEO <= '0335') && (WKT >= '+AE0' && WKT < '+bE4')))))))) || ((((GEO >= '0428􏿿+AE0' && GEO < '0483􏿿+bE4') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '0428' && GEO <= '0483') && (WKT >= '+AE0' && WKT < '+bE4')))))))) || ((((GEO >= '0500aa􏿿+AE0' && GEO < '050355􏿿+bE4') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '0500aa' && GEO <= '050355') && (WKT >= '+AE0' && WKT < '+bE4')))))))) || ((((GEO >= '1f0aaaaaaaaaaaaaaa􏿿+AE0' && GEO < '1f36c71c71c71c71c7􏿿+bE4') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO <= '1f36c71c71c71c71c7') && (WKT >= '+AE0' && WKT < '+bE4')))))))))";
         
@@ -997,11 +978,9 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-        
-        Set<String> fieldSet = new HashSet<>();
-        fieldSet.add("GEO");
-        conf.setFixedLengthFields(fieldSet);
-        
+
+        conf.getFieldToDiscreteIndexTypes().put("GEO", new GeometryType());
+
         String query = "((((GEO >= '0202' && GEO <= '020d'))) || (((GEO >= '030a' && GEO <= '0335'))) || (((GEO >= '0428' && GEO <= '0483'))) || (((GEO >= '0500aa' && GEO <= '050355'))) || (((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO <= '1f36c71c71c71c71c7')))) && ((WKT >= '+AE0' && WKT < '+bE4'))";
         String expected = "(((((GEO_WKT >= '0202􏿿+AE0' && GEO_WKT < '020d􏿿+bE4') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '0202' && GEO <= '020d') && (WKT >= '+AE0' && WKT < '+bE4')))))))) || ((((GEO_WKT >= '030a􏿿+AE0' && GEO_WKT < '0335􏿿+bE4') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '030a' && GEO <= '0335') && (WKT >= '+AE0' && WKT < '+bE4')))))))) || ((((GEO_WKT >= '0428􏿿+AE0' && GEO_WKT < '0483􏿿+bE4') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '0428' && GEO <= '0483') && (WKT >= '+AE0' && WKT < '+bE4')))))))) || ((((GEO_WKT >= '0500aa􏿿+AE0' && GEO_WKT < '050355􏿿+bE4') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '0500aa' && GEO <= '050355') && (WKT >= '+AE0' && WKT < '+bE4')))))))) || ((((GEO_WKT >= '1f0aaaaaaaaaaaaaaa􏿿+AE0' && GEO_WKT < '1f36c71c71c71c71c7􏿿+bE4') && ((ASTDelayedPredicate = true) && (((ASTCompositePredicate = true) && ((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO <= '1f36c71c71c71c71c7') && (WKT >= '+AE0' && WKT < '+bE4')))))))))";
         
@@ -1020,11 +999,9 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-        
-        Set<String> fieldSet = new HashSet<>();
-        fieldSet.add("GEO");
-        conf.setFixedLengthFields(fieldSet);
-        
+
+        conf.getFieldToDiscreteIndexTypes().put("GEO", new GeometryType());
+
         String query = "((((GEO >= '0202' && GEO <= '020d'))) || (((GEO >= '030a' && GEO <= '0335'))) || (((GEO >= '0428' && GEO <= '0483'))) || (((GEO >= '0500aa' && GEO <= '050355'))) || (((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO <= '1f36c71c71c71c71c7'))))";
         String expected = "((((GEO >= '0202' && GEO <= '020d'))) || (((GEO >= '030a' && GEO <= '0335'))) || (((GEO >= '0428' && GEO <= '0483'))) || (((GEO >= '0500aa' && GEO <= '050355'))) || (((GEO >= '1f0aaaaaaaaaaaaaaa' && GEO <= '1f36c71c71c71c71c7'))))";
         
@@ -1059,11 +1036,12 @@ public class ExpandCompositeTermsTest {
         compositeToFieldMap.put("GEO", "GEO");
         compositeToFieldMap.put("GEO", "WKT");
         conf.setCompositeToFieldMap(compositeToFieldMap);
-        
+
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-        conf.setFixedLengthFields(indexedFields);
-        
+
+        conf.getFieldToDiscreteIndexTypes().put("GEO", new GeometryType());
+
         conf.setBeginDate(new Date(0));
         conf.setEndDate(new Date(TimeUnit.DAYS.toMillis(30)));
         
@@ -1095,8 +1073,9 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-        conf.setFixedLengthFields(indexedFields);
-        
+
+        conf.getFieldToDiscreteIndexTypes().put("GEO", new GeometryType());
+
         String normNum = Normalizer.NUMBER_NORMALIZER.normalize("55");
         
         String query = "(GEO == '0202' || ((GEO >= '030a' && GEO <= '0335'))) && WKT == '" + normNum + "'";
@@ -1117,8 +1096,9 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-        conf.setFixedLengthFields(indexedFields);
-        
+
+        conf.getFieldToDiscreteIndexTypes().put("GEO", new GeometryType());
+
         conf.setBeginDate(new Date(0));
         conf.setEndDate(new Date(TimeUnit.DAYS.toMillis(30)));
         
@@ -1146,8 +1126,9 @@ public class ExpandCompositeTermsTest {
         
         Set<String> indexedFields = new HashSet<>();
         indexedFields.add("GEO");
-        conf.setFixedLengthFields(indexedFields);
-        
+
+        conf.getFieldToDiscreteIndexTypes().put("GEO", new GeometryType());
+
         String normNum = Normalizer.NUMBER_NORMALIZER.normalize("55");
         
         String query = "(GEO == '0202' || GEO >= '030a') && WKT == '" + normNum + "'";
@@ -1206,5 +1187,37 @@ public class ExpandCompositeTermsTest {
         PrintingVisitor.printQuery(script);
         System.err.println(JexlStringBuildingVisitor.buildQuery(script));
         System.err.println();
+    }
+
+    private static class MockDiscreteIndexType extends BaseType implements DiscreteIndexType {
+
+        public MockDiscreteIndexType() {
+            super(new NoOpNormalizer());
+        }
+
+        @Override
+        public String incrementIndex(String index) {
+            return index;
+        }
+
+        @Override
+        public String decrementIndex(String index) {
+            return index;
+        }
+
+        @Override
+        public List<String> discretizeRange(String beginIndex, String endIndex) {
+            return Arrays.asList(beginIndex, endIndex);
+        }
+
+        @Override
+        public boolean producesFixedLengthRanges() {
+            return true;
+        }
+
+        @Override
+        public int compareTo(Object o) {
+            return 0;
+        }
     }
 }

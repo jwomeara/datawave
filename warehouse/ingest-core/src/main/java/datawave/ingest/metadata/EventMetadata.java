@@ -86,7 +86,6 @@ import java.util.Set;
 public class EventMetadata implements RawRecordMetadata {
     
     private MetadataWithMostRecentDate compositeFieldsInfo = new MetadataWithMostRecentDate(ColumnFamilyConstants.COLF_CI);
-    private MetadataWithMostRecentDate fixedLengthFieldsInfo = new MetadataWithMostRecentDate(ColumnFamilyConstants.COLF_FL);
     private MetadataWithMostRecentDate compositeTransitionDateInfo = new MetadataWithMostRecentDate(ColumnFamilyConstants.COLF_CITD);
     private MetadataWithMostRecentDate dataTypeFieldsInfo = new MetadataWithMostRecentDate(ColumnFamilyConstants.COLF_T);
     private MetadataWithMostRecentDate normalizedFieldsInfo = new MetadataWithMostRecentDate(ColumnFamilyConstants.COLF_N);
@@ -201,10 +200,6 @@ public class EventMetadata implements RawRecordMetadata {
                     this.compositeTransitionDateInfo.createOrUpdate(fieldName, event.getDataType().outputName(), transitionDateStr, event.getDate());
                 }
             }
-            
-            // Denote 'fixed length' fields
-            if (helper.isFixedLengthField(fieldName))
-                this.fixedLengthFieldsInfo.createOrUpdate(fieldName, event.getDataType().outputName(), "", event.getDate());
         }
         
         addTokenizedContent(helper, event, fields, countDelta, loadDateStr);
@@ -376,7 +371,6 @@ public class EventMetadata implements RawRecordMetadata {
         addIndexedFieldToMetadata(bulkData, normalizedFieldsInfo);
         
         addIndexedFieldToMetadata(bulkData, this.compositeFieldsInfo);
-        addIndexedFieldToMetadata(bulkData, this.fixedLengthFieldsInfo);
         addIndexedFieldToMetadata(bulkData, this.compositeTransitionDateInfo);
         
         addToLoadDates(bulkData, this.indexedFieldsLoadDateCounts);
