@@ -3,14 +3,15 @@ package datawave.query.iterator.logic;
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Multimap;
+import datawave.data.type.DiscreteIndexType;
 import datawave.query.Constants;
 import datawave.query.attributes.Document;
 import datawave.query.attributes.PreNormalizedAttributeFactory;
+import datawave.query.composite.CompositeMetadata;
 import datawave.query.composite.CompositeUtils;
 import datawave.query.iterator.DocumentIterator;
 import datawave.query.iterator.Util;
-import datawave.query.iterator.filter.composite.CompositePredicateFilter;
-import datawave.query.iterator.filter.composite.CompositePredicateFilterer;
 import datawave.query.jexl.functions.FieldIndexAggregator;
 import datawave.query.jexl.functions.IdentityAggregator;
 import datawave.query.predicate.SeekingFilter;
@@ -24,25 +25,22 @@ import org.apache.accumulo.core.data.Range;
 import org.apache.accumulo.core.data.Value;
 import org.apache.accumulo.core.iterators.IteratorEnvironment;
 import org.apache.accumulo.core.iterators.SortedKeyValueIterator;
-import org.apache.commons.jexl2.parser.JexlNode;
 import org.apache.hadoop.io.Text;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
-import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Scans a bounds within a column qualifier. This iterator needs to: - 1) Be given a global Range (ie, [-inf,+inf]) - 2) Select an arbitrary column family (ie,
  * "fi\u0000FIELD") - 3) Given a prefix, scan all keys that have a column qualifer that has that prefix that occur in the column family for all rows in a tablet
  * 
  */
-public class IndexIterator implements SortedKeyValueIterator<Key,Value>, DocumentIterator, CompositePredicateFilterer {
+public class IndexIterator implements SortedKeyValueIterator<Key,Value>, DocumentIterator {
     private static final Logger log = Logger.getLogger(IndexIterator.class);
     
     public static class Builder<B extends Builder<B>> {
@@ -54,8 +52,8 @@ public class IndexIterator implements SortedKeyValueIterator<Key,Value>, Documen
         protected TypeMetadata typeMetadata;
         protected Predicate<Key> datatypeFilter = Predicates.alwaysTrue();
         protected FieldIndexAggregator aggregation = new IdentityAggregator(null, null);
-        protected Map<String,Map<String,CompositePredicateFilter>> compositePredicateFilters = Collections.emptyMap();
-        
+        protected CompositeMetadata compositeMetadata;
+
         protected Builder(Text field, Text value, SortedKeyValueIterator<Key,Value> source) {
             this.field = field;
             this.value = value;
@@ -91,9 +89,9 @@ public class IndexIterator implements SortedKeyValueIterator<Key,Value>, Documen
             this.aggregation = aggregation;
             return self();
         }
-        
-        public B withCompositePredicateFilters(Map<String,Map<String,CompositePredicateFilter>> compositePredicateFilters) {
-            this.compositePredicateFilters = compositePredicateFilters;
+
+        public B withCompositeMetadata(CompositeMetadata compositeMetadata) {
+            this.compositeMetadata = compositeMetadata;
             return self();
         }
         
@@ -132,17 +130,17 @@ public class IndexIterator implements SortedKeyValueIterator<Key,Value>, Documen
     protected final FieldIndexAggregator aggregation;
     protected TimeFilter timeFilter;
     protected SeekingFilter timeSeekingFilter;
-    private Map<String,Map<String,CompositePredicateFilter>> compositePredicateFilters;
-    
+    protected CompositeMetadata compositeMetadata;
+    protected Map<String,DiscreteIndexType<?>> fieldToDiscreteIndexType;
+
     protected IndexIterator(Builder builder) {
         this(builder.field, builder.value, builder.source, builder.timeFilter, builder.typeMetadata, builder.buildDocument, builder.datatypeFilter,
-                        builder.aggregation, builder.compositePredicateFilters);
+                        builder.aggregation, builder.compositeMetadata);
     }
     
     private IndexIterator(Text field, Text value, SortedKeyValueIterator<Key,Value> source, TimeFilter timeFilter, TypeMetadata typeMetadata,
-                    boolean buildDocument, Predicate<Key> datatypeFilter, FieldIndexAggregator aggregator,
-                    Map<String,Map<String,CompositePredicateFilter>> compositePredicateFilters) {
-        
+                    boolean buildDocument, Predicate<Key> datatypeFilter, FieldIndexAggregator aggregator, CompositeMetadata compositeMetadata) {
+
         valueMinPrefix = Util.minPrefix(value);
         
         this.datatypeFilter = datatypeFilter;
@@ -189,11 +187,13 @@ public class IndexIterator implements SortedKeyValueIterator<Key,Value>, Documen
             // double normalization
             attributeFactory = new PreNormalizedAttributeFactory(typeMetadata);
         }
-        
+
+        this.fieldToDiscreteIndexType = CompositeUtils.getFieldToDiscreteIndexTypeMap(typeMetadata.fold());
+
         this.aggregation = aggregator;
         
         this.timeFilter = timeFilter;
-        this.compositePredicateFilters = compositePredicateFilters;
+        this.compositeMetadata = compositeMetadata;
     }
     
     @Override
@@ -336,37 +336,33 @@ public class IndexIterator implements SortedKeyValueIterator<Key,Value>, Documen
                 }
                 continue;
             }
-            
-            if (this.compositePredicateFilters != null && !this.compositePredicateFilters.isEmpty()) {
+
+            // if we have composite metadata
+            if (this.compositeMetadata != null) {
                 String colQual = top.getColumnQualifier().toString();
-                String[] terms = colQual.substring(0, colQual.indexOf('\0')).split(CompositeUtils.SEPARATOR);
                 String ingestType = colQual.substring(colQual.indexOf('\0') + 1, colQual.lastIndexOf('\0'));
                 String colFam = top.getColumnFamily().toString();
                 String fieldName = colFam.substring(colFam.indexOf('\0') + 1);
-                
-                CompositePredicateFilter compositePredicateFilter = (compositePredicateFilters.get(ingestType) != null) ? compositePredicateFilters.get(
-                                ingestType).get(fieldName) : null;
-                
-                if (compositePredicateFilter != null) {
-                    List<String> startValues = Arrays.asList(scanRange.getStartKey().getColumnQualifier().toString().split("\0")[0]
-                                    .split(CompositeUtils.SEPARATOR));
-                    List<String> endValues = Arrays
-                                    .asList(scanRange.getEndKey().getColumnQualifier().toString().split("\0")[0].split(CompositeUtils.SEPARATOR));
-                    
-                    if (compositeSeek(top, compositePredicateFilter.getCompositeFields(), Arrays.asList("GEO", "ALL_LOCATIONS"), startValues, endValues,
-                                    scanRange, seekColumnFamilies, includeColumnFamilies)) {
-                        source.next();
-                        continue;
+
+                Multimap<String,String> compositeToFieldMap = compositeMetadata.getCompositeFieldMapByType().get(ingestType);
+                if (compositeToFieldMap != null) {
+
+                    Collection<String> componentFields = compositeToFieldMap.get(fieldName);
+
+                    // if this is a composite field
+                    if (componentFields != null) {
+                        List<String> startValues = Arrays.asList(scanRange.getStartKey().getColumnQualifier().toString().split("\0")[0]
+                                .split(CompositeUtils.SEPARATOR));
+                        List<String> endValues = Arrays
+                                .asList(scanRange.getEndKey().getColumnQualifier().toString().split("\0")[0].split(CompositeUtils.SEPARATOR));
+
+                        if (compositeSeek(top, new ArrayList<>(componentFields), startValues, endValues,
+                                scanRange, seekColumnFamilies, includeColumnFamilies)) {
+                            source.next();
+                            continue;
+                        }
                     }
                 }
-                
-                // if (compositePredicateFilter != null && !compositePredicateFilter.keep(terms, top.getTimestamp())) {
-                // if (log.isTraceEnabled())
-                // log.trace("Ignoring key due to not passing the composite predicate filter: " + top);
-                // // TODO: FROM HERE, MOVE TO THE NEXT KNOWN KEY IN THE RANGE
-                // source.next();
-                // continue;
-                // }
             }
             
             // Aggregate the document. NOTE: This will advance the source iterator
@@ -379,19 +375,7 @@ public class IndexIterator implements SortedKeyValueIterator<Key,Value>, Documen
         }
     }
     
-    private String incrementHexRange(String hexValue) {
-        int length = hexValue.length();
-        String format = "%0" + hexValue.length() + "x";
-        if (length < 8) {
-            return incrementHexRangeInteger(hexValue, format);
-        } else if (length < 16) {
-            return incrementHexRangeLong(hexValue, format);
-        } else {
-            return incrementHexRangeBigInteger(hexValue, format);
-        }
-    }
-    
-    private boolean compositeSeek(Key topKey, List<String> fieldNames, List<String> fixedLengthFields, List<String> startValues, List<String> endValues,
+    private boolean compositeSeek(Key topKey, List<String> fieldNames, List<String> startValues, List<String> endValues,
                     Range originalRange, Collection<ByteSequence> columnFamilies, boolean inclusive) throws IOException {
         String origColQual = topKey.getColumnQualifier().toString();
         String[] colQualParts = origColQual.split("\0");
@@ -401,14 +385,14 @@ public class IndexIterator implements SortedKeyValueIterator<Key,Value>, Documen
         
         boolean carryOver = false;
         for (int i = fieldNames.size() - 1; i >= 0; i--) {
-            boolean fixedLengthField = fixedLengthFields.contains(fieldNames.get(i));
+            DiscreteIndexType discreteIndexType = fieldToDiscreteIndexType.get(fieldNames.get(i));
             String value = (i < values.length) ? values[i] : null;
             String start = (i < startValues.size()) ? startValues.get(i) : null;
             String end = (i < endValues.size()) ? endValues.get(i) : null;
             
             if (value != null) {
                 // if it's not fixed length, check to see if we are in range
-                if (!fixedLengthField) {
+                if (discreteIndexType == null) {
                     // value preceeds start value. need to seek forward.
                     if (start != null && value.compareTo(start) < 0) {
                         newValues[i] = start;
@@ -455,7 +439,7 @@ public class IndexIterator implements SortedKeyValueIterator<Key,Value>, Documen
                         }
                         // value is in range. just increment, and finish carry over
                         else {
-                            newValues[i] = incrementHexRange(values[i]);
+                            newValues[i] = discreteIndexType.incrementIndex(values[i]);
                             carryOver = false;
                         }
                     } else {
@@ -509,22 +493,10 @@ public class IndexIterator implements SortedKeyValueIterator<Key,Value>, Documen
             Key origStartKey = originalRange.getStartKey();
             Key startKey = new Key(origStartKey.getRow(), origStartKey.getColumnFamily(), new Text(newColQual), origStartKey.getColumnVisibility(),
                             origStartKey.getTimestamp());
-            source.seek(new Range(startKey, originalRange.getEndKey()), columnFamilies, inclusive);
+            source.seek(new Range(startKey, originalRange.isStartKeyInclusive(), originalRange.getEndKey(), originalRange.isEndKeyInclusive()), columnFamilies, inclusive);
             return true;
         }
         return false;
-    }
-    
-    private String incrementHexRangeInteger(String hexValue, String format) {
-        return String.format(format, Integer.parseInt(hexValue, 16) + 1);
-    }
-    
-    private String incrementHexRangeLong(String hexValue, String format) {
-        return String.format(format, Long.parseLong(hexValue, 16) + 1L);
-    }
-    
-    private String incrementHexRangeBigInteger(String hexValue, String format) {
-        return String.format(format, new BigInteger(hexValue, 16).add(BigInteger.ONE));
     }
     
     @Override
@@ -658,15 +630,5 @@ public class IndexIterator implements SortedKeyValueIterator<Key,Value>, Documen
         sb.append(this.valueMinPrefix.toString().replace("\0", "\\x00"));
         
         return sb.toString();
-    }
-    
-    @Override
-    public void addCompositePredicates(Set<JexlNode> compositePredicates) {
-        if (compositePredicateFilters != null) {
-            // Assign composite predicates to their corresponding field index filters
-            for (Map<String,CompositePredicateFilter> map : compositePredicateFilters.values())
-                for (CompositePredicateFilter compositePredicateFilter : map.values())
-                    compositePredicateFilter.addCompositePredicates(compositePredicates);
-        }
     }
 }

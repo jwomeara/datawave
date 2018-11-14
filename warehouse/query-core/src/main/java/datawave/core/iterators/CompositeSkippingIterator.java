@@ -21,6 +21,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Skips rows whose composite terms are outside of the range defined by the upper and lower composite bounds.
+ *
+ */
 public class CompositeSkippingIterator extends WrappingIterator {
 
     private static final Logger log = Logger.getLogger(CompositeSkippingIterator.class);
@@ -29,7 +33,7 @@ public class CompositeSkippingIterator extends WrappingIterator {
     public static final String DISCRETE_INDEX_TYPE = ".discrete.index.type";
     
     protected List<String> fieldNames = new ArrayList<>();
-    protected Map<String,DiscreteIndexType<?>> discreteIndexTypeMap = new HashMap<>();
+    protected Map<String,DiscreteIndexType<?>> fieldToDiscreteIndexType = new HashMap<>();
     
     protected Range originalRange = null;
     protected List<String> startValues = new ArrayList<>();
@@ -44,7 +48,7 @@ public class CompositeSkippingIterator extends WrappingIterator {
         to.setSource(getSource().deepCopy(env));
         
         Collections.copy(to.fieldNames, fieldNames);
-        to.discreteIndexTypeMap = new HashMap<>(discreteIndexTypeMap);
+        to.fieldToDiscreteIndexType = new HashMap<>(fieldToDiscreteIndexType);
 
         return to;
     }
@@ -69,7 +73,7 @@ public class CompositeSkippingIterator extends WrappingIterator {
             }
 
             if (type != null)
-                discreteIndexTypeMap.put(fieldName, type);
+                fieldToDiscreteIndexType.put(fieldName, type);
         }
     }
     
@@ -86,7 +90,7 @@ public class CompositeSkippingIterator extends WrappingIterator {
                 
                 boolean carryOver = false;
                 for (int i = fieldNames.size() - 1; i >= 0; i--) {
-                    DiscreteIndexType discreteIndexType = discreteIndexTypeMap.get(fieldNames.get(i));
+                    DiscreteIndexType discreteIndexType = fieldToDiscreteIndexType.get(fieldNames.get(i));
                     String value = (i < values.length) ? values[i] : null;
                     String start = (i < startValues.size()) ? startValues.get(i) : null;
                     String end = (i < endValues.size()) ? endValues.get(i) : null;
@@ -94,10 +98,10 @@ public class CompositeSkippingIterator extends WrappingIterator {
                     if (value != null) {
                         // if it's not fixed length, check to see if we are in range
                         if (discreteIndexType == null) {
-                            // value preceeds start value. need to seek forward.
+                            // value precedes start value. need to seek forward.
                             if (start != null && value.compareTo(start) < 0) {
                                 newValues[i] = start;
-                                
+
                                 // subsequent values set to start
                                 for (int j = i + 1; j < newValues.length; j++)
                                     newValues[j] = startValues.get(j);
@@ -106,7 +110,7 @@ public class CompositeSkippingIterator extends WrappingIterator {
                             else if (end != null && value.compareTo(end) > 0) {
                                 newValues[i] = start;
                                 carryOver = true;
-                                
+
                                 // subsequent values set to start
                                 for (int j = i + 1; j < newValues.length; j++)
                                     newValues[j] = startValues.get(j);
@@ -120,7 +124,7 @@ public class CompositeSkippingIterator extends WrappingIterator {
                         else {
                             // carry over means we need to increase our value
                             if (carryOver) {
-                                // value preceeds start value. just seek forward and ignore previous carry over.
+                                // value precedes start value. just seek forward and ignore previous carry over.
                                 if (start != null && value.compareTo(start) < 0) {
                                     newValues[i] = start;
                                     carryOver = false;
@@ -144,7 +148,7 @@ public class CompositeSkippingIterator extends WrappingIterator {
                                     carryOver = false;
                                 }
                             } else {
-                                // value preceeds start value. need to seek forward.
+                                // value precedes start value. need to seek forward.
                                 if (start != null && value.compareTo(start) < 0) {
                                     newValues[i] = start;
                                     
@@ -188,7 +192,7 @@ public class CompositeSkippingIterator extends WrappingIterator {
                     Key origStartKey = originalRange.getStartKey();
                     Key startKey = new Key(new Text(newRow), origStartKey.getColumnFamily(), origStartKey.getColumnQualifier(),
                                     origStartKey.getColumnVisibility(), origStartKey.getTimestamp());
-                    seek(new Range(startKey, originalRange.getEndKey()), columnFamilies, inclusive);
+                    seek(new Range(startKey, originalRange.isStartKeyInclusive(), originalRange.getEndKey(), originalRange.isEndKeyInclusive()), columnFamilies, inclusive);
                     continue;
                 }
             }

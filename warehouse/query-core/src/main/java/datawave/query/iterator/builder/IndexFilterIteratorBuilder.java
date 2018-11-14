@@ -78,7 +78,7 @@ public class IndexFilterIteratorBuilder extends IvaratorBuilder implements Itera
                                 .withHdfsBackedSetBufferSize(ivaratorCacheBufferSize).withMaxRangeSplit(maxRangeSplit).withMaxOpenFiles(ivaratorMaxOpenFiles)
                                 .withFileSystem(hdfsFileSystem).withUniqueDir(new Path(hdfsCacheURI)).withQueryLock(queryLock).allowDirResuse(true)
                                 .withReturnKeyType(PartialKey.ROW_COLFAM_COLQUAL_COLVIS_TIME).withSortedUUIDs(sortedUIDs)
-                                .withCompositePredicateFilters(createCompositePredicateFilters(range.getFieldName())).build();
+                                .withCompositeMetadata(compositeMetadata).withTypeMetadata(typeMetadata).build();
                 
                 if (collectTimingDetails) {
                     rangeIterator.setCollectTimingDetails(true);

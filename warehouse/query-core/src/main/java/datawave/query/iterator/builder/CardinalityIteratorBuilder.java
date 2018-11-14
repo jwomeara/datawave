@@ -13,7 +13,7 @@ public class CardinalityIteratorBuilder extends IndexIteratorBuilder {
                             .withTypeMetadata(typeMetadata)
                             .shouldBuildDocument(this.fieldsToAggregate == null ? false : this.fieldsToAggregate.contains(field))
                             .withDatatypeFilter(datatypeFilter).withAggregation(this.keyTform)
-                            .withCompositePredicateFilters(createCompositePredicateFilters(field)).build());
+                            .withCompositeMetadata(compositeMetadata).build());
             field = null;
             value = null;
             source = null;

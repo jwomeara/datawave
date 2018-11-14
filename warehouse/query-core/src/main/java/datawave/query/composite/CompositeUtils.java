@@ -31,11 +31,21 @@ public class CompositeUtils {
     public static final Set<Class<?>> VALID_LEAF_NODE_CLASSES = Sets.<Class<?>> newHashSet(ASTEQNode.class, ASTERNode.class, ASTGTNode.class, ASTGENode.class,
                     ASTLTNode.class, ASTLENode.class, ASTAndNode.class);
 
-    public static Map<String,DiscreteIndexType<?>> getFieldToDiscreteIndexTypeMap(Multimap<String,Type<?>> fieldDatatypes) {
+    public static Map<String,DiscreteIndexType<?>> getFieldToDiscreteIndexTypeMap(Multimap<String,?> fieldDatatypes) {
         Map<String,DiscreteIndexType<?>> fieldToDiscreteIndexTypeMap = new HashMap<>();
         for (String field : fieldDatatypes.keySet()) {
             DiscreteIndexType discreteIndexType = null;
-            for (Type type : fieldDatatypes.get(field)) {
+            for (Object typeObj : fieldDatatypes.get(field)) {
+                Type type = null;
+                if (typeObj instanceof Type) {
+                    type = (Type) typeObj;
+                } else if (typeObj instanceof String) {
+                    try {
+                        type = Class.forName((String)typeObj).asSubclass(Type.class).newInstance();
+                    } catch (Exception e) {
+                        System.out.println("whoops");
+                    }
+                }
                 if (type instanceof DiscreteIndexType && ((DiscreteIndexType) type).producesFixedLengthRanges()) {
                     if (discreteIndexType == null) {
                         discreteIndexType = (DiscreteIndexType) type;

@@ -64,7 +64,7 @@ public class IndexRegexIteratorBuilder extends IvaratorBuilder implements Iterat
                                 .withHdfsBackedSetBufferSize(ivaratorCacheBufferSize).withMaxRangeSplit(maxRangeSplit).withMaxOpenFiles(ivaratorMaxOpenFiles)
                                 .withFileSystem(hdfsFileSystem).withUniqueDir(new Path(hdfsCacheURI)).withQueryLock(queryLock).allowDirResuse(true)
                                 .withReturnKeyType(PartialKey.ROW_COLFAM_COLQUAL_COLVIS_TIME).withSortedUUIDs(sortedUIDs)
-                                .withCompositePredicateFilters(createCompositePredicateFilters(field)).build();
+                                .withCompositeMetadata(compositeMetadata).withTypeMetadata(typeMetadata).build();
                 
                 if (collectTimingDetails) {
                     regexIterator.setCollectTimingDetails(true);
