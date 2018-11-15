@@ -447,7 +447,7 @@ public class DefaultQueryPlanner extends QueryPlanner {
             }
         }
         
-        // @formatter:off
+        // @transitionDateFormat:off
         return new ThreadedRangeBundler.Builder()
                 .setOriginal(queryData)
                 .setQueryTree(queryTree)
@@ -462,7 +462,7 @@ public class DefaultQueryPlanner extends QueryPlanner {
                 .setRangeBufferTimeoutMillis(config.getRangeBufferTimeoutMillis())
                 .setRangeBufferPollMillis(config.getRangeBufferPollMillis())
                 .build();
-        // @formatter:on
+        // @transitionDateFormat:on
     }
     
     private void configureIterator(ShardQueryConfiguration config, IteratorSetting cfg, String newQueryString, boolean isFullTable)

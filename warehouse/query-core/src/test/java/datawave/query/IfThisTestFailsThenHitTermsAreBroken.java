@@ -316,7 +316,7 @@ public class IfThisTestFailsThenHitTermsAreBroken {
         Map<String,String> extraParameters = new HashMap<>();
         extraParameters.put("type.metadata.in.hdfs", "true");
         extraParameters.put("hit.list", "true");
-        // @formatter:off
+        // @transitionDateFormat:off
         String[] queryStrings = {
                 // sanity check. I got the 2 documents
                 "UUID == 'First' || UUID == 'Second'",
@@ -353,7 +353,7 @@ public class IfThisTestFailsThenHitTermsAreBroken {
                 Arrays.asList("Second"),
                 Arrays.asList("First")
         };
-        // @formatter:on
+        // @transitionDateFormat:on
         for (int i = 0; i < queryStrings.length; i++) {
             runTestQuery(expectedLists[i], queryStrings[i], format.parse("20091231"), format.parse("20150101"), extraParameters,
                             ArrayListMultimap.create(expectedHitTerms[i]));
@@ -366,7 +366,7 @@ public class IfThisTestFailsThenHitTermsAreBroken {
         extraParameters.put("type.metadata.in.hdfs", "true");
         extraParameters.put("hit.list", "true");
         extraParameters.put("return.fields", "*");
-        // @formatter:off
+        // @transitionDateFormat:off
         String[] queryStrings = {
                 // sanity check. I got the 2 documents
                 "UUID == 'First' || UUID == 'Second'",
@@ -403,7 +403,7 @@ public class IfThisTestFailsThenHitTermsAreBroken {
                 Arrays.asList("Second"),
                 Arrays.asList("First")
         };
-        // @formatter:on
+        // @transitionDateFormat:on
         for (int i = 0; i < queryStrings.length; i++) {
             runTestQuery(expectedLists[i], queryStrings[i], format.parse("20091231"), format.parse("20150101"), extraParameters,
                             ArrayListMultimap.create(expectedHitTerms[i]));

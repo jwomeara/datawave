@@ -11,7 +11,6 @@ import com.google.common.collect.Multimaps;
 import com.google.common.collect.Sets;
 import datawave.data.ColumnFamilyConstants;
 import datawave.data.type.Type;
-import datawave.ingest.data.config.ingest.CompositeIngest;
 import datawave.query.composite.CompositeMetadata;
 import datawave.query.composite.CompositeMetadataHelper;
 import datawave.security.util.AuthorizationsUtil;
@@ -39,6 +38,7 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -61,7 +61,10 @@ public class AllFieldMetadataHelper {
     private static final Logger log = Logger.getLogger(AllFieldMetadataHelper.class);
     
     public static final String NULL_BYTE = "\0";
-    
+
+    // TODO: We can do better than this
+    public static final SimpleDateFormat transitionDateFormat = new SimpleDateFormat("yyyyMMdd HHmmss.SSS");
+
     protected static final Function<MetadataEntry,String> toFieldName = new MetadataEntryToFieldName(), toDatatype = new MetadataEntryToDatatype();
     
     protected QueryStopwatch timers = new QueryStopwatch();
@@ -378,7 +381,7 @@ public class AllFieldMetadataHelper {
                 
                 if (idx != -1) {
                     try {
-                        Date transitionDate = CompositeIngest.CompositeFieldNormalizer.formatter.parse(colq.substring(idx + 1));
+                        Date transitionDate = transitionDateFormat.parse(colq.substring(idx + 1));
                         tdMap.put(fieldName, transitionDate);
                     } catch (ParseException e) {
                         log.trace("Unable to parse composite field transition date", e);

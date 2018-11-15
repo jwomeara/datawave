@@ -189,16 +189,9 @@ public class EventMetadata implements RawRecordMetadata {
             }
             
             if (helper.isCompositeField(fieldName)) {
-                String[] componentFields = helper.getCompositeFieldDefinitions().get(fieldName);
-                this.compositeFieldsInfo.createOrUpdate(fieldName, event.getDataType().outputName(), StringUtils.arrayToCommaDelimitedString(componentFields),
+                Collection<String> componentFields = helper.getCompositeFieldDefinitions().get(fieldName);
+                this.compositeFieldsInfo.createOrUpdate(fieldName, event.getDataType().outputName(), String.join(",", componentFields),
                                 event.getDate());
-                
-                // Add transition date if applicable
-                if (helper.isTransitionedCompositeField(fieldName)) {
-                    String transitionDateStr = CompositeIngest.CompositeFieldNormalizer.formatter.format(helper.getCompositeFieldTransitionDate(fieldName)
-                                    .getTime());
-                    this.compositeTransitionDateInfo.createOrUpdate(fieldName, event.getDataType().outputName(), transitionDateStr, event.getDate());
-                }
             }
         }
         

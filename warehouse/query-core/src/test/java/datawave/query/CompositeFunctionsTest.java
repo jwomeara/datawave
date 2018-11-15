@@ -263,7 +263,7 @@ public abstract class CompositeFunctionsTest {
         if (log.isDebugEnabled()) {
             log.debug("testMatchesAtLeastCountOf");
         }
-        // @formatter:off
+        // @transitionDateFormat:off
         String[] queryStrings = {
                 "UUID =~ '^[CS].*' AND filter:matchesAtLeastCountOf(3,NAM,'MICHAEL','VINCENT','FREDO','TONY')",
                 "UUID =~ '^[CS].*' AND filter:matchesAtLeastCountOf(3,NAME,'MICHAEL','VINCENT','FRED','TONY')"
@@ -273,7 +273,7 @@ public abstract class CompositeFunctionsTest {
                 Collections.singletonList("CORLEONE"),
                 Collections.emptyList()
         };
-        // @formatter:on
+        // @transitionDateFormat:on
         for (int i = 0; i < queryStrings.length; i++) {
             runTestQuery(expectedLists[i], queryStrings[i], format.parse("20091231"), format.parse("20150101"), extraParameters);
         }
@@ -286,7 +286,7 @@ public abstract class CompositeFunctionsTest {
         if (log.isDebugEnabled()) {
             log.debug("testMatchesAtLeastCountOf");
         }
-        // @formatter:off
+        // @transitionDateFormat:off
         String[] queryStrings = {
                 "UUID =~ '^[CS].*' AND filter:matchesAtLeastCountOf(3,NAM,'MICHAEL','VINCENT','FREDO','TONY') "+
                         "AND f:options('type.metadata.in.hdfs','true','include.grouping.context','true','hit.list','true')",
@@ -300,7 +300,7 @@ public abstract class CompositeFunctionsTest {
                 Collections.singletonList("CORLEONE"),
                 Collections.emptyList()
         };
-        // @formatter:on
+        // @transitionDateFormat:on
         
         for (int i = 0; i < queryStrings.length; i++) {
             runTestQuery(expectedLists[i], queryStrings[i], format.parse("20091231"), format.parse("20150101"), extraParameters);
@@ -316,7 +316,7 @@ public abstract class CompositeFunctionsTest {
         if (log.isDebugEnabled()) {
             log.debug("testDateDelta");
         }
-        // @formatter:off
+        // @transitionDateFormat:off
         String[] queryStrings = {
                 "UUID =~ '^[CS].*' AND filter:getMaxTime(DEATH_DATE) - filter:getMinTime(BIRTH_DATE) > 2522880000000L", // 80+ years
                 "UUID =~ '^[CS].*' AND filter:getMaxTime(DEATH_DATE) - filter:getMinTime(BIRTH_DATE) > 1892160000000L", // 60+ years
@@ -344,7 +344,7 @@ public abstract class CompositeFunctionsTest {
         if (log.isDebugEnabled()) {
             log.debug("makeSureTheyCannotDoAnythingCrazy");
         }
-        // @formatter:off
+        // @transitionDateFormat:off
         String[] queryStrings = {
                 "UUID == 'CORLEONE' AND  filter:getAllMatches(NAME,'SANTINO').add('NAME:GROUCHO') == true",
                 "UUID == 'CORLEONE' AND  filter:getAllMatches(NAME,'SANTINO').clear() == false"
@@ -371,7 +371,7 @@ public abstract class CompositeFunctionsTest {
         if (log.isDebugEnabled()) {
             log.debug("testWithIndexOnlyFieldsAndModelExpansion");
         }
-        // @formatter:off
+        // @transitionDateFormat:off
         String[] queryStrings = {
                 "UUID =~ '^[CS].*' AND filter:includeRegex(LOCATION,'chicago')", // LOCATION is index-only
                 "UUID =~ '^[CS].*' AND filter:includeRegex(LOC,'newyork')", // LOC model-maps to LOCATION and POSIZIONE, both are index-only
@@ -404,7 +404,7 @@ public abstract class CompositeFunctionsTest {
         if (log.isDebugEnabled()) {
             log.debug("testArithmetic");
         }
-        // @formatter:off
+        // @transitionDateFormat:off
         String[] queryStrings = {
                 "UUID =~ 'CORLEONE' AND 1 + 1 + 1 == 3",
                 "UUID =~ 'CORLEONE' AND 1 * 2 * 3 == 6",
@@ -433,7 +433,7 @@ public abstract class CompositeFunctionsTest {
         if (log.isDebugEnabled()) {
             log.debug("testNulls");
         }
-        // @formatter:off
+        // @transitionDateFormat:off
         String[] queryStrings = {
                 "UUID =~ '^[CS].*' AND filter:isNull(NULL1)", // no model expansion, NULL1 is not in the event(s)
                 "UUID =~ '^[CS].*' AND filter:isNull(UUID)", // no model expansion, UUID is non-null in all events
@@ -472,7 +472,7 @@ public abstract class CompositeFunctionsTest {
         if (log.isDebugEnabled()) {
             log.debug("testNotNulls");
         }
-        // @formatter:off
+        // @transitionDateFormat:off
         String[] queryStrings = {
                 "filter:isNotNull(UUID)",
                 "filter:isNotNull(NULL1)",
@@ -536,7 +536,7 @@ public abstract class CompositeFunctionsTest {
         if (log.isDebugEnabled()) {
             log.debug("testCompositeFunctions");
         }
-        // @formatter:off
+        // @transitionDateFormat:off
         String[] queryStrings = {
                 "UUID == 'SOPRANO' AND  1 + 1 == 2",
                 "UUID == 'SOPRANO' AND  1 * 1 == 1",
@@ -588,7 +588,7 @@ public abstract class CompositeFunctionsTest {
         if (log.isDebugEnabled()) {
             log.debug("testWithLucene");
         }
-        // @formatter:off
+        // @transitionDateFormat:off
         String[] queryStrings = {
                 "UUID:C*", // family name starts with 'C'
                 "UUID:SOPRANO", // family name is SOPRANO
@@ -618,7 +618,7 @@ public abstract class CompositeFunctionsTest {
         if (log.isDebugEnabled()) {
             log.debug("testWithLucene");
         }
-        // @formatter:off
+        // @transitionDateFormat:off
         String[] queryStrings = {
                 "UUID:C* AND #OPTIONS('include.grouping.context', 'true')", // family name starts with 'C'
                 "UUID:SOPRANO AND #OPTIONS('include.grouping.context', 'true')", // family name is SOPRANO
@@ -638,7 +638,7 @@ public abstract class CompositeFunctionsTest {
                 Collections.singletonList("CORLEONE"),
                 Collections.singletonList("CORLEONE")
         };
-        // @formatter:on
+        // @transitionDateFormat:on
         for (int i = 0; i < queryStrings.length; i++) {
             runTestQuery(expectedLists[i], queryStrings[i], format.parse("20091231"), format.parse("20150101"), extraParameters);
         }

@@ -230,9 +230,4 @@
         <name>nyctlc.data.composite.fields</name>
         <value>PICKUP_LOCATION.LPEP_PICKUP_DATETIME,DROPOFF_LOCATION.LPEP_DROPOFF_DATETIME,PICKUP_LOCATION.TOTAL_AMOUNT,DROPOFF_LOCATION.TOTAL_AMOUNT,ALL_LOCATIONS.TOTAL_AMOUNT</value>
     </property>
-
-    <property>
-        <name>nyctlc.data.fields.fixed.length</name>
-        <value>PICKUP_LOCATION,DROPOFF_LOCATION,ALL_LOCATIONS</value>
-    </property>
 </configuration>

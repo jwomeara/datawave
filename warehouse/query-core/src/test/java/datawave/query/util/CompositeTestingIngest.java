@@ -343,7 +343,6 @@ public class CompositeTestingIngest {
             mutation = new Mutation("MAKE_COLOR");
             mutation.put(ColumnFamilyConstants.COLF_I, new Text(datatype), emptyValue);
             mutation.put(ColumnFamilyConstants.COLF_CI, new Text(datatype + "\u0000" + "MAKE,COLOR"), emptyValue);
-            mutation.put(ColumnFamilyConstants.COLF_FL, new Text(datatype + "\u0000"), emptyValue);
             mutation.put(ColumnFamilyConstants.COLF_CITD, new Text(datatype + "\u0000" + "20010101 000000.000"), emptyValue);
             bw.addMutation(mutation);
             

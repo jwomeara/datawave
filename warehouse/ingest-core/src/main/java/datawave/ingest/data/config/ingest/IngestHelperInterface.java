@@ -101,10 +101,6 @@ public interface IngestHelperInterface extends DataTypeHelper {
     void addIndexOnlyField(String fieldName);
     
     boolean isCompositeField(String fieldName);
-
-    boolean isTransitionedCompositeField(String fieldName);
-    
-    Date getCompositeFieldTransitionDate(String fieldName);
     
     boolean isOverloadedCompositeField(String fieldName);
     
@@ -120,7 +116,7 @@ public interface IngestHelperInterface extends DataTypeHelper {
     
     boolean isDataTypeField(String fieldName);
     
-    Map<String,String[]> getCompositeFieldDefinitions();
+    Multimap<String,String> getCompositeFieldDefinitions();
     
     boolean isVirtualIndexedField(String fieldName);
     

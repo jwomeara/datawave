@@ -248,8 +248,8 @@ public class MultiValueCompositeIndexTest {
     
     public static void setupConfiguration(Configuration conf) {
         String compositeFieldName = GEO_FIELD;
-        conf.set(DATA_TYPE_NAME + BaseIngestHelper.COMPOSITE_FIELD_NAMES, compositeFieldName);
-        conf.set(DATA_TYPE_NAME + BaseIngestHelper.COMPOSITE_FIELD_MEMBERS, GEO_FIELD + "." + WKT_BYTE_LENGTH_FIELD);
+//        conf.set(DATA_TYPE_NAME + BaseIngestHelper.COMPOSITE_FIELD_NAMES, compositeFieldName);
+//        conf.set(DATA_TYPE_NAME + BaseIngestHelper.COMPOSITE_FIELD_MEMBERS, GEO_FIELD + "." + WKT_BYTE_LENGTH_FIELD);
 
         conf.set(DATA_TYPE_NAME + BaseIngestHelper.INDEX_FIELDS, GEO_FIELD + ((!compositeFieldName.equals(GEO_FIELD)) ? "," + compositeFieldName : ""));
         conf.set(DATA_TYPE_NAME + "." + GEO_FIELD + BaseIngestHelper.FIELD_TYPE, GeometryType.class.getName());

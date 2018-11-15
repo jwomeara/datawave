@@ -111,7 +111,7 @@ public class CompositeIndexTest {
     
     private static final Configuration conf = new Configuration();
     
-    // @formatter:off
+    // @transitionDateFormat:off
     private static final String[] wktLegacyData = {
             "POINT (0 0)",
 
@@ -171,7 +171,7 @@ public class CompositeIndexTest {
 
             0,
             TimeUnit.DAYS.toMillis(90)};
-    // @formatter:on
+    // @transitionDateFormat:on
     
     @Inject
     @SpringBean(name = "EventQuery")
@@ -271,10 +271,8 @@ public class CompositeIndexTest {
     
     public static void setupConfiguration(Configuration conf) {
         String compositeFieldName = GEO_FIELD;
-        conf.set(DATA_TYPE_NAME + BaseIngestHelper.COMPOSITE_FIELD_NAMES, compositeFieldName);
-        conf.set(DATA_TYPE_NAME + BaseIngestHelper.COMPOSITE_FIELD_MEMBERS, GEO_FIELD + "." + WKT_BYTE_LENGTH_FIELD);
-        conf.set(DATA_TYPE_NAME + BaseIngestHelper.COMPOSITE_FIELDS_TRANSITION_DATES, compositeFieldName + "|" + COMPOSITE_BEGIN_DATE);
-        
+        conf.set(DATA_TYPE_NAME + "." + compositeFieldName + BaseIngestHelper.COMPOSITE_FIELD_MAP, GEO_FIELD + "," + WKT_BYTE_LENGTH_FIELD);
+        conf.set(DATA_TYPE_NAME + "." + compositeFieldName + BaseIngestHelper.COMPOSITE_FIELD_SEPARATOR, " ");
         conf.set(DATA_TYPE_NAME + BaseIngestHelper.INDEX_FIELDS, GEO_FIELD + ((!compositeFieldName.equals(GEO_FIELD)) ? "," + compositeFieldName : ""));
         conf.set(DATA_TYPE_NAME + "." + GEO_FIELD + BaseIngestHelper.FIELD_TYPE, GeometryType.class.getName());
         conf.set(DATA_TYPE_NAME + "." + WKT_BYTE_LENGTH_FIELD + BaseIngestHelper.FIELD_TYPE, NumberType.class.getName());
@@ -323,14 +321,14 @@ public class CompositeIndexTest {
     
     @Test
     public void compositeWithoutIvaratorTest() throws Exception {
-        // @formatter:off
+        // @transitionDateFormat:off
         String query = "((" + GEO_FIELD + " >= '0202' && " + GEO_FIELD + " <= '020d') || " +
                 "(" + GEO_FIELD + " >= '030a' && " + GEO_FIELD + " <= '0335') || " +
                 "(" + GEO_FIELD + " >= '0428' && " + GEO_FIELD + " <= '0483') || " +
                 "(" + GEO_FIELD + " >= '0500aa' && " + GEO_FIELD + " <= '050355') || " +
                 "(" + GEO_FIELD + " >= '1f0aaaaaaaaaaaaaaa' && " + GEO_FIELD + " <= '1f36c71c71c71c71c7')) && " +
                 "(" + WKT_BYTE_LENGTH_FIELD + " >= 0 && " + WKT_BYTE_LENGTH_FIELD + " < 80)";
-        // @formatter:on
+        // @transitionDateFormat:on
         
         List<QueryData> queries = getQueryRanges(query, false);
         Assert.assertEquals(12, queries.size());
@@ -372,14 +370,14 @@ public class CompositeIndexTest {
     
     @Test
     public void compositeWithIvaratorTest() throws Exception {
-        // @formatter:off
+        // @transitionDateFormat:off
         String query = "((" + GEO_FIELD + " >= '0202' && " + GEO_FIELD + " <= '020d') || " +
                 "(" + GEO_FIELD + " >= '030a' && " + GEO_FIELD + " <= '0335') || " +
                 "(" + GEO_FIELD + " >= '0428' && " + GEO_FIELD + " <= '0483') || " +
                 "(" + GEO_FIELD + " >= '0500aa' && " + GEO_FIELD + " <= '050355') || " +
                 "(" + GEO_FIELD + " >= '1f0aaaaaaaaaaaaaaa' && " + GEO_FIELD + " <= '1f36c71c71c71c71c7')) && " +
                 "(" + WKT_BYTE_LENGTH_FIELD + " >= 0 && " + WKT_BYTE_LENGTH_FIELD + " < 80)";
-        // @formatter:on
+        // @transitionDateFormat:on
         
         List<QueryData> queries = getQueryRanges(query, true);
         Assert.assertEquals(732, queries.size());

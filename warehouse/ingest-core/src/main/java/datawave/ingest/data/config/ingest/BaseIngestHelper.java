@@ -418,32 +418,32 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
             }
         }
         
-        String compositeFieldList = config.get(this.getType().typeName() + CompositeIngest.COMPOSITE_FIELD_NAMES);
-        if (null != compositeFieldList) {
-            for (String s : compositeFieldList.split(",")) {
-                
-                String fieldName = s.trim();
-                
-                if (!fieldName.isEmpty()) {
-                    
-                    this.compositeFields.add(fieldName);
-                }
-            }
-        }
+//        String compositeFieldList = config.get(this.getType().typeName() + CompositeIngest.COMPOSITE_FIELD_NAMES);
+//        if (null != compositeFieldList) {
+//            for (String s : compositeFieldList.split(",")) {
+//
+//                String fieldName = s.trim();
+//
+//                if (!fieldName.isEmpty()) {
+//
+//                    this.compositeFields.add(fieldName);
+//                }
+//            }
+//        }
         
-        String transitionedCompositeFields = config.get(this.getType().typeName() + CompositeIngest.COMPOSITE_FIELDS_TRANSITION_DATES);
-        if (null != transitionedCompositeFields) {
-            for (String s : transitionedCompositeFields.split(",")) {
-                try {
-                    if (!s.isEmpty()) {
-                        String[] kv = s.split("\\|");
-                        this.fieldTransitionDateMap.put(kv[0], CompositeIngest.CompositeFieldNormalizer.formatter.parse(kv[1]));
-                    }
-                } catch (ParseException e) {
-                    log.trace("Unable to parse composite field transition date", e);
-                }
-            }
-        }
+//        String transitionedCompositeFields = config.get(this.getType().typeName() + CompositeIngest.COMPOSITE_FIELDS_TRANSITION_DATES);
+//        if (null != transitionedCompositeFields) {
+//            for (String s : transitionedCompositeFields.split(",")) {
+//                try {
+//                    if (!s.isEmpty()) {
+//                        String[] kv = s.split("\\|");
+//                        this.fieldTransitionDateMap.put(kv[0], CompositeIngest.CompositeFieldNormalizer.formatter.parse(kv[1]));
+//                    }
+//                } catch (ParseException e) {
+//                    log.trace("Unable to parse composite field transition date", e);
+//                }
+//            }
+//        }
     }
     
     private void moveToPatternMap(Set<String> in, Map<String,Pattern> out) {
@@ -594,19 +594,6 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
     @Override
     public boolean isCompositeField(String fieldName) {
         return this.compositeFields.contains(fieldName);
-    }
-    
-    @Override
-    public boolean isTransitionedCompositeField(String fieldName) {
-        return fieldTransitionDateMap != null && fieldTransitionDateMap.containsKey(fieldName);
-    }
-    
-    @Override
-    public Date getCompositeFieldTransitionDate(String fieldName) {
-        Date transitionDate = null;
-        if (isTransitionedCompositeField(fieldName))
-            transitionDate = fieldTransitionDateMap.get(fieldName);
-        return transitionDate;
     }
     
     @Override
@@ -1097,12 +1084,12 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
     }
     
     @Override
-    public Map<String,String[]> getCompositeFieldDefinitions() {
+    public Multimap<String,String> getCompositeFieldDefinitions() {
         return getCompositeIngest().getCompositeFieldDefinitions();
     }
     
     @Override
-    public void setCompositeFieldDefinitions(Map<String,String[]> compositeFieldDefinitions) {
+    public void setCompositeFieldDefinitions(Multimap<String,String> compositeFieldDefinitions) {
         getCompositeIngest().setCompositeFieldDefinitions(compositeFieldDefinitions);
     }
     

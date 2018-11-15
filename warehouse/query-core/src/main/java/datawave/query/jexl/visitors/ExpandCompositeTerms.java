@@ -686,19 +686,19 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
                     continue;
             }
             
-            // @formatter:off
+            // @transitionDateFormat:off
             boolean leafNodeFieldPresent = componentFields.stream().
                     anyMatch(componentField -> remainingLeafNodes.keySet().contains(componentField));
-            // @formatter:on
+            // @transitionDateFormat:on
             
             // only build this composite if one of the components is a leaf node
             if (!leafNodeFieldPresent)
                 continue;
             
-            // @formatter:off
+            // @transitionDateFormat:off
             boolean allRequiredFieldsPresent = !componentFields.stream().
                     anyMatch(componentField -> !(remainingLeafNodes.keySet().contains(componentField) || remainingAndedNodes.keySet().contains(componentField)));
-            // @formatter:on
+            // @transitionDateFormat:on
             
             // only build this composite if we have all of the required component fields
             if (!allRequiredFieldsPresent)

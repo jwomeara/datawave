@@ -7,7 +7,6 @@ import org.apache.hadoop.conf.Configuration;
 
 import java.util.Date;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * This class will add the CompositeFieldNormalizer to the list of normalizers. Note that this can be done directly via the configuration.
@@ -25,27 +24,27 @@ public class CompositeFieldIngestHelper implements CompositeIngest {
     
     @Override
     public void setup(Configuration config) throws IllegalArgumentException {
-        compositeFieldNormalizer.setup(type, null, config);
+        compositeFieldNormalizer.setup(type, config);
     }
     
     /*
      * (non-Javadoc)
      * 
-     * @see datawave.ingest.data.config.ingest.CompositeIngest#getCompositeFieldDefinitions()
+     * @see datawave.ingest.data.config.ingest.CompositeIngest#getCompositeToFieldMap()
      */
     @Override
-    public Map<String,String[]> getCompositeFieldDefinitions() {
-        return compositeFieldNormalizer.getCompositeFieldDefinitions();
+    public Multimap<String,String> getCompositeFieldDefinitions() {
+        return compositeFieldNormalizer.getCompositeToFieldMap();
     }
     
     /*
      * (non-Javadoc)
      * 
-     * @see datawave.ingest.data.config.ingest.CompositeIngest#setCompositeFieldDefinitions(java.util.Map)
+     * @see datawave.ingest.data.config.ingest.CompositeIngest#setCompositeToFieldMap(java.util.Map)
      */
     @Override
-    public void setCompositeFieldDefinitions(Map<String,String[]> compositeFieldDefinitions) {
-        compositeFieldNormalizer.setCompositeFieldDefinitions(compositeFieldDefinitions);
+    public void setCompositeFieldDefinitions(Multimap<String,String> compositeFieldDefinitions) {
+        compositeFieldNormalizer.setCompositeToFieldMap(compositeFieldDefinitions);
     }
     
     /*
@@ -65,32 +64,7 @@ public class CompositeFieldIngestHelper implements CompositeIngest {
      */
     @Override
     public boolean isCompositeField(String fieldName) {
-        Map<String,String[]> map = this.getCompositeFieldDefinitions();
-        return map.containsKey(fieldName);
-    }
-    
-    /*
-     * (non-Javadoc)
-     * 
-     * @see datawave.ingest.data.config.ingest.CompositeIngest#isTransitionedCompositeField(java.lang.String)
-     */
-    @Override
-    public boolean isTransitionedCompositeField(String fieldName) {
-        Map<String,Date> fieldTransitionDateMap = compositeFieldNormalizer.getFieldTransitionDateMap();
-        return fieldTransitionDateMap != null && fieldTransitionDateMap.containsKey(fieldName);
-    }
-    
-    /*
-     * (non-Javadoc)
-     * 
-     * @see datawave.ingest.data.config.ingest.CompositeIngest#getCompositeFieldTransitionDate(java.lang.String)
-     */
-    @Override
-    public Date getCompositeFieldTransitionDate(String fieldName) {
-        Date transitionDate = null;
-        if (isTransitionedCompositeField(fieldName))
-            transitionDate = compositeFieldNormalizer.getFieldTransitionDateMap().get(fieldName);
-        return transitionDate;
+        return this.getCompositeFieldDefinitions().containsKey(fieldName);
     }
     
     /*

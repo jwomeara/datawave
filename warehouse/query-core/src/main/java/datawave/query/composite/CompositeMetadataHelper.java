@@ -1,7 +1,7 @@
 package datawave.query.composite;
 
 import datawave.data.ColumnFamilyConstants;
-import datawave.ingest.data.config.ingest.CompositeIngest;
+import datawave.query.util.AllFieldMetadataHelper;
 import datawave.security.util.ScannerHelper;
 import org.apache.accumulo.core.client.Connector;
 import org.apache.accumulo.core.client.Instance;
@@ -114,7 +114,7 @@ public class CompositeMetadataHelper {
                     if (null != entry.getKey().getColumnQualifier()) {
                         if (idx != -1) {
                             try {
-                                Date transitionDate = CompositeIngest.CompositeFieldNormalizer.formatter.parse(colq.substring(idx + 1));
+                                Date transitionDate = AllFieldMetadataHelper.transitionDateFormat.parse(colq.substring(idx + 1));
                                 compositeMetadata.addCompositeTransitionDateByType(type, fieldName, transitionDate);
                             } catch (ParseException e) {
                                 log.trace("Unable to parse composite field transition date", e);
