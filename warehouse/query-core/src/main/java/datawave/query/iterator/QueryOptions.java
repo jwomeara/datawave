@@ -231,7 +231,7 @@ public class QueryOptions implements OptionDescriber {
     protected boolean disableIndexOnlyDocuments = false;
     protected TypeMetadata typeMetadata = new TypeMetadata();
     protected Set<String> typeMetadataAuthsKey = Sets.newHashSet();
-    protected CompositeMetadata compositeMetadata = new CompositeMetadata();
+    protected CompositeMetadata compositeMetadata = null;
     protected DocumentSerialization.ReturnType returnType = DocumentSerialization.ReturnType.kryo;
     protected boolean reducedResponse = false;
     protected boolean fullTableScanOnly = false;

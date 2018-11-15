@@ -4,7 +4,7 @@ import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
-import datawave.data.type.DiscreteIndexType;
+import datawave.core.iterators.CompositeSeeker.FieldIndexCompositeSeeker;
 import datawave.query.Constants;
 import datawave.query.attributes.Document;
 import datawave.query.attributes.PreNormalizedAttributeFactory;
@@ -34,6 +34,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Scans a bounds within a column qualifier. This iterator needs to: - 1) Be given a global Range (ie, [-inf,+inf]) - 2) Select an arbitrary column family (ie,
@@ -131,7 +132,7 @@ public class IndexIterator implements SortedKeyValueIterator<Key,Value>, Documen
     protected TimeFilter timeFilter;
     protected SeekingFilter timeSeekingFilter;
     protected CompositeMetadata compositeMetadata;
-    protected Map<String,DiscreteIndexType<?>> fieldToDiscreteIndexType;
+    protected FieldIndexCompositeSeeker compositeSeeker;
 
     protected IndexIterator(Builder builder) {
         this(builder.field, builder.value, builder.source, builder.timeFilter, builder.typeMetadata, builder.buildDocument, builder.datatypeFilter,
@@ -188,12 +189,18 @@ public class IndexIterator implements SortedKeyValueIterator<Key,Value>, Documen
             attributeFactory = new PreNormalizedAttributeFactory(typeMetadata);
         }
 
-        this.fieldToDiscreteIndexType = CompositeUtils.getFieldToDiscreteIndexTypeMap(typeMetadata.fold());
-
         this.aggregation = aggregator;
         
         this.timeFilter = timeFilter;
-        this.compositeMetadata = compositeMetadata;
+
+        // setup composite logic if this is a composite field
+        if (compositeMetadata != null) {
+            List<String> compositeFields = compositeMetadata.getCompositeFieldMapByType().entrySet().stream().flatMap(x -> x.getValue().keySet().stream()).distinct().collect(Collectors.toList());
+            if (compositeFields.contains(field.toString())) {
+                this.compositeMetadata = compositeMetadata;
+                this.compositeSeeker = new FieldIndexCompositeSeeker(typeMetadata.fold());
+            }
+        }
     }
     
     @Override
@@ -337,30 +344,24 @@ public class IndexIterator implements SortedKeyValueIterator<Key,Value>, Documen
                 continue;
             }
 
-            // if we have composite metadata
-            if (this.compositeMetadata != null) {
+            // if we are setup for composite seeking, seek if we are out of range
+            if (compositeSeeker != null) {
                 String colQual = top.getColumnQualifier().toString();
                 String ingestType = colQual.substring(colQual.indexOf('\0') + 1, colQual.lastIndexOf('\0'));
                 String colFam = top.getColumnFamily().toString();
                 String fieldName = colFam.substring(colFam.indexOf('\0') + 1);
 
+                Collection<String> componentFields = null;
                 Multimap<String,String> compositeToFieldMap = compositeMetadata.getCompositeFieldMapByType().get(ingestType);
-                if (compositeToFieldMap != null) {
+                if (compositeToFieldMap != null)
+                    componentFields = compositeToFieldMap.get(fieldName);
 
-                    Collection<String> componentFields = compositeToFieldMap.get(fieldName);
-
-                    // if this is a composite field
-                    if (componentFields != null) {
-                        List<String> startValues = Arrays.asList(scanRange.getStartKey().getColumnQualifier().toString().split("\0")[0]
-                                .split(CompositeUtils.SEPARATOR));
-                        List<String> endValues = Arrays
-                                .asList(scanRange.getEndKey().getColumnQualifier().toString().split("\0")[0].split(CompositeUtils.SEPARATOR));
-
-                        if (compositeSeek(top, new ArrayList<>(componentFields), startValues, endValues,
-                                scanRange, seekColumnFamilies, includeColumnFamilies)) {
-                            source.next();
-                            continue;
-                        }
+                if (componentFields != null && !compositeSeeker.isKeyInRange(top, scanRange)) {
+                    Range newRange = compositeSeeker.nextSeekRange(new ArrayList<>(componentFields), top, scanRange);
+                    if (newRange != scanRange) {
+                        source.seek(newRange, seekColumnFamilies, includeColumnFamilies);
+                        source.next();
+                        continue;
                     }
                 }
             }
@@ -373,130 +374,6 @@ public class IndexIterator implements SortedKeyValueIterator<Key,Value>, Documen
                 log.trace("Returning pointer " + tk.toStringNoTime());
             }
         }
-    }
-    
-    private boolean compositeSeek(Key topKey, List<String> fieldNames, List<String> startValues, List<String> endValues,
-                    Range originalRange, Collection<ByteSequence> columnFamilies, boolean inclusive) throws IOException {
-        String origColQual = topKey.getColumnQualifier().toString();
-        String[] colQualParts = origColQual.split("\0");
-        String[] values = colQualParts[0].split(CompositeUtils.SEPARATOR);
-        
-        String[] newValues = new String[fieldNames.size()];
-        
-        boolean carryOver = false;
-        for (int i = fieldNames.size() - 1; i >= 0; i--) {
-            DiscreteIndexType discreteIndexType = fieldToDiscreteIndexType.get(fieldNames.get(i));
-            String value = (i < values.length) ? values[i] : null;
-            String start = (i < startValues.size()) ? startValues.get(i) : null;
-            String end = (i < endValues.size()) ? endValues.get(i) : null;
-            
-            if (value != null) {
-                // if it's not fixed length, check to see if we are in range
-                if (discreteIndexType == null) {
-                    // value preceeds start value. need to seek forward.
-                    if (start != null && value.compareTo(start) < 0) {
-                        newValues[i] = start;
-                        
-                        // subsequent values set to start
-                        for (int j = i + 1; j < newValues.length; j++)
-                            newValues[j] = startValues.get(j);
-                    }
-                    // value exceeds end value. need to seek forward, and carry over.
-                    else if (end != null && value.compareTo(end) > 0) {
-                        newValues[i] = start;
-                        carryOver = true;
-                        
-                        // subsequent values set to start
-                        for (int j = i + 1; j < newValues.length; j++)
-                            newValues[j] = startValues.get(j);
-                    }
-                    // value is in range.
-                    else {
-                        newValues[i] = values[i];
-                    }
-                }
-                // if it's fixed length, determine whether or not we need to increment
-                else {
-                    // carry over means we need to increase our value
-                    if (carryOver) {
-                        // value preceeds start value. just seek forward and ignore previous carry over.
-                        if (start != null && value.compareTo(start) < 0) {
-                            newValues[i] = start;
-                            carryOver = false;
-                            
-                            // subsequent values set to start
-                            for (int j = i + 1; j < startValues.size(); j++)
-                                newValues[j] = startValues.get(j);
-                        }
-                        // value is at or exceeds end value. need to seek forward, and maintain carry over.
-                        else if (end != null && value.compareTo(end) >= 0) {
-                            newValues[i] = start;
-                            carryOver = true;
-                            
-                            // subsequent values set to start
-                            for (int j = i + 1; j < startValues.size(); j++)
-                                newValues[j] = startValues.get(j);
-                        }
-                        // value is in range. just increment, and finish carry over
-                        else {
-                            newValues[i] = discreteIndexType.incrementIndex(values[i]);
-                            carryOver = false;
-                        }
-                    } else {
-                        // value preceeds start value. need to seek forward.
-                        if (start != null && value.compareTo(start) < 0) {
-                            newValues[i] = start;
-                            
-                            // subsequent values set to start
-                            for (int j = i + 1; j < startValues.size(); j++)
-                                newValues[j] = startValues.get(j);
-                        }
-                        // value exceeds end value. need to seek forward, and carry over.
-                        else if (end != null && value.compareTo(end) > 0) {
-                            newValues[i] = start;
-                            carryOver = true;
-                            
-                            // subsequent values set to start
-                            for (int j = i + 1; j < startValues.size(); j++)
-                                newValues[j] = startValues.get(j);
-                        }
-                        // value is in range.
-                        else {
-                            newValues[i] = values[i];
-                        }
-                    }
-                }
-            }
-        }
-        
-        StringBuilder builder = new StringBuilder();
-        for (int i = 0; i < newValues.length; i++) {
-            if (newValues[i] != null)
-                if (i > 0)
-                    builder.append(CompositeUtils.SEPARATOR).append(newValues[i]);
-                else
-                    builder.append(newValues[i]);
-            else
-                break;
-        }
-        
-        for (int i = 1; i < colQualParts.length; i++) {
-            builder.append("\0").append(colQualParts[i]);
-        }
-        
-        String newColQual = builder.toString();
-        
-        // if the new row exceeds the row of the key, and it doesn't exceed the end row, we need to seek and call next again. otherwise, keep the
-        // existing
-        // row
-        if (newColQual.compareTo(origColQual) > 0 && newColQual.compareTo(originalRange.getEndKey().getRow().toString()) <= 0) {
-            Key origStartKey = originalRange.getStartKey();
-            Key startKey = new Key(origStartKey.getRow(), origStartKey.getColumnFamily(), new Text(newColQual), origStartKey.getColumnVisibility(),
-                            origStartKey.getTimestamp());
-            source.seek(new Range(startKey, originalRange.isStartKeyInclusive(), originalRange.getEndKey(), originalRange.isEndKeyInclusive()), columnFamilies, inclusive);
-            return true;
-        }
-        return false;
     }
     
     @Override

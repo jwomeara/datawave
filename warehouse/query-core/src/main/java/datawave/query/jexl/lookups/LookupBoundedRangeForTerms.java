@@ -3,7 +3,7 @@ package datawave.query.jexl.lookups;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
 import datawave.core.iterators.ColumnQualifierRangeIterator;
-import datawave.core.iterators.CompositeSkippingIterator;
+import datawave.core.iterators.CompositeSeekingIterator;
 import datawave.core.iterators.TimeoutExceptionIterator;
 import datawave.core.iterators.TimeoutIterator;
 import datawave.data.type.DiscreteIndexType;
@@ -133,15 +133,15 @@ public class LookupBoundedRangeForTerms extends IndexLookup {
 
             // If this is a composite field, with multiple terms, we need to setup our query to filter based on each component of the composite range
             if (config.getCompositeToFieldMap().get(literalRange.getFieldName()) != null && (lower.contains(CompositeUtils.SEPARATOR) || upper.contains(CompositeUtils.SEPARATOR))) {
-                IteratorSetting compositeIterator = new IteratorSetting(config.getBaseIteratorPriority() + 51, CompositeSkippingIterator.class);
+                IteratorSetting compositeIterator = new IteratorSetting(config.getBaseIteratorPriority() + 51, CompositeSeekingIterator.class);
                 
-                compositeIterator.addOption(CompositeSkippingIterator.COMPOSITE_FIELDS,
+                compositeIterator.addOption(CompositeSeekingIterator.COMPONENT_FIELDS,
                                 StringUtils.collectionToCommaDelimitedString(config.getCompositeToFieldMap().get(literalRange.getFieldName())));
 
                 for (String fieldName : config.getCompositeToFieldMap().get(literalRange.getFieldName())) {
                     DiscreteIndexType type = config.getFieldToDiscreteIndexTypes().get(fieldName);
                     if (type != null)
-                        compositeIterator.addOption(fieldName + CompositeSkippingIterator.DISCRETE_INDEX_TYPE, type.getClass().getName());
+                        compositeIterator.addOption(fieldName + CompositeSeekingIterator.DISCRETE_INDEX_TYPE, type.getClass().getName());
                 }
                 
                 bs.addScanIterator(compositeIterator);
