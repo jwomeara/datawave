@@ -36,6 +36,7 @@ public interface CompositeIngest {
     
     String COMPOSITE_FIELD_MAP = CompositeFieldNormalizer.COMPOSITE_FIELD_MAP;
     String COMPOSITE_FIELD_SEPARATOR = CompositeFieldNormalizer.COMPOSITE_FIELD_SEPARATOR;
+    String COMPOSITE_DEFAULT_SEPARATOR = CompositeFieldNormalizer.COMPOSITE_DEFAULT_SEPARATOR;
     String COMPOSITE_FIELD_ALLOW_MISSING = CompositeFieldNormalizer.COMPOSITE_FIELD_ALLOW_MISSING;
     String COMPOSITE_FIELD_GROUPING_POLICY = CompositeFieldNormalizer.COMPOSITE_FIELD_GROUPING_POLICY;
 
@@ -46,7 +47,9 @@ public interface CompositeIngest {
     void setup(Configuration config) throws IllegalArgumentException;
     
     Multimap<String,String> getCompositeFieldDefinitions();
-    
+
+    Map<String,String> getCompositeFieldSeparators();
+
     void setCompositeFieldDefinitions(Multimap<String,String> compositeFieldDefinitions);
     
     boolean isCompositeField(String fieldName);
@@ -88,7 +91,7 @@ public interface CompositeIngest {
 
         /**
          * Parameter for specifying the separator override to use when combining component fields into a composite field.  By default the max code point character will
-         * be used.  The use of regex meta characters is currently NOT supported.
+         * be used.  The use of regex meta characters is currently NOT supported.  You are also advised against using the null character "\0" as this is used commonly in the index.
          *
          * Example:
          *  Key:   "myType.COMPOSITE_FIELD_NAME.data.composite.separator"
@@ -492,7 +495,11 @@ public interface CompositeIngest {
         public Multimap<String,String> getCompositeToFieldMap() {
             return compositeToFieldMap;
         }
-        
+
+        public Map<String,String> getCompositeFieldSeparators() {
+            return compositeSeparator;
+        }
+
         public void setCompositeToFieldMap(Multimap<String,String> compositeToFieldMap) {
             this.compositeToFieldMap = compositeToFieldMap;
         }

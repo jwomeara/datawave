@@ -36,6 +36,16 @@ public class CompositeFieldIngestHelper implements CompositeIngest {
     public Multimap<String,String> getCompositeFieldDefinitions() {
         return compositeFieldNormalizer.getCompositeToFieldMap();
     }
+
+    /*
+     * (non-Javadoc)
+     *
+     * @see datawave.ingest.data.config.ingest.CompositeIngest#getCompositeFieldSeparators()
+     */
+    @Override
+    public Map<String,String> getCompositeFieldSeparators() {
+        return compositeFieldNormalizer.getCompositeFieldSeparators();
+    }
     
     /*
      * (non-Javadoc)

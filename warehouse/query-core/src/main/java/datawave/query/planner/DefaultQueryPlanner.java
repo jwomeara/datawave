@@ -572,22 +572,8 @@ public class DefaultQueryPlanner extends QueryPlanner {
     protected ASTJexlScript updateQueryTree(ScannerFactory scannerFactory, MetadataHelper metadataHelper, DateIndexHelper dateIndexHelper,
                     ShardQueryConfiguration config, String query, QueryData queryData, Query settings) throws DatawaveQueryException {
         final QueryStopwatch timers = config.getTimers();
-        
-        TraceStopwatch stopwatch = timers.newStartedStopwatch("DefaultQueryPlanner - get composites");
-        if (!disableCompositeFields) {
-            
-            try {
-                config.setCompositeToFieldMap(metadataHelper.getCompositeToFieldMap(config.getDatatypeFilter()));
-                config.setCompositeTransitionDates(metadataHelper.getCompositeTransitionDateMap(config.getDatatypeFilter()));
-            } catch (TableNotFoundException ex) {
-                QueryException qe = new QueryException(DatawaveErrorCode.COMPOSITES_RETRIEVAL_ERROR, ex);
-                log.warn(qe);
-                throw new DatawaveQueryException(qe);
-            }
-            
-        }
-        stopwatch.stop();
-        stopwatch = timers.newStartedStopwatch("DefaultQueryPlanner - Parse query");
+
+        TraceStopwatch stopwatch = timers.newStartedStopwatch("DefaultQueryPlanner - Parse query");
         
         ASTJexlScript queryTree = parseQueryAndValidatePattern(query, stopwatch);
         
@@ -1062,7 +1048,17 @@ public class DefaultQueryPlanner extends QueryPlanner {
         
         if (!disableCompositeFields) {
             stopwatch = timers.newStartedStopwatch("DefaultQueryPlanner - Expand composite terms");
-            config.setFieldToDiscreteIndexTypes(CompositeUtils.getFieldToDiscreteIndexTypeMap(config.getQueryFieldsDatatypes()));
+
+            try {
+                config.setCompositeToFieldMap(metadataHelper.getCompositeToFieldMap(config.getDatatypeFilter()));
+                config.setCompositeTransitionDates(metadataHelper.getCompositeTransitionDateMap(config.getDatatypeFilter()));
+                config.setCompositeFieldSeparators(metadataHelper.getCompositeFieldSeparatorMap(config.getDatatypeFilter()));
+                config.setFieldToDiscreteIndexTypes(CompositeUtils.getFieldToDiscreteIndexTypeMap(config.getQueryFieldsDatatypes()));
+            } catch (TableNotFoundException e) {
+                QueryException qe = new QueryException(DatawaveErrorCode.METADATA_ACCESS_ERROR, e);
+                throw new DatawaveFatalQueryException(qe);
+            }
+
             queryTree = ExpandCompositeTerms.expandTerms(config, metadataHelper, queryTree);
             stopwatch.stop();
         }

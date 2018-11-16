@@ -4,6 +4,7 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import datawave.accumulo.inmemory.InMemoryInstance;
 import datawave.configuration.spring.SpringBean;
+import datawave.data.ColumnFamilyConstants;
 import datawave.data.type.GeometryType;
 import datawave.data.type.NumberType;
 import datawave.ingest.config.RawRecordContainerImpl;
@@ -23,6 +24,8 @@ import datawave.ingest.mapreduce.partition.BalancedShardPartitioner;
 import datawave.ingest.table.config.ShardTableConfigHelper;
 import datawave.ingest.table.config.TableConfigHelper;
 import datawave.policy.IngestPolicyEnforcer;
+import datawave.query.composite.CompositeMetadata;
+import datawave.query.composite.CompositeMetadataHelper;
 import datawave.query.config.ShardQueryConfiguration;
 import datawave.query.config.ShardQueryConfigurationFactory;
 import datawave.query.metrics.MockStatusReporter;
@@ -39,6 +42,7 @@ import org.apache.accumulo.core.client.BatchWriter;
 import org.apache.accumulo.core.client.BatchWriterConfig;
 import org.apache.accumulo.core.client.Connector;
 import org.apache.accumulo.core.client.admin.TableOperations;
+import org.apache.accumulo.core.data.Key;
 import org.apache.accumulo.core.data.Mutation;
 import org.apache.accumulo.core.data.Value;
 import org.apache.accumulo.core.security.Authorizations;
@@ -111,7 +115,7 @@ public class CompositeIndexTest {
     
     private static final Configuration conf = new Configuration();
     
-    // @transitionDateFormat:off
+    // @formatter:off
     private static final String[] wktLegacyData = {
             "POINT (0 0)",
 
@@ -171,7 +175,7 @@ public class CompositeIndexTest {
 
             0,
             TimeUnit.DAYS.toMillis(90)};
-    // @transitionDateFormat:on
+    // @formatter:on
     
     @Inject
     @SpringBean(name = "EventQuery")
@@ -260,7 +264,11 @@ public class CompositeIndexTest {
             }
         }
         keyValues.putAll(dataTypeHandler.getMetadata().getBulkMetadata());
-        
+
+        // Write the composite transition date manually
+        Key tdKey = new Key(new Text(GEO_FIELD), new Text(ColumnFamilyConstants.COLF_CITD), new Text(DATA_TYPE_NAME + "\0" + COMPOSITE_BEGIN_DATE), new Text(), new SimpleDateFormat(CompositeMetadataHelper.transitionDateFormat).parse(COMPOSITE_BEGIN_DATE).getTime());
+        keyValues.put(new BulkIngestKey(new Text(METADATA_TABLE_NAME), tdKey), new Value());
+
         // write these values to their respective tables
         instance = new InMemoryInstance();
         Connector connector = instance.getConnector("root", PASSWORD);
@@ -321,14 +329,14 @@ public class CompositeIndexTest {
     
     @Test
     public void compositeWithoutIvaratorTest() throws Exception {
-        // @transitionDateFormat:off
+        // @formatter:off
         String query = "((" + GEO_FIELD + " >= '0202' && " + GEO_FIELD + " <= '020d') || " +
                 "(" + GEO_FIELD + " >= '030a' && " + GEO_FIELD + " <= '0335') || " +
                 "(" + GEO_FIELD + " >= '0428' && " + GEO_FIELD + " <= '0483') || " +
                 "(" + GEO_FIELD + " >= '0500aa' && " + GEO_FIELD + " <= '050355') || " +
                 "(" + GEO_FIELD + " >= '1f0aaaaaaaaaaaaaaa' && " + GEO_FIELD + " <= '1f36c71c71c71c71c7')) && " +
                 "(" + WKT_BYTE_LENGTH_FIELD + " >= 0 && " + WKT_BYTE_LENGTH_FIELD + " < 80)";
-        // @transitionDateFormat:on
+        // @formatter:on
         
         List<QueryData> queries = getQueryRanges(query, false);
         Assert.assertEquals(12, queries.size());
@@ -370,14 +378,14 @@ public class CompositeIndexTest {
     
     @Test
     public void compositeWithIvaratorTest() throws Exception {
-        // @transitionDateFormat:off
+        // @formatter:off
         String query = "((" + GEO_FIELD + " >= '0202' && " + GEO_FIELD + " <= '020d') || " +
                 "(" + GEO_FIELD + " >= '030a' && " + GEO_FIELD + " <= '0335') || " +
                 "(" + GEO_FIELD + " >= '0428' && " + GEO_FIELD + " <= '0483') || " +
                 "(" + GEO_FIELD + " >= '0500aa' && " + GEO_FIELD + " <= '050355') || " +
                 "(" + GEO_FIELD + " >= '1f0aaaaaaaaaaaaaaa' && " + GEO_FIELD + " <= '1f36c71c71c71c71c7')) && " +
                 "(" + WKT_BYTE_LENGTH_FIELD + " >= 0 && " + WKT_BYTE_LENGTH_FIELD + " < 80)";
-        // @transitionDateFormat:on
+        // @formatter:on
         
         List<QueryData> queries = getQueryRanges(query, true);
         Assert.assertEquals(732, queries.size());

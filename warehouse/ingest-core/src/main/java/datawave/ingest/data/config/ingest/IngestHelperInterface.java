@@ -103,9 +103,7 @@ public interface IngestHelperInterface extends DataTypeHelper {
     boolean isCompositeField(String fieldName);
     
     boolean isOverloadedCompositeField(String fieldName);
-    
-    void addCompositeField(String fieldName);
-    
+
     boolean isNormalizedField(String fieldName);
     
     void addNormalizedField(String fieldName);
@@ -117,7 +115,9 @@ public interface IngestHelperInterface extends DataTypeHelper {
     boolean isDataTypeField(String fieldName);
     
     Multimap<String,String> getCompositeFieldDefinitions();
-    
+
+    Map<String,String> getCompositeFieldSeparators();
+
     boolean isVirtualIndexedField(String fieldName);
     
     Map<String,String[]> getVirtualNameAndIndex(String fieldName);

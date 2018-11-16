@@ -4,12 +4,11 @@ import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
-import datawave.core.iterators.CompositeSeeker.FieldIndexCompositeSeeker;
+import datawave.query.composite.CompositeSeeker.FieldIndexCompositeSeeker;
 import datawave.query.Constants;
 import datawave.query.attributes.Document;
 import datawave.query.attributes.PreNormalizedAttributeFactory;
 import datawave.query.composite.CompositeMetadata;
-import datawave.query.composite.CompositeUtils;
 import datawave.query.iterator.DocumentIterator;
 import datawave.query.iterator.Util;
 import datawave.query.jexl.functions.FieldIndexAggregator;
@@ -30,7 +29,6 @@ import org.apache.log4j.Logger;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -352,12 +350,16 @@ public class IndexIterator implements SortedKeyValueIterator<Key,Value>, Documen
                 String fieldName = colFam.substring(colFam.indexOf('\0') + 1);
 
                 Collection<String> componentFields = null;
+                String separator = null;
                 Multimap<String,String> compositeToFieldMap = compositeMetadata.getCompositeFieldMapByType().get(ingestType);
-                if (compositeToFieldMap != null)
+                Map<String,String> compositeSeparatorMap = compositeMetadata.getCompositeFieldSeparatorsByType().get(ingestType);
+                if (compositeToFieldMap != null && compositeSeparatorMap != null) {
                     componentFields = compositeToFieldMap.get(fieldName);
+                    separator = compositeSeparatorMap.get(fieldName);
+                }
 
-                if (componentFields != null && !compositeSeeker.isKeyInRange(top, scanRange)) {
-                    Range newRange = compositeSeeker.nextSeekRange(new ArrayList<>(componentFields), top, scanRange);
+                if (componentFields != null && separator != null && !compositeSeeker.isKeyInRange(top, scanRange, separator)) {
+                    Range newRange = compositeSeeker.nextSeekRange(new ArrayList<>(componentFields), top, scanRange, separator);
                     if (newRange != scanRange) {
                         source.seek(newRange, seekColumnFamilies, includeColumnFamilies);
                         source.next();

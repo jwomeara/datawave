@@ -902,7 +902,21 @@ public class MetadataHelper implements ApplicationContextAware {
     public Map<String,Date> getCompositeTransitionDateMap(Set<String> ingestTypeFilter) throws TableNotFoundException {
         return this.allFieldMetadataHelper.getCompositeTransitionDateMap(ingestTypeFilter);
     }
-    
+
+    /**
+     * A map of composite name to field separator.
+     *
+     * @return An unmodifiable Map
+     * @throws TableNotFoundException
+     */
+    public Map<String,String> getCompositeFieldSeparatorMap() throws TableNotFoundException {
+        return this.allFieldMetadataHelper.getCompositeFieldSeparatorMap();
+    }
+
+    public Map<String,String> getCompositeFieldSeparatorMap(Set<String> ingestTypeFilter) throws TableNotFoundException {
+        return this.allFieldMetadataHelper.getCompositeFieldSeparatorMap(ingestTypeFilter);
+    }
+
     /**
      * Fetch the set of {@link Type}s that are configured for this <code>fieldName</code> as specified in the table pointed to by the
      * <code>metadataTableName</code> parameter.

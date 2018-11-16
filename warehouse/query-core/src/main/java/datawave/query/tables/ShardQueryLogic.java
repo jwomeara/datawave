@@ -16,6 +16,7 @@ import datawave.query.Constants;
 import datawave.query.DocumentSerialization;
 import datawave.query.QueryParameters;
 import datawave.query.cardinality.CardinalityConfiguration;
+import datawave.query.composite.CompositeUtils;
 import datawave.query.config.IndexHole;
 import datawave.query.config.Profile;
 import datawave.query.config.ShardQueryConfiguration;
@@ -652,7 +653,7 @@ public class ShardQueryLogic extends BaseQueryLogic<Entry<Key,Value>> {
         } else {
             config.setEndDate(endDate);
         }
-        
+
         loadQueryParameters(config, settings);
         
         MetadataHelper metadataHelper = prepareMetadataHelper(connection, this.getMetadataTableName(), auths, config.isRawTypes());

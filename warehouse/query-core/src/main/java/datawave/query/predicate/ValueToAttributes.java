@@ -48,6 +48,7 @@ public class ValueToAttributes implements Function<Entry<Key,String>,Iterable<En
     private AttributeFactory attrFactory;
     
     private Map<String,Multimap<String,String>> compositeToFieldMap;
+    private Map<String, Map<String,String>> compositeFieldSeparatorsByType;
     private MarkingFunctions markingFunctions;
     private Multimap<String,Attribute<?>> componentFieldToValues = ArrayListMultimap.create();
     
@@ -59,6 +60,7 @@ public class ValueToAttributes implements Function<Entry<Key,String>,Iterable<En
         this.attrFactory = new AttributeFactory(typeMetadata);
         this.markingFunctions = markingFunctions;
         this.compositeToFieldMap = compositeMetadata.getCompositeFieldMapByType();
+        this.compositeFieldSeparatorsByType = compositeMetadata.getCompositeFieldSeparatorsByType();
         this.attrFilter = attrFilter;
     }
     
@@ -108,7 +110,7 @@ public class ValueToAttributes implements Function<Entry<Key,String>,Iterable<En
                     if (componentAttributes.size() == components.size()) {
                         list.addAll(buildCompositesFromComponents(
                                         CompositeIngest.isOverloadedCompositeField(this.compositeToFieldMap.get(ingestDatatype), composite), composite,
-                                        componentAttributes));
+                                        componentAttributes, this.compositeFieldSeparatorsByType.get(ingestDatatype).get(composite)));
                     }
                 }
             }
@@ -117,17 +119,17 @@ public class ValueToAttributes implements Function<Entry<Key,String>,Iterable<En
     }
     
     private List<Entry<String,Attribute<? extends Comparable<?>>>> buildCompositesFromComponents(boolean isOverloadedComposite, String compositeField,
-                    List<Collection<Attribute<?>>> componentAttributes) {
-        return buildCompositesFromComponents(isOverloadedComposite, compositeField, null, componentAttributes);
+                    List<Collection<Attribute<?>>> componentAttributes, String separator) {
+        return buildCompositesFromComponents(isOverloadedComposite, compositeField, null, componentAttributes, separator);
     }
     
     private List<Entry<String,Attribute<? extends Comparable<?>>>> buildCompositesFromComponents(boolean isOverloadedComposite, String compositeField,
-                    Collection<Attribute<?>> currentAttributes, List<Collection<Attribute<?>>> componentAttributes) {
+                    Collection<Attribute<?>> currentAttributes, List<Collection<Attribute<?>>> componentAttributes, String separator) {
         if (componentAttributes == null) {
             // finally create the composite from what we have
             try {
                 return Arrays.asList(Maps.<String,Attribute<? extends Comparable<?>>> immutableEntry(compositeField,
-                                joinAttributes(compositeField, currentAttributes, isOverloadedComposite)));
+                                joinAttributes(compositeField, currentAttributes, isOverloadedComposite, separator)));
             } catch (Exception e) {
                 log.debug("could not join attributes:", e);
             }
@@ -138,7 +140,7 @@ public class ValueToAttributes implements Function<Entry<Key,String>,Iterable<En
                 List<Attribute<?>> attrs = (currentAttributes != null) ? new ArrayList<>(currentAttributes) : new ArrayList<>();
                 attrs.add(compAttr);
                 compositeAttributes.addAll(buildCompositesFromComponents(isOverloadedComposite, compositeField, attrs,
-                                (componentAttributes.size() > 1) ? componentAttributes.subList(1, componentAttributes.size()) : null));
+                                (componentAttributes.size() > 1) ? componentAttributes.subList(1, componentAttributes.size()) : null, separator));
             }
             return compositeAttributes;
         }
@@ -180,7 +182,7 @@ public class ValueToAttributes implements Function<Entry<Key,String>,Iterable<En
         }
     }
     
-    public Attribute<?> joinAttributes(String compositeName, Collection<Attribute<?>> in, boolean isOverloadedComposite) throws Exception {
+    public Attribute<?> joinAttributes(String compositeName, Collection<Attribute<?>> in, boolean isOverloadedComposite, String separator) throws Exception {
         Collection<ColumnVisibility> columnVisibilities = Sets.newHashSet();
         List<String> dataList = new ArrayList<>();
         long timestamp = 0;
@@ -212,7 +214,7 @@ public class ValueToAttributes implements Function<Entry<Key,String>,Iterable<En
                                     dataList.add(value);
                             } else if (base.length() > 0) {
                                 for (String value : attributeValues(attrs))
-                                    dataList.add(base + CompositeUtils.SEPARATOR + value);
+                                    dataList.add(base + separator + value);
                             } else {
                                 for (String value : attributeValues(attrs))
                                     dataList.add(base + value);
@@ -235,7 +237,7 @@ public class ValueToAttributes implements Function<Entry<Key,String>,Iterable<En
                         String base = dataList.remove(0);
                         if (base.length() > 0) {
                             for (String value : attributeValues(attr))
-                                dataList.add(base + CompositeUtils.SEPARATOR + value);
+                                dataList.add(base + separator + value);
                         } else {
                             for (String value : attributeValues(attr))
                                 dataList.add(base + value);

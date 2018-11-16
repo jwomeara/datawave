@@ -1,7 +1,6 @@
 package datawave.query.composite;
 
 import datawave.data.type.DiscreteIndexType;
-import datawave.query.jexl.JexlNodeFactory;
 import org.apache.commons.jexl2.parser.ASTAndNode;
 import org.apache.commons.jexl2.parser.ASTERNode;
 import org.apache.commons.jexl2.parser.ASTGENode;
@@ -27,12 +26,12 @@ public class CompositeRange extends Composite {
     public final List<String> expressionListLowerBound = new ArrayList<>();
     public final List<String> expressionListUpperBound = new ArrayList<>();
     
-    public CompositeRange(String compositeName) {
-        super(compositeName);
+    public CompositeRange(String compositeName, String separator) {
+        super(compositeName, separator);
     }
     
     public static CompositeRange clone(Composite other) {
-        final CompositeRange clone = new CompositeRange(other.compositeName);
+        final CompositeRange clone = new CompositeRange(other.compositeName, other.separator);
         clone.fieldNameList.addAll(other.fieldNameList);
         
         for (JexlNode jexlNode : other.jexlNodeList) {
@@ -163,7 +162,7 @@ public class CompositeRange extends Composite {
             
             if (expression != null) {
                 if (i > 0)
-                    buf.append(CompositeUtils.SEPARATOR);
+                    buf.append(separator);
                 
                 buf.append(expression);
             } else {
@@ -204,7 +203,7 @@ public class CompositeRange extends Composite {
             
             if (expression != null) {
                 if (i > 0)
-                    buf.append(CompositeUtils.SEPARATOR);
+                    buf.append(separator);
                 
                 buf.append(expression);
             } else {

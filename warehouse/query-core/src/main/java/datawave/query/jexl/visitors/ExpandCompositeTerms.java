@@ -706,7 +706,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
             
             // we have what we need to make a composite
             List tempComposites = new ArrayList<>();
-            Composite baseComp = new Composite(compositeField);
+            Composite baseComp = new Composite(compositeField, config.getCompositeFieldSeparators().get(compositeField));
             tempComposites.add(baseComp);
             
             // keep track of the used nodes

@@ -280,9 +280,6 @@ public class ShardIndexQueryTable extends BaseQueryLogic<DiscoveredThing> {
         config.setDataTypes(fieldToDataTypeMap);
         config.setQueryFieldsDatatypes(fieldToDataTypeMap);
 
-        // determine and set the discrete index types
-        config.setFieldToDiscreteIndexTypes(CompositeUtils.getFieldToDiscreteIndexTypeMap(fieldToDataTypeMap));
-
         final Set<String> indexedFields = metadataHelper.getIndexedFields(dataTypes);
         config.setIndexedFields(indexedFields);
         

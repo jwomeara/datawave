@@ -136,6 +136,7 @@ public class ShardQueryConfiguration extends GenericQueryConfiguration {
     
     private Multimap<String,String> compositeToFieldMap = ArrayListMultimap.create();
     private Map<String,Date> compositeTransitionDates = new HashMap<>();
+    private Map<String,String> compositeFieldSeparators = new HashMap<>();
     
     private boolean sortedUIDs = true;
     
@@ -1098,7 +1099,15 @@ public class ShardQueryConfiguration extends GenericQueryConfiguration {
     public void setCompositeTransitionDates(Map<String,Date> compositeTransitionDates) {
         this.compositeTransitionDates = compositeTransitionDates;
     }
-    
+
+    public Map<String, String> getCompositeFieldSeparators() {
+        return compositeFieldSeparators;
+    }
+
+    public void setCompositeFieldSeparators(Map<String, String> compositeFieldSeparators) {
+        this.compositeFieldSeparators = compositeFieldSeparators;
+    }
+
     public Multimap<String,Type<?>> getNormalizedFieldsDatatypes() {
         return normalizedFieldsDatatypes;
     }

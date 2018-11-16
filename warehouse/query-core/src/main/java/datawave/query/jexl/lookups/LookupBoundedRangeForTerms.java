@@ -132,19 +132,28 @@ public class LookupBoundedRangeForTerms extends IndexLookup {
             bs.addScanIterator(cfg);
 
             // If this is a composite field, with multiple terms, we need to setup our query to filter based on each component of the composite range
-            if (config.getCompositeToFieldMap().get(literalRange.getFieldName()) != null && (lower.contains(CompositeUtils.SEPARATOR) || upper.contains(CompositeUtils.SEPARATOR))) {
-                IteratorSetting compositeIterator = new IteratorSetting(config.getBaseIteratorPriority() + 51, CompositeSeekingIterator.class);
-                
-                compositeIterator.addOption(CompositeSeekingIterator.COMPONENT_FIELDS,
-                                StringUtils.collectionToCommaDelimitedString(config.getCompositeToFieldMap().get(literalRange.getFieldName())));
+            if (config.getCompositeToFieldMap().get(literalRange.getFieldName()) != null) {
 
-                for (String fieldName : config.getCompositeToFieldMap().get(literalRange.getFieldName())) {
-                    DiscreteIndexType type = config.getFieldToDiscreteIndexTypes().get(fieldName);
-                    if (type != null)
-                        compositeIterator.addOption(fieldName + CompositeSeekingIterator.DISCRETE_INDEX_TYPE, type.getClass().getName());
+                String compositeSeparator = null;
+                if (config.getCompositeFieldSeparators() != null)
+                    compositeSeparator = config.getCompositeFieldSeparators().get(literalRange.getFieldName());
+
+                if (compositeSeparator != null && (lower.contains(compositeSeparator) || upper.contains(compositeSeparator))) {
+                    IteratorSetting compositeIterator = new IteratorSetting(config.getBaseIteratorPriority() + 51, CompositeSeekingIterator.class);
+
+                    compositeIterator.addOption(CompositeSeekingIterator.COMPONENT_FIELDS,
+                            StringUtils.collectionToCommaDelimitedString(config.getCompositeToFieldMap().get(literalRange.getFieldName())));
+
+                    for (String fieldName : config.getCompositeToFieldMap().get(literalRange.getFieldName())) {
+                        DiscreteIndexType type = config.getFieldToDiscreteIndexTypes().get(fieldName);
+                        if (type != null)
+                            compositeIterator.addOption(fieldName + CompositeSeekingIterator.DISCRETE_INDEX_TYPE, type.getClass().getName());
+                    }
+
+                    compositeIterator.addOption(CompositeSeekingIterator.SEPARATOR, compositeSeparator);
+
+                    bs.addScanIterator(compositeIterator);
                 }
-                
-                bs.addScanIterator(compositeIterator);
             }
             
             if (null != fairnessIterator) {

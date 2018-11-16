@@ -139,9 +139,6 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
     private Multimap<Matcher,datawave.data.type.Type<?>> typeCompiledPatternMap = null;
     protected Set<String> indexOnlyFields = Sets.newHashSet();
     
-    protected Set<String> compositeFields = Sets.newHashSet();
-    protected Map<String,Date> fieldTransitionDateMap = Maps.newHashMap();
-    
     protected Set<String> indexedFields = Sets.newHashSet();
     protected Map<String,Pattern> indexedPatterns = Maps.newHashMap();
     protected Set<String> unindexedFields = Sets.newHashSet();
@@ -197,7 +194,11 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
         this.typeCompiledPatternMap = null;
         
         this.getVirtualIngest().setup(config);
+
+        if (this.compositeIngest == null)
+            this.compositeIngest = new CompositeFieldIngestHelper(this.getType());
         this.getCompositeIngest().setup(config);
+
         IngestConfiguration ingestConfiguration = IngestConfigurationFactory.getIngestConfiguration();
         markingsHelper = ingestConfiguration.getMarkingsHelper(config, getType());
         
@@ -417,33 +418,6 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
                 }
             }
         }
-        
-//        String compositeFieldList = config.get(this.getType().typeName() + CompositeIngest.COMPOSITE_FIELD_NAMES);
-//        if (null != compositeFieldList) {
-//            for (String s : compositeFieldList.split(",")) {
-//
-//                String fieldName = s.trim();
-//
-//                if (!fieldName.isEmpty()) {
-//
-//                    this.compositeFields.add(fieldName);
-//                }
-//            }
-//        }
-        
-//        String transitionedCompositeFields = config.get(this.getType().typeName() + CompositeIngest.COMPOSITE_FIELDS_TRANSITION_DATES);
-//        if (null != transitionedCompositeFields) {
-//            for (String s : transitionedCompositeFields.split(",")) {
-//                try {
-//                    if (!s.isEmpty()) {
-//                        String[] kv = s.split("\\|");
-//                        this.fieldTransitionDateMap.put(kv[0], CompositeIngest.CompositeFieldNormalizer.formatter.parse(kv[1]));
-//                    }
-//                } catch (ParseException e) {
-//                    log.trace("Unable to parse composite field transition date", e);
-//                }
-//            }
-//        }
     }
     
     private void moveToPatternMap(Set<String> in, Map<String,Pattern> out) {
@@ -463,9 +437,6 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
      * @return
      */
     public CompositeIngest getCompositeIngest() {
-        if (this.compositeIngest == null) {
-            this.compositeIngest = new CompositeFieldIngestHelper(this.getType());
-        }
         return this.compositeIngest;
     }
     
@@ -484,11 +455,7 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
     public Set<String> getIndexOnlyFields() {
         return indexOnlyFields;
     }
-    
-    public Set<String> getCompositeFields() {
-        return compositeFields;
-    }
-    
+
     public Set<String> getIndexedFields() {
         return indexedFields;
     }
@@ -593,12 +560,7 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
     
     @Override
     public boolean isCompositeField(String fieldName) {
-        return this.compositeFields.contains(fieldName);
-    }
-    
-    @Override
-    public void addCompositeField(String fieldName) {
-        this.compositeFields.add(fieldName);
+        return this.compositeIngest.isCompositeField(fieldName);
     }
     
     @Override
@@ -1086,6 +1048,11 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
     @Override
     public Multimap<String,String> getCompositeFieldDefinitions() {
         return getCompositeIngest().getCompositeFieldDefinitions();
+    }
+
+    @Override
+    public Map<String,String> getCompositeFieldSeparators() {
+        return getCompositeIngest().getCompositeFieldSeparators();
     }
     
     @Override

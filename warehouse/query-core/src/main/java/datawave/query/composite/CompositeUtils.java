@@ -14,6 +14,7 @@ import org.apache.commons.jexl2.parser.ASTLENode;
 import org.apache.commons.jexl2.parser.ASTLTNode;
 import org.apache.commons.jexl2.parser.ASTNENode;
 import org.apache.commons.jexl2.parser.ASTNRNode;
+import org.apache.log4j.Logger;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -25,8 +26,8 @@ import java.util.Set;
  *
  */
 public class CompositeUtils {
-    
-    public static final String SEPARATOR = Constants.MAX_UNICODE_STRING;
+    private static final Logger log = Logger.getLogger(CompositeUtils.class);
+
     public static final Set<Class<?>> INVALID_LEAF_NODE_CLASSES = Sets.<Class<?>> newHashSet(ASTNENode.class);
     public static final Set<Class<?>> VALID_LEAF_NODE_CLASSES = Sets.<Class<?>> newHashSet(ASTEQNode.class, ASTERNode.class, ASTGTNode.class, ASTGENode.class,
                     ASTLTNode.class, ASTLENode.class, ASTAndNode.class);
@@ -41,12 +42,13 @@ public class CompositeUtils {
                     type = (Type) typeObj;
                 } else if (typeObj instanceof String) {
                     try {
-                        type = Class.forName((String)typeObj).asSubclass(Type.class).newInstance();
+                        type = Class.forName(typeObj.toString()).asSubclass(Type.class).newInstance();
                     } catch (Exception e) {
-                        System.out.println("whoops");
+                        if (log.isTraceEnabled())
+                            log.trace("Could not instantiate object for class [" + typeObj.toString() + "]");
                     }
                 }
-                if (type instanceof DiscreteIndexType && ((DiscreteIndexType) type).producesFixedLengthRanges()) {
+                if (type != null && type instanceof DiscreteIndexType && ((DiscreteIndexType) type).producesFixedLengthRanges()) {
                     if (discreteIndexType == null) {
                         discreteIndexType = (DiscreteIndexType) type;
                     } else if (!discreteIndexType.getClass().equals(type.getClass())) {

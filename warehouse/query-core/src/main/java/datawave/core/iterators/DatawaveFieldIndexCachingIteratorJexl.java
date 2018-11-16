@@ -3,12 +3,10 @@ package datawave.core.iterators;
 import com.google.common.base.Objects;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Multimap;
-import datawave.core.iterators.CompositeSeeker.FieldIndexCompositeSeeker;
+import datawave.query.composite.CompositeSeeker.FieldIndexCompositeSeeker;
 import datawave.core.iterators.querylock.QueryLock;
-import datawave.data.type.DiscreteIndexType;
 import datawave.query.Constants;
 import datawave.query.composite.CompositeMetadata;
-import datawave.query.composite.CompositeUtils;
 import datawave.query.iterator.profile.QuerySpan;
 import datawave.query.iterator.profile.QuerySpanCollector;
 import datawave.query.iterator.profile.SourceTrackingIterator;
@@ -36,7 +34,6 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
@@ -968,12 +965,16 @@ public abstract class DatawaveFieldIndexCachingIteratorJexl extends WrappingIter
                         String fieldName = colFam.substring(colFam.indexOf('\0') + 1);
 
                         Collection<String> componentFields = null;
+                        String separator = null;
                         Multimap<String,String> compositeToFieldMap = compositeMetadata.getCompositeFieldMapByType().get(ingestType);
-                        if (compositeToFieldMap != null)
+                        Map<String,String> compositeSeparatorMap = compositeMetadata.getCompositeFieldSeparatorsByType().get(ingestType);
+                        if (compositeToFieldMap != null && compositeSeparatorMap != null) {
                             componentFields = compositeToFieldMap.get(fieldName);
+                            separator = compositeSeparatorMap.get(fieldName);
+                        }
 
-                        if (componentFields != null && !compositeSeeker.isKeyInRange(top, boundingFiRange)) {
-                            Range newRange = compositeSeeker.nextSeekRange(new ArrayList<>(componentFields), top, boundingFiRange);
+                        if (componentFields != null && separator != null && !compositeSeeker.isKeyInRange(top, boundingFiRange, separator)) {
+                            Range newRange = compositeSeeker.nextSeekRange(new ArrayList<>(componentFields), top, boundingFiRange, separator);
                             if (newRange != boundingFiRange) {
                                 source.seek(newRange, EMPTY_CFS, false);
                                 source.next();

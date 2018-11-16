@@ -1,8 +1,7 @@
 package datawave.core.iterators;
 
-import datawave.core.iterators.CompositeSeeker.ShardIndexCompositeSeeker;
+import datawave.query.composite.CompositeSeeker.ShardIndexCompositeSeeker;
 import datawave.data.type.DiscreteIndexType;
-import datawave.query.composite.CompositeUtils;
 import org.apache.accumulo.core.data.ByteSequence;
 import org.apache.accumulo.core.data.Key;
 import org.apache.accumulo.core.data.Range;
@@ -10,7 +9,6 @@ import org.apache.accumulo.core.data.Value;
 import org.apache.accumulo.core.iterators.IteratorEnvironment;
 import org.apache.accumulo.core.iterators.SortedKeyValueIterator;
 import org.apache.accumulo.core.iterators.WrappingIterator;
-import org.apache.hadoop.io.Text;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
@@ -32,9 +30,11 @@ public class CompositeSeekingIterator extends WrappingIterator {
 
     public static final String COMPONENT_FIELDS = "component.fields";
     public static final String DISCRETE_INDEX_TYPE = ".discrete.index.type";
+    public static final String SEPARATOR = "separator";
 
     private List<String> fieldNames = new ArrayList<>();
     private Map<String,DiscreteIndexType<?>> fieldToDiscreteIndexType = new HashMap<>();
+    private String separator;
 
     private Range currentRange;
     private ShardIndexCompositeSeeker compositeSeeker;
@@ -48,7 +48,8 @@ public class CompositeSeekingIterator extends WrappingIterator {
 
         Collections.copy(to.fieldNames, fieldNames);
         to.fieldToDiscreteIndexType = new HashMap<>(fieldToDiscreteIndexType);
-        to.compositeSeeker = new ShardIndexCompositeSeeker(to.fieldNames, to.fieldToDiscreteIndexType);
+        to.separator = separator;
+        to.compositeSeeker = new ShardIndexCompositeSeeker(to.fieldNames, to.separator, to.fieldToDiscreteIndexType);
 
         return to;
     }
@@ -76,7 +77,9 @@ public class CompositeSeekingIterator extends WrappingIterator {
                 fieldToDiscreteIndexType.put(fieldName, type);
         }
 
-        compositeSeeker = new ShardIndexCompositeSeeker(fieldNames, fieldToDiscreteIndexType);
+        this.separator = options.get(SEPARATOR);
+
+        compositeSeeker = new ShardIndexCompositeSeeker(fieldNames, separator, fieldToDiscreteIndexType);
     }
     
     @Override

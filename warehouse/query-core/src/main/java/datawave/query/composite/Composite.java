@@ -23,16 +23,18 @@ import java.util.Map;
 public class Composite {
     
     public final String compositeName; // FU_BA_BAZ
+    public final String separator;
     public final List<String> fieldNameList = Lists.newArrayList(); // [ FOO, BAR, BAZ ]
     public final List<JexlNode> jexlNodeList = Lists.newArrayList(); // [ JexlEQ, JexlEq, JexlER ]
     public final List<String> expressionList = Lists.newArrayList(); // [ 'moe', 'larry', 'cu*' ]
     
-    public Composite(String compositeName) {
+    public Composite(String compositeName, String separator) {
         this.compositeName = compositeName;
+        this.separator = separator;
     }
     
     public Composite clone() {
-        final Composite clone = new Composite(this.compositeName);
+        final Composite clone = new Composite(this.compositeName, this.separator);
         clone.fieldNameList.addAll(this.fieldNameList);
         clone.jexlNodeList.addAll(this.jexlNodeList);
         clone.expressionList.addAll(this.expressionList);
@@ -42,7 +44,7 @@ public class Composite {
     
     @Override
     public String toString() {
-        return "Composite [compositeName=" + compositeName + ", fieldNameList=" + fieldNameList + ", jexlNodeList=" + jexlNodeList + ", expressionList="
+        return "Composite [compositeName=" + compositeName + ", separator=" + separator + ", fieldNameList=" + fieldNameList + ", jexlNodeList=" + jexlNodeList + ", expressionList="
                         + expressionList + "]";
     }
     
@@ -112,7 +114,7 @@ public class Composite {
             buf.append(expression);
             
             if (i + 1 < jexlNodeList.size()) {
-                buf.append(CompositeUtils.SEPARATOR);
+                buf.append(separator);
             }
             
             if (node instanceof ASTERNode) {

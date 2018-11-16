@@ -86,7 +86,7 @@ import java.util.Set;
 public class EventMetadata implements RawRecordMetadata {
     
     private MetadataWithMostRecentDate compositeFieldsInfo = new MetadataWithMostRecentDate(ColumnFamilyConstants.COLF_CI);
-    private MetadataWithMostRecentDate compositeTransitionDateInfo = new MetadataWithMostRecentDate(ColumnFamilyConstants.COLF_CITD);
+    private MetadataWithMostRecentDate compositeSeparators = new MetadataWithMostRecentDate(ColumnFamilyConstants.COLF_CISEP);
     private MetadataWithMostRecentDate dataTypeFieldsInfo = new MetadataWithMostRecentDate(ColumnFamilyConstants.COLF_T);
     private MetadataWithMostRecentDate normalizedFieldsInfo = new MetadataWithMostRecentDate(ColumnFamilyConstants.COLF_N);
     
@@ -190,8 +190,8 @@ public class EventMetadata implements RawRecordMetadata {
             
             if (helper.isCompositeField(fieldName)) {
                 Collection<String> componentFields = helper.getCompositeFieldDefinitions().get(fieldName);
-                this.compositeFieldsInfo.createOrUpdate(fieldName, event.getDataType().outputName(), String.join(",", componentFields),
-                                event.getDate());
+                this.compositeFieldsInfo.createOrUpdate(fieldName, event.getDataType().outputName(), String.join(",", componentFields), event.getDate());
+                this.compositeSeparators.createOrUpdate(fieldName, event.getDataType().outputName(), helper.getCompositeFieldSeparators().get(fieldName), event.getDate());
             }
         }
         
@@ -362,10 +362,10 @@ public class EventMetadata implements RawRecordMetadata {
         
         addIndexedFieldToMetadata(bulkData, dataTypeFieldsInfo);
         addIndexedFieldToMetadata(bulkData, normalizedFieldsInfo);
-        
+
         addIndexedFieldToMetadata(bulkData, this.compositeFieldsInfo);
-        addIndexedFieldToMetadata(bulkData, this.compositeTransitionDateInfo);
-        
+        addIndexedFieldToMetadata(bulkData, this.compositeSeparators);
+
         addToLoadDates(bulkData, this.indexedFieldsLoadDateCounts);
         addToLoadDates(bulkData, this.reverseIndexedFieldsLoadDateCounts);
         
