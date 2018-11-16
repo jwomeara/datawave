@@ -100,7 +100,7 @@ public class GeoSortedQueryDataTest {
     
     private static final Configuration conf = new Configuration();
     
-    // @transitionDateFormat:off
+    // @formatter:off
     private static final String[] wktData = {
             "POINT(0 0)",
             "POINT(30 -85)",
@@ -134,7 +134,7 @@ public class GeoSortedQueryDataTest {
             0,
             TimeUnit.DAYS.toMillis(90),
             TimeUnit.DAYS.toMillis(180)};
-    // @transitionDateFormat:on
+    // @formatter:on
     
     private static final String QUERY_WKT = "POLYGON((-180 -90, 180 -90, 180 90, -180 90, -180 -90))";
     

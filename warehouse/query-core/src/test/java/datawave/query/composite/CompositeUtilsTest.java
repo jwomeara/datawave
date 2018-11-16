@@ -67,34 +67,7 @@ public class CompositeUtilsTest {
         
         CompositeUtils.incrementBound(minString);
     }
-    
-    @Test
-    public void anotherTest() {
-        String start = "05007e";
-        String finish = "050140";
-        
-        int startInt = Integer.parseInt(start, 16);
-        int finishInt = Integer.parseInt(finish, 16);
-        
-        String format = "%0" + start.length() + "x";
-        
-        List<String> result = new ArrayList<>();
-        for (int i = startInt; i <= finishInt; i++) {
-            result.add(String.format(format, i));
-        }
-        
-        System.out.println("done!");
-    }
-    
-    @Test
-    public void whatTest() {
-        String hexValue = "1607935bbb2927";
-        BigInteger bigInt = new BigInteger(hexValue, 16);
-        bigInt = bigInt.add(BigInteger.ONE);
-        String format = "%0" + hexValue.length() + "x";
-        System.out.println(String.format(format, bigInt));
-    }
-    
+
     private boolean isValidHex(String value) {
         for (char c : value.toCharArray()) {
             if (!((c >= 'a' && c <= 'f') || (c >= '0' && c <= '9')))

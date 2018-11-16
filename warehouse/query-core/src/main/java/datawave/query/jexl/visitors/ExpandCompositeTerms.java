@@ -225,10 +225,6 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
                     // first we need to trim the used nodes to eliminate any wrapping nodes
                     // i.e. reference, reference expression, or single child and/or nodes
                     List<JexlNode> leafNodesToDistribute = usedLeafNodes.values().stream().map(this::getLeafNode).collect(Collectors.toList());
-                    
-                    // add the anded nodes as delayed nodes
-//                    rebuiltNode = createUnwrappedAndNode(Arrays.asList(rebuiltNode, ASTDelayedPredicate.create(createUnwrappedAndNode(leafNodesToDistribute))));
-                    
                     rebuiltNode = DistributeAndedNodes.distributeAndedNode(rebuiltNode, leafNodesToDistribute, jexlNodeToCompMap);
                 }
                 
@@ -475,7 +471,6 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
             Class<? extends JexlNode> nodeClass = nodeClasses.get(i);
             String appendedExpression = appendedExpressions.get(i);
 
-
             JexlNode newNode = null;
             if (nodeClass.equals(ASTGTNode.class)) {
                 if (expandRangeForBaseTerm)
@@ -686,19 +681,19 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
                     continue;
             }
             
-            // @transitionDateFormat:off
+            // @formatter:off
             boolean leafNodeFieldPresent = componentFields.stream().
                     anyMatch(componentField -> remainingLeafNodes.keySet().contains(componentField));
-            // @transitionDateFormat:on
+            // @formatter:on
             
             // only build this composite if one of the components is a leaf node
             if (!leafNodeFieldPresent)
                 continue;
             
-            // @transitionDateFormat:off
+            // @formatter:off
             boolean allRequiredFieldsPresent = !componentFields.stream().
                     anyMatch(componentField -> !(remainingLeafNodes.keySet().contains(componentField) || remainingAndedNodes.keySet().contains(componentField)));
-            // @transitionDateFormat:on
+            // @formatter:on
             
             // only build this composite if we have all of the required component fields
             if (!allRequiredFieldsPresent)
@@ -1302,7 +1297,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
             
             rebuiltChildren.add(createUnwrappedAndNode(nodeList));
             
-            // for children with everything -> and them with the delayed version of the anded nodes
+            // for children with everything -> keep those as-is
             rebuiltChildren.addAll(nodesWithEverything);
             
             parentData.usedAndedNodes.addAll(andedNodes);

@@ -10,6 +10,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * The CompositeSeeker can be used within an Accumulo iterator in order to determing whether or not the current key
+ * is within the bounds of the composite range.  If one of the component values is out of range, this class can be
+ * used to determine the next valid composite range that we should seek to.
+ */
 public abstract class CompositeSeeker {
     protected Map<String,DiscreteIndexType<?>> fieldToDiscreteIndexType;
 
@@ -175,6 +180,9 @@ public abstract class CompositeSeeker {
         return builder.toString();
     }
 
+    /**
+     * This version of the CompositeSeeker is intended to be used when scanning keys in the shard index.
+     */
     public static class ShardIndexCompositeSeeker extends CompositeSeeker {
         private List<String> fields;
         private String separator;
@@ -223,6 +231,9 @@ public abstract class CompositeSeeker {
         }
     }
 
+    /**
+     * This version of the CompositeSeeker is intended to be used when scanning keys in the field index.
+     */
     public static class FieldIndexCompositeSeeker extends CompositeSeeker {
         public FieldIndexCompositeSeeker(Multimap<String,?> fieldDatatypes) {
             super(CompositeUtils.getFieldToDiscreteIndexTypeMap(fieldDatatypes));

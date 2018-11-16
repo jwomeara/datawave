@@ -808,12 +808,6 @@ public class IteratorBuildingVisitor extends BaseVisitor {
             JexlNode subNode = ASTDelayedPredicate.getQueryPropertySource(node, ASTDelayedPredicate.class);
             if (subNode instanceof ASTEQNode) {
                 delayedEqNodes.add(subNode);
-            } else {
-                // Set<JexlNode> compositeNodes = CompositePredicateVisitor.findCompositePredicates(subNode);
-                // if (!compositeNodes.isEmpty() && o instanceof AndIteratorBuilder) {
-                // AndIteratorBuilder aib = (AndIteratorBuilder) o;
-                // aib.addCompositePredicate(subNode);
-                // }
             }
             if (isQueryFullySatisfied == true) {
                 log.warn("Determined that isQueryFullySatisfied should be false, but it was not preset to false in the SatisfactionVisitor");

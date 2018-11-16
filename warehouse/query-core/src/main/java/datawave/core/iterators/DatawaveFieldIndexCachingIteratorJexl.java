@@ -729,19 +729,6 @@ public abstract class DatawaveFieldIndexCachingIteratorJexl extends WrappingIter
         }
     }
     
-    private boolean compositeInBounds(String[] values, List<String> startValues, List<String> endValues, List<String> fieldNames) {
-        for (int i = fieldNames.size() - 1; i >= 0; i--) {
-            String value = (i < values.length) ? values[i] : null;
-            String start = (i < startValues.size()) ? startValues.get(i) : null;
-            String end = (i < endValues.size()) ? endValues.get(i) : null;
-            
-            if (value != null)
-                if ((start != null && value.compareTo(start) < 0) || (end != null && value.compareTo(end) > 0))
-                    return false;
-        }
-        return true;
-    }
-    
     private void fillSortedSets() throws IOException {
         String sourceRow = this.fiRow.toString();
         setupRowBasedHdfsBackedSet(sourceRow);
@@ -989,7 +976,7 @@ public abstract class DatawaveFieldIndexCachingIteratorJexl extends WrappingIter
                         break;
                     }
                     
-                    if (addKey(source.getTopKey(), source.getTopValue())) {
+                    if (addKey(top, source.getTopValue())) {
                         matched++;
                     }
                     

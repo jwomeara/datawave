@@ -150,10 +150,7 @@ public class PushdownScheduler extends Scheduler {
             Credentials credentials = new Credentials(config.getConnector().whoami(), new PasswordToken(config.getAccumuloPassword()));
             tl = TabletLocator.getLocator(new ClientContext(instance, credentials, AccumuloConfiguration.getDefaultConfiguration()), tableId);
         }
-        
-        // TODO: Add a composite function to break up ranges against composite values
-        Iterator<List<ScannerChunk>> chunkIter = Iterators.transform(Iterators.transform(getQueryDataIterator(), new CompositeRangeFunction()),
-                        new PushdownFunction(tl, config, settings, tableId));
+        Iterator<List<ScannerChunk>> chunkIter = Iterators.transform(getQueryDataIterator(), new PushdownFunction(tl, config, settings, tableId));
         
         try {
             session = scannerFactory.newQueryScanner(tableName, auths, config.getQuery());

@@ -113,6 +113,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.text.MessageFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
@@ -447,7 +448,7 @@ public class DefaultQueryPlanner extends QueryPlanner {
             }
         }
         
-        // @transitionDateFormat:off
+        // @formatter:off
         return new ThreadedRangeBundler.Builder()
                 .setOriginal(queryData)
                 .setQueryTree(queryTree)
@@ -462,7 +463,7 @@ public class DefaultQueryPlanner extends QueryPlanner {
                 .setRangeBufferTimeoutMillis(config.getRangeBufferTimeoutMillis())
                 .setRangeBufferPollMillis(config.getRangeBufferPollMillis())
                 .build();
-        // @transitionDateFormat:on
+        // @formatter:on
     }
     
     private void configureIterator(ShardQueryConfiguration config, IteratorSetting cfg, String newQueryString, boolean isFullTable)
@@ -1330,7 +1331,13 @@ public class DefaultQueryPlanner extends QueryPlanner {
     }
     
     public static void logQuery(ASTJexlScript queryTree, String message) {
-        // logDebug(PrintingVisitor.formattedQueryStringList(queryTree), message);
+        String queryString = JexlStringBuildingVisitor.buildQuery(queryTree);
+        // avoid printing large query trees the verbose way
+        // this is a common issue with geo queries
+        if (queryString.length() > 1000000)
+            logDebug(Collections.singletonList(queryString), message);
+        else
+            logDebug(PrintingVisitor.formattedQueryStringList(queryTree), message);
     }
     
     /**

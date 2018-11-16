@@ -98,7 +98,7 @@ public class LookupBoundedRangeForTerms extends IndexLookup {
         try {
             range = new Range(startKey, true, endKey, literalRange.isUpperInclusive());
         } catch (IllegalArgumentException e) {
-            QueryException qe = new QueryException(DatawaveErrorCode.RANGE_CREATE_ERROR, e, MessageFormat.format("{0}", literalRange));
+            QueryException qe = new QueryException(DatawaveErrorCode.RANGE_CREATE_ERROR, e, MessageFormat.format("{0}", this.literalRange));
             log.debug(qe);
             throw new IllegalRangeArgumentException(qe);
         }
@@ -174,7 +174,7 @@ public class LookupBoundedRangeForTerms extends IndexLookup {
             throw new DatawaveFatalQueryException(qe);
             
         } catch (IOException e) {
-            QueryException qe = new QueryException(DatawaveErrorCode.RANGE_CREATE_ERROR, e);
+            QueryException qe = new QueryException(DatawaveErrorCode.RANGE_CREATE_ERROR, e, MessageFormat.format("{0}", this.literalRange));
             log.debug(qe);
             throw new IllegalRangeArgumentException(qe);
         } finally {
