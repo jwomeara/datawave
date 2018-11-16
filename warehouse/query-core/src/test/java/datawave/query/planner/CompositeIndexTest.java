@@ -264,11 +264,12 @@ public class CompositeIndexTest {
             }
         }
         keyValues.putAll(dataTypeHandler.getMetadata().getBulkMetadata());
-
+        
         // Write the composite transition date manually
-        Key tdKey = new Key(new Text(GEO_FIELD), new Text(ColumnFamilyConstants.COLF_CITD), new Text(DATA_TYPE_NAME + "\0" + COMPOSITE_BEGIN_DATE), new Text(), new SimpleDateFormat(CompositeMetadataHelper.transitionDateFormat).parse(COMPOSITE_BEGIN_DATE).getTime());
+        Key tdKey = new Key(new Text(GEO_FIELD), new Text(ColumnFamilyConstants.COLF_CITD), new Text(DATA_TYPE_NAME + "\0" + COMPOSITE_BEGIN_DATE), new Text(),
+                        new SimpleDateFormat(CompositeMetadataHelper.transitionDateFormat).parse(COMPOSITE_BEGIN_DATE).getTime());
         keyValues.put(new BulkIngestKey(new Text(METADATA_TABLE_NAME), tdKey), new Value());
-
+        
         // write these values to their respective tables
         instance = new InMemoryInstance();
         Connector connector = instance.getConnector("root", PASSWORD);

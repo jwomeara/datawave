@@ -52,7 +52,7 @@ public class IndexIterator implements SortedKeyValueIterator<Key,Value>, Documen
         protected Predicate<Key> datatypeFilter = Predicates.alwaysTrue();
         protected FieldIndexAggregator aggregation = new IdentityAggregator(null, null);
         protected CompositeMetadata compositeMetadata;
-
+        
         protected Builder(Text field, Text value, SortedKeyValueIterator<Key,Value> source) {
             this.field = field;
             this.value = value;
@@ -88,7 +88,7 @@ public class IndexIterator implements SortedKeyValueIterator<Key,Value>, Documen
             this.aggregation = aggregation;
             return self();
         }
-
+        
         public B withCompositeMetadata(CompositeMetadata compositeMetadata) {
             this.compositeMetadata = compositeMetadata;
             return self();
@@ -131,7 +131,7 @@ public class IndexIterator implements SortedKeyValueIterator<Key,Value>, Documen
     protected SeekingFilter timeSeekingFilter;
     protected CompositeMetadata compositeMetadata;
     protected FieldIndexCompositeSeeker compositeSeeker;
-
+    
     protected IndexIterator(Builder builder) {
         this(builder.field, builder.value, builder.source, builder.timeFilter, builder.typeMetadata, builder.buildDocument, builder.datatypeFilter,
                         builder.aggregation, builder.compositeMetadata);
@@ -139,7 +139,7 @@ public class IndexIterator implements SortedKeyValueIterator<Key,Value>, Documen
     
     private IndexIterator(Text field, Text value, SortedKeyValueIterator<Key,Value> source, TimeFilter timeFilter, TypeMetadata typeMetadata,
                     boolean buildDocument, Predicate<Key> datatypeFilter, FieldIndexAggregator aggregator, CompositeMetadata compositeMetadata) {
-
+        
         valueMinPrefix = Util.minPrefix(value);
         
         this.datatypeFilter = datatypeFilter;
@@ -186,14 +186,15 @@ public class IndexIterator implements SortedKeyValueIterator<Key,Value>, Documen
             // double normalization
             attributeFactory = new PreNormalizedAttributeFactory(typeMetadata);
         }
-
+        
         this.aggregation = aggregator;
         
         this.timeFilter = timeFilter;
-
+        
         // setup composite logic if this is a composite field
         if (compositeMetadata != null) {
-            List<String> compositeFields = compositeMetadata.getCompositeFieldMapByType().entrySet().stream().flatMap(x -> x.getValue().keySet().stream()).distinct().collect(Collectors.toList());
+            List<String> compositeFields = compositeMetadata.getCompositeFieldMapByType().entrySet().stream().flatMap(x -> x.getValue().keySet().stream())
+                            .distinct().collect(Collectors.toList());
             if (compositeFields.contains(field.toString())) {
                 this.compositeMetadata = compositeMetadata;
                 this.compositeSeeker = new FieldIndexCompositeSeeker(typeMetadata.fold());
@@ -341,14 +342,14 @@ public class IndexIterator implements SortedKeyValueIterator<Key,Value>, Documen
                 }
                 continue;
             }
-
+            
             // if we are setup for composite seeking, seek if we are out of range
             if (compositeSeeker != null) {
                 String colQual = top.getColumnQualifier().toString();
                 String ingestType = colQual.substring(colQual.indexOf('\0') + 1, colQual.lastIndexOf('\0'));
                 String colFam = top.getColumnFamily().toString();
                 String fieldName = colFam.substring(colFam.indexOf('\0') + 1);
-
+                
                 Collection<String> componentFields = null;
                 String separator = null;
                 Multimap<String,String> compositeToFieldMap = compositeMetadata.getCompositeFieldMapByType().get(ingestType);
@@ -357,7 +358,7 @@ public class IndexIterator implements SortedKeyValueIterator<Key,Value>, Documen
                     componentFields = compositeToFieldMap.get(fieldName);
                     separator = compositeSeparatorMap.get(fieldName);
                 }
-
+                
                 if (componentFields != null && separator != null && !compositeSeeker.isKeyInRange(top, scanRange, separator)) {
                     Range newRange = compositeSeeker.nextSeekRange(new ArrayList<>(componentFields), top, scanRange, separator);
                     if (newRange != scanRange) {

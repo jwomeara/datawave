@@ -81,8 +81,7 @@ public abstract class DatawaveFieldIndexCachingIteratorJexl extends WrappingIter
         private volatile long scanTimeout = 1000L * 60 * 60;
         protected TypeMetadata typeMetadata;
         private CompositeMetadata compositeMetadata;
-
-
+        
         @SuppressWarnings("unchecked")
         protected B self() {
             return (B) this;
@@ -175,12 +174,12 @@ public abstract class DatawaveFieldIndexCachingIteratorJexl extends WrappingIter
             this.sortedUIDs = sortedUUIDs;
             return self();
         }
-
+        
         public B withTypeMetadata(TypeMetadata typeMetadata) {
             this.typeMetadata = typeMetadata;
             return self();
         }
-
+        
         public B withCompositeMetadata(CompositeMetadata compositeMetadata) {
             this.compositeMetadata = compositeMetadata;
             return self();
@@ -296,7 +295,7 @@ public abstract class DatawaveFieldIndexCachingIteratorJexl extends WrappingIter
     
     private CompositeMetadata compositeMetadata;
     private FieldIndexCompositeSeeker compositeSeeker;
-
+    
     // -------------------------------------------------------------------------
     // ------------- Constructors
     
@@ -332,8 +331,8 @@ public abstract class DatawaveFieldIndexCachingIteratorJexl extends WrappingIter
     @SuppressWarnings("hiding")
     private DatawaveFieldIndexCachingIteratorJexl(Text fieldName, Text fieldValue, TimeFilter timeFilter, Predicate<Key> datatypeFilter, boolean neg,
                     long scanThreshold, long scanTimeout, int bufferSize, int maxRangeSplit, int maxOpenFiles, FileSystem fs, Path uniqueDir,
-                    QueryLock queryLock, boolean allowDirReuse, PartialKey returnKeyType, boolean sortedUIDs,
-                    CompositeMetadata compositeMetadata, TypeMetadata typeMetadata) {
+                    QueryLock queryLock, boolean allowDirReuse, PartialKey returnKeyType, boolean sortedUIDs, CompositeMetadata compositeMetadata,
+                    TypeMetadata typeMetadata) {
         if (fieldName.toString().startsWith("fi" + NULL_BYTE)) {
             this.fieldName = new Text(fieldName.toString().substring(3));
             this.fiName = fieldName;
@@ -359,10 +358,11 @@ public abstract class DatawaveFieldIndexCachingIteratorJexl extends WrappingIter
         this.maxRangeSplit = maxRangeSplit;
         
         this.sortedUIDs = sortedUIDs;
-
+        
         // setup composite logic if this is a composite field
         if (compositeMetadata != null) {
-            List<String> compositeFields = compositeMetadata.getCompositeFieldMapByType().entrySet().stream().flatMap(x -> x.getValue().keySet().stream()).distinct().collect(Collectors.toList());
+            List<String> compositeFields = compositeMetadata.getCompositeFieldMapByType().entrySet().stream().flatMap(x -> x.getValue().keySet().stream())
+                            .distinct().collect(Collectors.toList());
             if (compositeFields.contains(fieldName.toString())) {
                 this.compositeMetadata = compositeMetadata;
                 this.compositeSeeker = new FieldIndexCompositeSeeker(typeMetadata.fold());
@@ -941,16 +941,16 @@ public abstract class DatawaveFieldIndexCachingIteratorJexl extends WrappingIter
                 
                 while (source.hasTop()) {
                     checkTiming();
-
+                    
                     Key top = source.getTopKey();
-
+                    
                     // if we are setup for composite seeking, seek if we are out of range
                     if (compositeSeeker != null) {
                         String colQual = top.getColumnQualifier().toString();
                         String ingestType = colQual.substring(colQual.indexOf('\0') + 1, colQual.lastIndexOf('\0'));
                         String colFam = top.getColumnFamily().toString();
                         String fieldName = colFam.substring(colFam.indexOf('\0') + 1);
-
+                        
                         Collection<String> componentFields = null;
                         String separator = null;
                         Multimap<String,String> compositeToFieldMap = compositeMetadata.getCompositeFieldMapByType().get(ingestType);
@@ -959,7 +959,7 @@ public abstract class DatawaveFieldIndexCachingIteratorJexl extends WrappingIter
                             componentFields = compositeToFieldMap.get(fieldName);
                             separator = compositeSeparatorMap.get(fieldName);
                         }
-
+                        
                         if (componentFields != null && separator != null && !compositeSeeker.isKeyInRange(top, boundingFiRange, separator)) {
                             Range newRange = compositeSeeker.nextSeekRange(new ArrayList<>(componentFields), top, boundingFiRange, separator);
                             if (newRange != boundingFiRange) {
@@ -970,7 +970,7 @@ public abstract class DatawaveFieldIndexCachingIteratorJexl extends WrappingIter
                             }
                         }
                     }
-
+                    
                     // terminate if timed out or cancelled
                     if (DatawaveFieldIndexCachingIteratorJexl.this.setControl.isCancelledQuery()) {
                         break;
@@ -1015,7 +1015,7 @@ public abstract class DatawaveFieldIndexCachingIteratorJexl extends WrappingIter
             log.error("Error closing source", e);
         }
     }
-
+    
     /**
      * Get the unique directory for a specific row
      * 

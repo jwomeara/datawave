@@ -45,7 +45,7 @@ public class LookupBoundedRangeForTerms extends IndexLookup {
     protected Set<String> datatypeFilter;
     protected Set<Text> fields;
     private final LiteralRange<?> literalRange;
-
+    
     public LookupBoundedRangeForTerms(LiteralRange<?> literalRange) {
         this.literalRange = literalRange;
         datatypeFilter = Sets.newHashSet();
@@ -75,9 +75,9 @@ public class LookupBoundedRangeForTerms extends IndexLookup {
             fairnessIterator.addOption(TimeoutIterator.MAX_SESSION_TIME, Long.valueOf(maxTime).toString());
             
         }
-
+        
         String lower = literalRange.getLower().toString(), upper = literalRange.getUpper().toString();
-
+        
         fields.add(new Text(literalRange.getFieldName()));
         Key startKey;
         if (literalRange.isLowerInclusive()) { // inclusive
@@ -85,7 +85,7 @@ public class LookupBoundedRangeForTerms extends IndexLookup {
         } else { // non-inclusive
             startKey = new Key(new Text(lower + "\0"));
         }
-
+        
         Key endKey;
         if (literalRange.isUpperInclusive()) {
             // we should have our end key be the end of the range if we are going to use the WRI
@@ -93,7 +93,7 @@ public class LookupBoundedRangeForTerms extends IndexLookup {
         } else {
             endKey = new Key(new Text(upper));
         }
-
+        
         Range range = null;
         try {
             range = new Range(startKey, true, endKey, literalRange.isUpperInclusive());
@@ -102,7 +102,7 @@ public class LookupBoundedRangeForTerms extends IndexLookup {
             log.debug(qe);
             throw new IllegalRangeArgumentException(qe);
         }
-
+        
         log.debug("Range: " + range);
         BatchScanner bs = null;
         try {
@@ -130,28 +130,28 @@ public class LookupBoundedRangeForTerms extends IndexLookup {
             cfg.addOption(ColumnQualifierRangeIterator.RANGE_NAME, ColumnQualifierRangeIterator.encodeRange(new Range(startDay, end)));
             
             bs.addScanIterator(cfg);
-
+            
             // If this is a composite field, with multiple terms, we need to setup our query to filter based on each component of the composite range
             if (config.getCompositeToFieldMap().get(literalRange.getFieldName()) != null) {
-
+                
                 String compositeSeparator = null;
                 if (config.getCompositeFieldSeparators() != null)
                     compositeSeparator = config.getCompositeFieldSeparators().get(literalRange.getFieldName());
-
+                
                 if (compositeSeparator != null && (lower.contains(compositeSeparator) || upper.contains(compositeSeparator))) {
                     IteratorSetting compositeIterator = new IteratorSetting(config.getBaseIteratorPriority() + 51, CompositeSeekingIterator.class);
-
+                    
                     compositeIterator.addOption(CompositeSeekingIterator.COMPONENT_FIELDS,
-                            StringUtils.collectionToCommaDelimitedString(config.getCompositeToFieldMap().get(literalRange.getFieldName())));
-
+                                    StringUtils.collectionToCommaDelimitedString(config.getCompositeToFieldMap().get(literalRange.getFieldName())));
+                    
                     for (String fieldName : config.getCompositeToFieldMap().get(literalRange.getFieldName())) {
                         DiscreteIndexType type = config.getFieldToDiscreteIndexTypes().get(fieldName);
                         if (type != null)
                             compositeIterator.addOption(fieldName + CompositeSeekingIterator.DISCRETE_INDEX_TYPE, type.getClass().getName());
                     }
-
+                    
                     compositeIterator.addOption(CompositeSeekingIterator.SEPARATOR, compositeSeparator);
-
+                    
                     bs.addScanIterator(compositeIterator);
                 }
             }
@@ -261,7 +261,8 @@ public class LookupBoundedRangeForTerms extends IndexLookup {
                         fieldsToValues.put(field, uniqueTerm);
                         
                         // safety check...
-                        Preconditions.checkState(field.equals(literalRange.getFieldName()), "Got an unexpected field name when expanding range" + field + " " + literalRange.getFieldName());
+                        Preconditions.checkState(field.equals(literalRange.getFieldName()), "Got an unexpected field name when expanding range" + field + " "
+                                        + literalRange.getFieldName());
                         
                         // If this range expands into to many values, we can
                         // stop

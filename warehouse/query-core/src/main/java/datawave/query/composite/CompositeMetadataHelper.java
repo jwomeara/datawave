@@ -34,11 +34,12 @@ import java.util.Set;
 @Component("compositeMetadataHelper")
 public class CompositeMetadataHelper {
     private static final Logger log = Logger.getLogger(CompositeMetadataHelper.class);
-
+    
     public static final String transitionDateFormat = "yyyyMMdd HHmmss.SSS";
     public static final String NULL_BYTE = "\0";
     
-    protected final List<Text> metadataCompositeColfs = Arrays.asList(ColumnFamilyConstants.COLF_CI, ColumnFamilyConstants.COLF_CITD, ColumnFamilyConstants.COLF_CISEP);
+    protected final List<Text> metadataCompositeColfs = Arrays.asList(ColumnFamilyConstants.COLF_CI, ColumnFamilyConstants.COLF_CITD,
+                    ColumnFamilyConstants.COLF_CISEP);
     
     protected Connector connector;
     protected Instance instance;
@@ -91,9 +92,9 @@ public class CompositeMetadataHelper {
     public CompositeMetadata getCompositeMetadata(Set<String> datatypeFilter) throws TableNotFoundException {
         log.debug("cache fault for getCompositeMetadata(" + this.auths + "," + this.metadataTableName + "," + datatypeFilter + ")");
         CompositeMetadata compositeMetadata = new CompositeMetadata();
-
+        
         SimpleDateFormat dateFormat = new SimpleDateFormat(transitionDateFormat);
-
+        
         // Scanner to the provided metadata table
         Scanner bs = ScannerHelper.createScanner(connector, metadataTableName, auths);
         

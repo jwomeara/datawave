@@ -194,11 +194,11 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
         this.typeCompiledPatternMap = null;
         
         this.getVirtualIngest().setup(config);
-
+        
         if (this.compositeIngest == null)
             this.compositeIngest = new CompositeFieldIngestHelper(this.getType());
         this.getCompositeIngest().setup(config);
-
+        
         IngestConfiguration ingestConfiguration = IngestConfigurationFactory.getIngestConfiguration();
         markingsHelper = ingestConfiguration.getMarkingsHelper(config, getType());
         
@@ -455,7 +455,7 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
     public Set<String> getIndexOnlyFields() {
         return indexOnlyFields;
     }
-
+    
     public Set<String> getIndexedFields() {
         return indexedFields;
     }
@@ -1049,7 +1049,7 @@ public abstract class BaseIngestHelper extends AbstractIngestHelper implements C
     public Multimap<String,String> getCompositeFieldDefinitions() {
         return getCompositeIngest().getCompositeFieldDefinitions();
     }
-
+    
     @Override
     public Map<String,String> getCompositeFieldSeparators() {
         return getCompositeIngest().getCompositeFieldSeparators();

@@ -653,7 +653,7 @@ public class ShardQueryLogic extends BaseQueryLogic<Entry<Key,Value>> {
         } else {
             config.setEndDate(endDate);
         }
-
+        
         loadQueryParameters(config, settings);
         
         MetadataHelper metadataHelper = prepareMetadataHelper(connection, this.getMetadataTableName(), auths, config.isRawTypes());

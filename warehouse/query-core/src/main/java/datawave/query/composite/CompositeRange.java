@@ -88,7 +88,8 @@ public class CompositeRange extends Composite {
     }
     
     @Override
-    public void getNodesAndExpressions(List<Class<? extends JexlNode>> nodeClasses, List<String> expressions, Map<String,DiscreteIndexType<?>> discreteIndexTypeMap, boolean includeOldData) {
+    public void getNodesAndExpressions(List<Class<? extends JexlNode>> nodeClasses, List<String> expressions,
+                    Map<String,DiscreteIndexType<?>> discreteIndexTypeMap, boolean includeOldData) {
         if (includeOldData) {
             expressions.add(getFullyInclusiveLowerBoundExpression(discreteIndexTypeMap));
             nodeClasses.add(ASTGENode.class);

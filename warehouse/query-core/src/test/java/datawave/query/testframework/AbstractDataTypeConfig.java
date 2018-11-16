@@ -138,7 +138,7 @@ public abstract class AbstractDataTypeConfig implements DataTypeHadoopConfig {
         this.hConf.set(this.dataType + BaseIngestHelper.INDEX_FIELDS, String.join(",", indexEntries));
         this.hConf.set(this.dataType + BaseIngestHelper.INDEX_ONLY_FIELDS, String.join(",", this.fieldConfig.getIndexOnlyFields()));
         this.hConf.set(this.dataType + BaseIngestHelper.REVERSE_INDEX_FIELDS, String.join(",", this.fieldConfig.getReverseIndexFields()));
-
+        
         // setup composite field mappings
         Iterator<Set<String>> componentFieldsIter = this.fieldConfig.getCompositeFields().iterator();
         for (final String composite : compositeNames) {

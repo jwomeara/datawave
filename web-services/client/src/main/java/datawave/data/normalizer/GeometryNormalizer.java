@@ -26,7 +26,8 @@ import java.util.TreeSet;
  * configuration
  *
  */
-public class GeometryNormalizer implements Normalizer<datawave.data.type.util.Geometry>, OneToManyNormalizer<datawave.data.type.util.Geometry>, DiscreteIndexNormalizer<datawave.data.type.util.Geometry> {
+public class GeometryNormalizer implements Normalizer<datawave.data.type.util.Geometry>, OneToManyNormalizer<datawave.data.type.util.Geometry>,
+                DiscreteIndexNormalizer<datawave.data.type.util.Geometry> {
     private static final long serialVersionUID = 171360806347433135L;
     
     private static final int LONGITUDE_BITS = 31;
@@ -151,18 +152,19 @@ public class GeometryNormalizer implements Normalizer<datawave.data.type.util.Ge
         }
         return retVal;
     }
-
+    
     @Override
     public String incrementIndex(String index) {
         String nextIndex = adjustHexRange(index, true);
         return (nextIndex.length() != index.length()) ? index : nextIndex;
     }
-
+    
     @Override
     public String decrementIndex(String index) {
         String prevIndex = adjustHexRange(index, false);
-        return (prevIndex.length() != index.length()) ? index : prevIndex;    }
-
+        return (prevIndex.length() != index.length()) ? index : prevIndex;
+    }
+    
     @Override
     public List<String> discretizeRange(String beginIndex, String endIndex) {
         List<String> discreteIndices = new ArrayList<String>();
@@ -177,12 +179,12 @@ public class GeometryNormalizer implements Normalizer<datawave.data.type.util.Ge
         }
         return discreteIndices;
     }
-
+    
     @Override
     public boolean producesFixedLengthRanges() {
         return true;
     }
-
+    
     private String adjustHexRange(String hexValue, boolean increment) {
         int length = hexValue.length();
         String format = "%0" + hexValue.length() + "x";
@@ -194,15 +196,15 @@ public class GeometryNormalizer implements Normalizer<datawave.data.type.util.Ge
             return adjustHexRangeBigInteger(hexValue, format, increment);
         }
     }
-
+    
     private String adjustHexRangeInteger(String hexValue, String format, boolean increment) {
         return String.format(format, Integer.parseInt(hexValue, 16) + ((increment) ? 1 : -1));
     }
-
+    
     private String adjustHexRangeLong(String hexValue, String format, boolean increment) {
         return String.format(format, Long.parseLong(hexValue, 16) + ((increment) ? 1L : -1L));
     }
-
+    
     private String adjustHexRangeBigInteger(String hexValue, String format, boolean increment) {
         if (increment)
             return String.format(format, new BigInteger(hexValue, 16).add(BigInteger.ONE));

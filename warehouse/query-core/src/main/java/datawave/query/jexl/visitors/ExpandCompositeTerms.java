@@ -66,7 +66,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
     private static final Logger log = ThreadConfigurableLogger.getLogger(ExpandCompositeTerms.class);
     
     private final ShardQueryConfiguration config;
-
+    
     private HashMap<JexlNode,Composite> jexlNodeToCompMap = new HashMap<>();
     
     private static class ExpandData {
@@ -79,7 +79,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
         Preconditions.checkNotNull(config);
         this.config = config;
     }
-
+    
     /**
      * Expand all nodes which have multiple dataTypes for the field.
      *
@@ -456,25 +456,26 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
         }
         
         composite.getNodesAndExpressions(nodeClasses, appendedExpressions, config.getFieldToDiscreteIndexTypes(), includeOldData);
-
+        
         // if this is true, then it indicates that we are dealing with a query containing an overloaded composite
         // field which only contained the first component term. This means that we are running a query against
         // the base composite term, and thus need to expand our ranges to fully include both the composite and
         // non-composite events in our range.
         boolean expandRangeForBaseTerm = CompositeIngest.isOverloadedCompositeField(config.getCompositeToFieldMap(), composite.compositeName)
                         && composite.jexlNodeList.size() == 1;
-
+        
         DiscreteIndexType baseTermDiscreteIndexType = config.getFieldToDiscreteIndexTypes().get(composite.fieldNameList.get(0));
-
+        
         List<JexlNode> finalNodes = new ArrayList<>();
         for (int i = 0; i < nodeClasses.size(); i++) {
             Class<? extends JexlNode> nodeClass = nodeClasses.get(i);
             String appendedExpression = appendedExpressions.get(i);
-
+            
             JexlNode newNode = null;
             if (nodeClass.equals(ASTGTNode.class)) {
                 if (expandRangeForBaseTerm)
-                    newNode = JexlNodeFactory.buildNode((ASTGENode) null, composite.compositeName, CompositeUtils.getInclusiveLowerBound(appendedExpression, baseTermDiscreteIndexType));
+                    newNode = JexlNodeFactory.buildNode((ASTGENode) null, composite.compositeName,
+                                    CompositeUtils.getInclusiveLowerBound(appendedExpression, baseTermDiscreteIndexType));
                 else
                     newNode = JexlNodeFactory.buildNode((ASTGTNode) null, composite.compositeName, appendedExpression);
             } else if (nodeClass.equals(ASTGENode.class)) {
@@ -483,7 +484,8 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
                 newNode = JexlNodeFactory.buildNode((ASTLTNode) null, composite.compositeName, appendedExpression);
             } else if (nodeClass.equals(ASTLENode.class)) {
                 if (expandRangeForBaseTerm)
-                    newNode = JexlNodeFactory.buildNode((ASTLTNode) null, composite.compositeName, CompositeUtils.getExclusiveUpperBound(appendedExpression, baseTermDiscreteIndexType));
+                    newNode = JexlNodeFactory.buildNode((ASTLTNode) null, composite.compositeName,
+                                    CompositeUtils.getExclusiveUpperBound(appendedExpression, baseTermDiscreteIndexType));
                 else
                     newNode = JexlNodeFactory.buildNode((ASTLENode) null, composite.compositeName, appendedExpression);
             } else if (nodeClass.equals(ASTERNode.class)) {
@@ -506,20 +508,20 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
             
             finalNodes.add(newNode);
         }
-
+        
         JexlNode finalNode;
         if (finalNodes.size() > 1) {
             finalNode = createUnwrappedAndNode(finalNodes);
             if (composite.jexlNodeList.size() > 1) {
                 JexlNode delayedNode = ASTDelayedPredicate.create(ASTCompositePredicate.create(createUnwrappedAndNode(composite.jexlNodeList.stream()
-                        .map(node -> JexlNodeFactory.wrap(copy(node))).collect(Collectors.toList()))));
+                                .map(node -> JexlNodeFactory.wrap(copy(node))).collect(Collectors.toList()))));
                 finalNode = createUnwrappedAndNode(Arrays.asList(JexlNodeFactory.wrap(finalNode), delayedNode));
             }
         } else {
             finalNode = finalNodes.get(0);
             if (composite.jexlNodeList.size() > 1 && !(finalNode instanceof ASTEQNode)) {
                 JexlNode delayedNode = ASTDelayedPredicate.create(ASTCompositePredicate.create(createUnwrappedAndNode(composite.jexlNodeList.stream()
-                        .map(node -> JexlNodeFactory.wrap(copy(node))).collect(Collectors.toList()))));
+                                .map(node -> JexlNodeFactory.wrap(copy(node))).collect(Collectors.toList()))));
                 finalNode = createUnwrappedAndNode(Arrays.asList(finalNode, delayedNode));
             }
         }
@@ -1140,7 +1142,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
             }
         }
     }
-
+    
     private void printWithMessage(String message, JexlNode node) {
         printWithMessage(message, node, Priority.toPriority(Level.TRACE_INT));
     }
@@ -1151,18 +1153,21 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
             log.log(priority, JexlStringBuildingVisitor.buildQuery(node));
         }
     }
-
+    
     /**
-     * Determines whether a field is a fixed length, discrete index field.  That is to say, whether or not ranges generated against the term contain values of a fixed string length.  This has certain implications for composite ranges.
+     * Determines whether a field is a fixed length, discrete index field. That is to say, whether or not ranges generated against the term contain values of a
+     * fixed string length. This has certain implications for composite ranges.
      *
-     * At the moment, only fields with a single data type qualify as fixed length, discrete index fields.  This could be updated in the future if the need arises.
+     * At the moment, only fields with a single data type qualify as fixed length, discrete index fields. This could be updated in the future if the need
+     * arises.
+     * 
      * @param fieldName
      * @return true if fieldName is a fixed length field
      */
     private boolean isDiscreteIndexField(String fieldName) {
         return config.getFieldToDiscreteIndexTypes().containsKey(fieldName);
     }
-
+    
     /**
      * This is a visitor which is used to fully distribute anded nodes into a given node. The visitor will only distribute the anded nodes to those descendant
      * nodes within the tree with which they are not already anded (via a composite).

@@ -61,7 +61,7 @@ public class AllFieldMetadataHelper {
     private static final Logger log = Logger.getLogger(AllFieldMetadataHelper.class);
     
     public static final String NULL_BYTE = "\0";
-
+    
     protected static final Function<MetadataEntry,String> toFieldName = new MetadataEntryToFieldName(), toDatatype = new MetadataEntryToDatatype();
     
     protected QueryStopwatch timers = new QueryStopwatch();
@@ -354,9 +354,9 @@ public class AllFieldMetadataHelper {
         log.debug("cache fault for getCompositeTransitionDateMap(" + this.auths + "," + this.metadataTableName + "," + ingestTypeFilter + ")");
         
         Map<String,Date> tdMap = new HashMap<>();
-
+        
         SimpleDateFormat dateFormat = new SimpleDateFormat(CompositeMetadataHelper.transitionDateFormat);
-
+        
         Scanner bs = ScannerHelper.createScanner(connector, metadataTableName, auths);
         Range range = new Range();
         
@@ -395,7 +395,7 @@ public class AllFieldMetadataHelper {
         
         return Collections.unmodifiableMap(tdMap);
     }
-
+    
     /**
      * A map of composite name to field separator.
      *
@@ -403,40 +403,40 @@ public class AllFieldMetadataHelper {
      * @throws TableNotFoundException
      */
     @Cacheable(value = "getCompositeFieldSeparatorMap", key = "{#root.target.auths,#root.target.metadataTableName}",
-            cacheManager = "metadataHelperCacheManager")
+                    cacheManager = "metadataHelperCacheManager")
     public Map<String,String> getCompositeFieldSeparatorMap() throws TableNotFoundException {
         log.debug("cache fault for getCompositeFieldSeparatorMap(" + this.auths + "," + this.metadataTableName + ")");
         return this.getCompositeFieldSeparatorMap(null);
     }
-
+    
     @Cacheable(value = "getCompositeFieldSeparatorMap", key = "{#root.target.auths,#root.target.metadataTableName,#ingestTypeFilter}",
-            cacheManager = "metadataHelperCacheManager")
+                    cacheManager = "metadataHelperCacheManager")
     public Map<String,String> getCompositeFieldSeparatorMap(Set<String> ingestTypeFilter) throws TableNotFoundException {
         log.debug("cache fault for getCompositeFieldSeparatorMap(" + this.auths + "," + this.metadataTableName + "," + ingestTypeFilter + ")");
-
+        
         Map<String,String> sepMap = new HashMap<>();
-
+        
         Scanner bs = ScannerHelper.createScanner(connector, metadataTableName, auths);
         Range range = new Range();
-
+        
         bs.setRange(range);
-
+        
         bs.fetchColumnFamily(ColumnFamilyConstants.COLF_CISEP);
-
+        
         for (Entry<Key,Value> entry : bs) {
             String fieldName = entry.getKey().getRow().toString();
             if (null != entry.getKey().getColumnQualifier()) {
                 String colq = entry.getKey().getColumnQualifier().toString();
                 int idx = colq.indexOf(NULL_BYTE);
-
+                
                 String type = colq.substring(0, idx);
-
+                
                 // If types are specified and this type is not in the list,
                 // skip it.
                 if (null != ingestTypeFilter && ingestTypeFilter.size() > 0 && !ingestTypeFilter.contains(type)) {
                     continue;
                 }
-
+                
                 if (idx != -1) {
                     String separator = colq.substring(idx + 1);
                     sepMap.put(fieldName, separator);
@@ -447,10 +447,10 @@ public class AllFieldMetadataHelper {
                 log.warn("ColumnQualifier null in EventMetadata for key: " + entry.getKey().toString());
             }
         }
-
+        
         return Collections.unmodifiableMap(sepMap);
     }
-
+    
     public TypeMetadata getTypeMetadata() throws TableNotFoundException {
         return this.typeMetadataHelper.getTypeMetadata(null);
     }

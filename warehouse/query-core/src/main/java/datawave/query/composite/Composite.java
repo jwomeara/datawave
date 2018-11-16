@@ -44,8 +44,8 @@ public class Composite {
     
     @Override
     public String toString() {
-        return "Composite [compositeName=" + compositeName + ", separator=" + separator + ", fieldNameList=" + fieldNameList + ", jexlNodeList=" + jexlNodeList + ", expressionList="
-                        + expressionList + "]";
+        return "Composite [compositeName=" + compositeName + ", separator=" + separator + ", fieldNameList=" + fieldNameList + ", jexlNodeList=" + jexlNodeList
+                        + ", expressionList=" + expressionList + "]";
     }
     
     protected Class<? extends JexlNode> getNodeClass(List<JexlNode> jexlNodeList) {
@@ -71,7 +71,8 @@ public class Composite {
         return lastNode.getClass();
     }
     
-    public void getNodesAndExpressions(List<Class<? extends JexlNode>> nodeClasses, List<String> expressions, Map<String,DiscreteIndexType<?>> discreteIndexFieldMap, boolean includeOldData) {
+    public void getNodesAndExpressions(List<Class<? extends JexlNode>> nodeClasses, List<String> expressions,
+                    Map<String,DiscreteIndexType<?>> discreteIndexFieldMap, boolean includeOldData) {
         nodeClasses.addAll(Collections.singletonList(getNodeClass(jexlNodeList)));
         expressions.addAll(Collections.singletonList(getAppendedExpressions()));
         

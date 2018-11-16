@@ -37,7 +37,7 @@ public class CompositeMetadata implements Message<CompositeMetadata> {
     protected Map<String,Multimap<String,String>> compositeFieldMapByType;
     protected Map<String,Map<String,Date>> compositeTransitionDatesByType;
     protected Map<String,Map<String,String>> compositeFieldSeparatorsByType;
-
+    
     public CompositeMetadata() {
         this.compositeFieldMapByType = new HashMap<>();
         this.compositeTransitionDatesByType = new HashMap<>();
@@ -86,20 +86,21 @@ public class CompositeMetadata implements Message<CompositeMetadata> {
         
         compositeTransitionDateMap.put(compositeFieldName, transitionDate);
     }
-
+    
     public Map<String,Map<String,String>> getCompositeFieldSeparatorsByType() {
         return compositeFieldSeparatorsByType;
     }
-
+    
     public void setCompositeFieldSeparatorsByType(Map<String,Map<String,String>> compositeFieldSeparatorsByType) {
         this.compositeFieldSeparatorsByType = compositeFieldSeparatorsByType;
     }
-
-    private void setCompositeFieldSeparatorsByTypeInternal(Map<String, Multimap<String, String>> compositeFieldSeparatorsByType) {
+    
+    private void setCompositeFieldSeparatorsByTypeInternal(Map<String,Multimap<String,String>> compositeFieldSeparatorsByType) {
         this.compositeFieldSeparatorsByType = new HashMap<>();
-        compositeFieldSeparatorsByType.forEach((ingestType, v) -> v.entries().forEach(entry -> addCompositeFieldSeparatorByType(ingestType, entry.getKey(), entry.getValue())));
+        compositeFieldSeparatorsByType.forEach((ingestType, v) -> v.entries().forEach(
+                        entry -> addCompositeFieldSeparatorByType(ingestType, entry.getKey(), entry.getValue())));
     }
-
+    
     public void addCompositeFieldSeparatorByType(String ingestType, String compositeFieldName, String separator) {
         Map<String,String> compositeFieldSeparatorMap;
         if (!compositeFieldSeparatorsByType.containsKey(ingestType)) {
@@ -108,14 +109,14 @@ public class CompositeMetadata implements Message<CompositeMetadata> {
         } else {
             compositeFieldSeparatorMap = compositeFieldSeparatorsByType.get(ingestType);
         }
-
+        
         compositeFieldSeparatorMap.put(compositeFieldName, separator);
     }
-
+    
     public boolean isEmpty() {
         return (compositeFieldMapByType == null || compositeFieldMapByType.isEmpty())
-                && (compositeTransitionDatesByType == null || compositeTransitionDatesByType.isEmpty())
-                && (compositeFieldSeparatorsByType == null || compositeFieldSeparatorsByType.isEmpty());
+                        && (compositeTransitionDatesByType == null || compositeTransitionDatesByType.isEmpty())
+                        && (compositeFieldSeparatorsByType == null || compositeFieldSeparatorsByType.isEmpty());
     }
     
     public CompositeMetadata filter(Set<String> componentFields) {
@@ -136,16 +137,16 @@ public class CompositeMetadata implements Message<CompositeMetadata> {
                             if (this.compositeFieldMapByType.get(ingestType).get(compositeField).contains(componentField)) {
                                 compositeMetadata.setCompositeFieldMappingByType(ingestType, compositeField,
                                                 this.compositeFieldMapByType.get(ingestType).get(compositeField));
-
+                                
                                 if (this.compositeTransitionDatesByType.containsKey(ingestType)
-                                        && this.compositeTransitionDatesByType.get(ingestType).containsKey(compositeField))
+                                                && this.compositeTransitionDatesByType.get(ingestType).containsKey(compositeField))
                                     compositeMetadata.addCompositeTransitionDateByType(ingestType, compositeField,
-                                            this.compositeTransitionDatesByType.get(ingestType).get(compositeField));
-
+                                                    this.compositeTransitionDatesByType.get(ingestType).get(compositeField));
+                                
                                 if (this.compositeFieldSeparatorsByType.containsKey(ingestType)
-                                        && this.compositeFieldSeparatorsByType.get(ingestType).containsKey(compositeField))
+                                                && this.compositeFieldSeparatorsByType.get(ingestType).containsKey(compositeField))
                                     compositeMetadata.addCompositeFieldSeparatorByType(ingestType, compositeField,
-                                            this.compositeFieldSeparatorsByType.get(ingestType).get(compositeField));
+                                                    this.compositeFieldSeparatorsByType.get(ingestType).get(compositeField));
                             }
                         }
                     }
@@ -185,7 +186,7 @@ public class CompositeMetadata implements Message<CompositeMetadata> {
         public Schema<Map<String,Multimap<String,String>>> compositeFieldMappingByTypeSchema = new StringMapSchema<>(new StringMultimapSchema());
         public Schema<Map<String,Map<String,Date>>> compositeTransitionDateByTypeSchema = new StringMapSchema<>(new StringMapSchema<>(new DateSchema()));
         public Schema<Map<String,Multimap<String,String>>> compositeFieldSeparatorsByTypeSchema = new StringMapSchema<>(new StringMultimapSchema());
-
+        
         @Override
         public String getFieldName(int number) {
             switch (number) {
@@ -267,12 +268,12 @@ public class CompositeMetadata implements Message<CompositeMetadata> {
             if (compositeMetadata.getCompositeTransitionDatesByType() != null)
                 output.writeObject(2, compositeMetadata.getCompositeTransitionDatesByType(), compositeTransitionDateByTypeSchema, false);
             if (compositeMetadata.getCompositeFieldSeparatorsByType() != null) {
-                Map<String, Multimap<String, String>> newMap = new HashMap<>();
+                Map<String,Multimap<String,String>> newMap = new HashMap<>();
                 compositeMetadata.getCompositeFieldSeparatorsByType().forEach((ingestType, map) -> newMap.put(ingestType, mapToMultimap(map)));
                 output.writeObject(3, newMap, compositeFieldSeparatorsByTypeSchema, false);
             }
         }
-
+        
         private Multimap<String,String> mapToMultimap(Map<String,String> map) {
             Multimap<String,String> multimap = LinkedListMultimap.create();
             map.forEach(multimap::put);

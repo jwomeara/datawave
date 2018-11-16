@@ -141,7 +141,6 @@ public class RangeConjunctionRebuildingVisitor extends RebuildingVisitor {
     public Object visit(ASTGENode node, Object data) {
         return node;
     }
-
     
     @Override
     public Object visit(ASTAndNode node, Object data) {
@@ -188,7 +187,7 @@ public class RangeConjunctionRebuildingVisitor extends RebuildingVisitor {
             log.debug("Cannot find range operator nodes that encompass this query. Not proceeding with range expansion for this node.");
             return currentNode;
         }
-
+        
         for (Map.Entry<LiteralRange<?>,List<JexlNode>> range : ranges.entrySet()) {
             IndexLookup lookup = ShardIndexQueryTableStaticMethods.expandRange(range.getKey());
             

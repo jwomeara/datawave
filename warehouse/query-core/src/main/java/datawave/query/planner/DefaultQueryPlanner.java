@@ -573,7 +573,7 @@ public class DefaultQueryPlanner extends QueryPlanner {
     protected ASTJexlScript updateQueryTree(ScannerFactory scannerFactory, MetadataHelper metadataHelper, DateIndexHelper dateIndexHelper,
                     ShardQueryConfiguration config, String query, QueryData queryData, Query settings) throws DatawaveQueryException {
         final QueryStopwatch timers = config.getTimers();
-
+        
         TraceStopwatch stopwatch = timers.newStartedStopwatch("DefaultQueryPlanner - Parse query");
         
         ASTJexlScript queryTree = parseQueryAndValidatePattern(query, stopwatch);
@@ -1049,7 +1049,7 @@ public class DefaultQueryPlanner extends QueryPlanner {
         
         if (!disableCompositeFields) {
             stopwatch = timers.newStartedStopwatch("DefaultQueryPlanner - Expand composite terms");
-
+            
             try {
                 config.setCompositeToFieldMap(metadataHelper.getCompositeToFieldMap(config.getDatatypeFilter()));
                 config.setCompositeTransitionDates(metadataHelper.getCompositeTransitionDateMap(config.getDatatypeFilter()));
@@ -1059,7 +1059,7 @@ public class DefaultQueryPlanner extends QueryPlanner {
                 QueryException qe = new QueryException(DatawaveErrorCode.METADATA_ACCESS_ERROR, e);
                 throw new DatawaveFatalQueryException(qe);
             }
-
+            
             queryTree = ExpandCompositeTerms.expandTerms(config, metadataHelper, queryTree);
             stopwatch.stop();
         }
@@ -2108,7 +2108,7 @@ public class DefaultQueryPlanner extends QueryPlanner {
         
         config.setQueryFieldsDatatypes(HashMultimap.create(Multimaps.filterKeys(fieldToDatatypeMap, input -> !normalizedFields.contains(input))));
         log.debug("IndexedFields Datatypes: " + config.getQueryFieldsDatatypes());
-
+        
         config.setNormalizedFieldsDatatypes(HashMultimap.create(Multimaps.filterKeys(fieldToDatatypeMap, normalizedFields::contains)));
         log.debug("NormalizedFields Datatypes: " + config.getNormalizedFieldsDatatypes());
         if (log.isTraceEnabled()) {

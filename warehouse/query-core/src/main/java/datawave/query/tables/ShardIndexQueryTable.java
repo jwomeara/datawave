@@ -279,7 +279,7 @@ public class ShardIndexQueryTable extends BaseQueryLogic<DiscoveredThing> {
         Multimap<String,Type<?>> fieldToDataTypeMap = FetchDataTypesVisitor.fetchDataTypes(metadataHelper, config.getDatatypeFilter(), script);
         config.setDataTypes(fieldToDataTypeMap);
         config.setQueryFieldsDatatypes(fieldToDataTypeMap);
-
+        
         final Set<String> indexedFields = metadataHelper.getIndexedFields(dataTypes);
         config.setIndexedFields(indexedFields);
         

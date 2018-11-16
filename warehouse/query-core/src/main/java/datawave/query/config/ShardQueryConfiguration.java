@@ -131,7 +131,7 @@ public class ShardQueryConfiguration extends GenericQueryConfiguration {
     private Multimap<String,Type<?>> dataTypes = HashMultimap.create();
     private Multimap<String,Type<?>> queryFieldsDatatypes = HashMultimap.create();
     private Multimap<String,Type<?>> normalizedFieldsDatatypes = HashMultimap.create();
-
+    
     private Map<String,DiscreteIndexType<?>> fieldToDiscreteIndexTypes = new HashMap<>();
     
     private Multimap<String,String> compositeToFieldMap = ArrayListMultimap.create();
@@ -1008,7 +1008,7 @@ public class ShardQueryConfiguration extends GenericQueryConfiguration {
         }
         return sb.toString();
     }
-
+    
     public String getNormalizedFieldNormalizersAsString() {
         
         if (null == this.getNormalizedFields()) {
@@ -1075,15 +1075,15 @@ public class ShardQueryConfiguration extends GenericQueryConfiguration {
     public Multimap<String,Type<?>> getQueryFieldsDatatypes() {
         return queryFieldsDatatypes;
     }
-
-    public Map<String, DiscreteIndexType<?>> getFieldToDiscreteIndexTypes() {
+    
+    public Map<String,DiscreteIndexType<?>> getFieldToDiscreteIndexTypes() {
         return fieldToDiscreteIndexTypes;
     }
-
-    public void setFieldToDiscreteIndexTypes(Map<String, DiscreteIndexType<?>> fieldToDiscreteIndexTypes) {
+    
+    public void setFieldToDiscreteIndexTypes(Map<String,DiscreteIndexType<?>> fieldToDiscreteIndexTypes) {
         this.fieldToDiscreteIndexTypes = fieldToDiscreteIndexTypes;
     }
-
+    
     public void setCompositeToFieldMap(Multimap<String,String> compositeToFieldMap) {
         this.compositeToFieldMap = compositeToFieldMap;
     }
@@ -1099,15 +1099,15 @@ public class ShardQueryConfiguration extends GenericQueryConfiguration {
     public void setCompositeTransitionDates(Map<String,Date> compositeTransitionDates) {
         this.compositeTransitionDates = compositeTransitionDates;
     }
-
-    public Map<String, String> getCompositeFieldSeparators() {
+    
+    public Map<String,String> getCompositeFieldSeparators() {
         return compositeFieldSeparators;
     }
-
-    public void setCompositeFieldSeparators(Map<String, String> compositeFieldSeparators) {
+    
+    public void setCompositeFieldSeparators(Map<String,String> compositeFieldSeparators) {
         this.compositeFieldSeparators = compositeFieldSeparators;
     }
-
+    
     public Multimap<String,Type<?>> getNormalizedFieldsDatatypes() {
         return normalizedFieldsDatatypes;
     }

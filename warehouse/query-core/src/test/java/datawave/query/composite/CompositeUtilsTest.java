@@ -67,7 +67,7 @@ public class CompositeUtilsTest {
         
         CompositeUtils.incrementBound(minString);
     }
-
+    
     private boolean isValidHex(String value) {
         for (char c : value.toCharArray()) {
             if (!((c >= 'a' && c <= 'f') || (c >= '0' && c <= '9')))

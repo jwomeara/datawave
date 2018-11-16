@@ -25,32 +25,32 @@ import java.util.Map;
  *
  */
 public class CompositeSeekingIterator extends WrappingIterator {
-
+    
     private static final Logger log = Logger.getLogger(CompositeSeekingIterator.class);
-
+    
     public static final String COMPONENT_FIELDS = "component.fields";
     public static final String DISCRETE_INDEX_TYPE = ".discrete.index.type";
     public static final String SEPARATOR = "separator";
-
+    
     private List<String> fieldNames = new ArrayList<>();
     private Map<String,DiscreteIndexType<?>> fieldToDiscreteIndexType = new HashMap<>();
     private String separator;
-
+    
     private Range currentRange;
     private ShardIndexCompositeSeeker compositeSeeker;
     private Collection<ByteSequence> columnFamilies;
     private Boolean inclusive;
-
+    
     @Override
     public SortedKeyValueIterator<Key,Value> deepCopy(IteratorEnvironment env) {
         CompositeSeekingIterator to = new CompositeSeekingIterator();
         to.setSource(getSource().deepCopy(env));
-
+        
         Collections.copy(to.fieldNames, fieldNames);
         to.fieldToDiscreteIndexType = new HashMap<>(fieldToDiscreteIndexType);
         to.separator = separator;
         to.compositeSeeker = new ShardIndexCompositeSeeker(to.fieldNames, to.separator, to.fieldToDiscreteIndexType);
-
+        
         return to;
     }
     
@@ -61,7 +61,7 @@ public class CompositeSeekingIterator extends WrappingIterator {
         final String compFields = options.get(COMPONENT_FIELDS);
         if (compFields != null)
             this.fieldNames = Arrays.asList(compFields.split(","));
-
+        
         for (String fieldName : fieldNames) {
             DiscreteIndexType type = null;
             String typeClass = options.get(fieldName + DISCRETE_INDEX_TYPE);
@@ -72,20 +72,20 @@ public class CompositeSeekingIterator extends WrappingIterator {
                     log.warn("Unable to create DiscreteIndexType for class name: " + typeClass);
                 }
             }
-
+            
             if (type != null)
                 fieldToDiscreteIndexType.put(fieldName, type);
         }
-
+        
         this.separator = options.get(SEPARATOR);
-
+        
         compositeSeeker = new ShardIndexCompositeSeeker(fieldNames, separator, fieldToDiscreteIndexType);
     }
     
     @Override
     public void next() throws IOException {
         super.next();
-        while(hasTop() && !compositeSeeker.isKeyInRange(getTopKey(), currentRange)){
+        while (hasTop() && !compositeSeeker.isKeyInRange(getTopKey(), currentRange)) {
             Range newRange = compositeSeeker.nextSeekRange(getTopKey(), currentRange);
             if (newRange != currentRange) {
                 currentRange = newRange;
@@ -94,18 +94,18 @@ public class CompositeSeekingIterator extends WrappingIterator {
             }
         }
     }
-
+    
     @Override
     public void seek(Range range, Collection<ByteSequence> columnFamilies, boolean inclusive) throws IOException {
         if (currentRange == null)
             currentRange = range;
-
+        
         if (this.columnFamilies == null)
             this.columnFamilies = columnFamilies;
-
+        
         if (this.inclusive == null)
             this.inclusive = inclusive;
-
+        
         super.seek(range, columnFamilies, inclusive);
     }
 }

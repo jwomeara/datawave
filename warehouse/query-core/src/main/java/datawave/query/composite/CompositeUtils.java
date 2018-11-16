@@ -27,11 +27,11 @@ import java.util.Set;
  */
 public class CompositeUtils {
     private static final Logger log = Logger.getLogger(CompositeUtils.class);
-
+    
     public static final Set<Class<?>> INVALID_LEAF_NODE_CLASSES = Sets.<Class<?>> newHashSet(ASTNENode.class);
     public static final Set<Class<?>> VALID_LEAF_NODE_CLASSES = Sets.<Class<?>> newHashSet(ASTEQNode.class, ASTERNode.class, ASTGTNode.class, ASTGENode.class,
                     ASTLTNode.class, ASTLENode.class, ASTAndNode.class);
-
+    
     public static Map<String,DiscreteIndexType<?>> getFieldToDiscreteIndexTypeMap(Multimap<String,?> fieldDatatypes) {
         Map<String,DiscreteIndexType<?>> fieldToDiscreteIndexTypeMap = new HashMap<>();
         for (String field : fieldDatatypes.keySet()) {
@@ -57,13 +57,13 @@ public class CompositeUtils {
                     }
                 }
             }
-
+            
             if (discreteIndexType != null)
                 fieldToDiscreteIndexTypeMap.put(field, discreteIndexType);
         }
         return fieldToDiscreteIndexTypeMap;
     }
-
+    
     public static String getInclusiveLowerBound(String lowerBound, DiscreteIndexType discreteIndexType) {
         if (discreteIndexType != null) {
             String newLowerBound = discreteIndexType.incrementIndex(lowerBound);

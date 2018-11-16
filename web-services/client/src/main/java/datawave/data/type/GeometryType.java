@@ -32,24 +32,24 @@ public class GeometryType extends BaseType<Geometry> implements OneToManyNormali
     public List<String> getNormalizedValues() {
         return normalizedValues;
     }
-
+    
     @Override
     public String incrementIndex(String index) {
-        return ((DiscreteIndexNormalizer)Normalizer.GEOMETRY_NORMALIZER).incrementIndex(index);
+        return ((DiscreteIndexNormalizer) Normalizer.GEOMETRY_NORMALIZER).incrementIndex(index);
     }
-
+    
     @Override
     public String decrementIndex(String index) {
-        return ((DiscreteIndexNormalizer)Normalizer.GEOMETRY_NORMALIZER).decrementIndex(index);
+        return ((DiscreteIndexNormalizer) Normalizer.GEOMETRY_NORMALIZER).decrementIndex(index);
     }
-
+    
     @Override
     public List<String> discretizeRange(String beginIndex, String endIndex) {
-        return ((DiscreteIndexNormalizer)Normalizer.GEOMETRY_NORMALIZER).discretizeRange(beginIndex, endIndex);
+        return ((DiscreteIndexNormalizer) Normalizer.GEOMETRY_NORMALIZER).discretizeRange(beginIndex, endIndex);
     }
-
+    
     @Override
     public boolean producesFixedLengthRanges() {
-        return ((DiscreteIndexNormalizer)Normalizer.GEOMETRY_NORMALIZER).producesFixedLengthRanges();
+        return ((DiscreteIndexNormalizer) Normalizer.GEOMETRY_NORMALIZER).producesFixedLengthRanges();
     }
 }

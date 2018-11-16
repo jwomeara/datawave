@@ -48,7 +48,7 @@ public class ValueToAttributes implements Function<Entry<Key,String>,Iterable<En
     private AttributeFactory attrFactory;
     
     private Map<String,Multimap<String,String>> compositeToFieldMap;
-    private Map<String, Map<String,String>> compositeFieldSeparatorsByType;
+    private Map<String,Map<String,String>> compositeFieldSeparatorsByType;
     private MarkingFunctions markingFunctions;
     private Multimap<String,Attribute<?>> componentFieldToValues = ArrayListMultimap.create();
     
@@ -59,9 +59,11 @@ public class ValueToAttributes implements Function<Entry<Key,String>,Iterable<En
     public ValueToAttributes(CompositeMetadata compositeMetadata, TypeMetadata typeMetadata, EventDataQueryFilter attrFilter, MarkingFunctions markingFunctions) {
         this.attrFactory = new AttributeFactory(typeMetadata);
         this.markingFunctions = markingFunctions;
-        this.compositeToFieldMap = compositeMetadata.getCompositeFieldMapByType();
-        this.compositeFieldSeparatorsByType = compositeMetadata.getCompositeFieldSeparatorsByType();
         this.attrFilter = attrFilter;
+        if (compositeMetadata != null) {
+            this.compositeToFieldMap = compositeMetadata.getCompositeFieldMapByType();
+            this.compositeFieldSeparatorsByType = compositeMetadata.getCompositeFieldSeparatorsByType();
+        }
     }
     
     @Override
@@ -78,7 +80,7 @@ public class ValueToAttributes implements Function<Entry<Key,String>,Iterable<En
         
         // check to see if we can create any composite attributes using this entry
         String ingestDatatype = this.getDatatypeFromKey(key);
-        Multimap<String,String> compToFieldMap = this.compositeToFieldMap.get(ingestDatatype);
+        Multimap<String,String> compToFieldMap = (this.compositeToFieldMap != null) ? this.compositeToFieldMap.get(ingestDatatype) : null;
         if (compToFieldMap != null && !compToFieldMap.isEmpty()) {
             Multimap<String,String> inverted = Multimaps.invertFrom(compToFieldMap, ArrayListMultimap.create());
             // check to see if this entry can be used to create a composite

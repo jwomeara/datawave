@@ -39,7 +39,7 @@ public interface CompositeIngest {
     String COMPOSITE_DEFAULT_SEPARATOR = CompositeFieldNormalizer.COMPOSITE_DEFAULT_SEPARATOR;
     String COMPOSITE_FIELD_ALLOW_MISSING = CompositeFieldNormalizer.COMPOSITE_FIELD_ALLOW_MISSING;
     String COMPOSITE_FIELD_GROUPING_POLICY = CompositeFieldNormalizer.COMPOSITE_FIELD_GROUPING_POLICY;
-
+    
     enum GroupingPolicy {
         SAME_GROUP_ONLY, GROUPED_WITH_NON_GROUPED, IGNORE_GROUPS
     }
@@ -47,9 +47,9 @@ public interface CompositeIngest {
     void setup(Configuration config) throws IllegalArgumentException;
     
     Multimap<String,String> getCompositeFieldDefinitions();
-
+    
     Map<String,String> getCompositeFieldSeparators();
-
+    
     void setCompositeFieldDefinitions(Multimap<String,String> compositeFieldDefinitions);
     
     boolean isCompositeField(String fieldName);
@@ -76,35 +76,30 @@ public interface CompositeIngest {
         
         private static final long serialVersionUID = -3892470989028896718L;
         private static final Logger log = Logger.getLogger(CompositeFieldNormalizer.class);
-
+        
         private static final String COMPOSITE_DEFAULT_SEPARATOR = new String(Character.toChars(Character.MAX_CODE_POINT));
-
+        
         /**
          * Parameter for specifying the component fields that make up each composite field. The value of this parameter is a comma separated list of component
          * fields for each composite field.
          *
-         * Example:
-         *  Key:   "myType.COMPOSITE_FIELD_NAME.data.composite.field.map"
-         *  Value: "FIELD1,FIELD2"
+         * Example: Key: "myType.COMPOSITE_FIELD_NAME.data.composite.field.map" Value: "FIELD1,FIELD2"
          */
         public static final String COMPOSITE_FIELD_MAP = ".data.composite.field.map";
-
+        
         /**
-         * Parameter for specifying the separator override to use when combining component fields into a composite field.  By default the max code point character will
-         * be used.  The use of regex meta characters is currently NOT supported.  You are also advised against using the null character "\0" as this is used commonly in the index.
+         * Parameter for specifying the separator override to use when combining component fields into a composite field. By default the max code point
+         * character will be used. The use of regex meta characters is currently NOT supported. You are also advised against using the null character "\0" as
+         * this is used commonly in the index.
          *
-         * Example:
-         *  Key:   "myType.COMPOSITE_FIELD_NAME.data.composite.separator"
-         *  Value: "_"
+         * Example: Key: "myType.COMPOSITE_FIELD_NAME.data.composite.separator" Value: "_"
          */
         public static final String COMPOSITE_FIELD_SEPARATOR = ".data.composite.field.separator";
         
         /**
          * Boolean parameter for specifying a whether missing parts of a composite field are permitted. These values are specified per composite field.
          *
-         * Example:
-         *  Key:   "myType.COMPOSITE_FIELD_NAME.data.composite.allow.missing"
-         *  Value: "SAME_GROUP_ONLY"
+         * Example: Key: "myType.COMPOSITE_FIELD_NAME.data.composite.allow.missing" Value: "SAME_GROUP_ONLY"
          */
         public static final String COMPOSITE_FIELD_ALLOW_MISSING = ".data.composite.allow.missing";
         
@@ -115,9 +110,7 @@ public interface CompositeIngest {
          * with non-grouped fields. Two grouped fields in different groups will never be merged. IGNORE_GROUPS: Ignore grouping altogether. An group or
          * non-grouped can be merged. The default is GROUPED_WITH_NON_GROUPED.
          *
-         * Example:
-         *  Key:   "myType.COMPOSITE_FIELD_NAME.data.composite.grouping.policy"
-         *  Value: "true"
+         * Example: Key: "myType.COMPOSITE_FIELD_NAME.data.composite.grouping.policy" Value: "true"
          */
         public static final String COMPOSITE_FIELD_GROUPING_POLICY = ".data.composite.grouping.policy";
         public static final GroupingPolicy DEFAULT_GROUPING_POLICY = GroupingPolicy.GROUPED_WITH_NON_GROUPED;
@@ -139,44 +132,45 @@ public interface CompositeIngest {
         public void setup(Type type, Configuration config) {
             
             markingFunctions = MarkingFunctions.Factory.createMarkingFunctions();
-
+            
             Set<String> indexOnly = Sets.newHashSet(getStrings(type, config, BaseIngestHelper.INDEX_ONLY_FIELDS, new String[0]));
-
-            for (String typeName : new String[]{"all", type.typeName()}) {
-
+            
+            for (String typeName : new String[] {"all", type.typeName()}) {
+                
                 // determine the mapping from composite field to component fields
                 String fieldMapKey = (typeName + ".*" + COMPOSITE_FIELD_MAP).replaceAll("\\.", "\\.");
-                for (Entry<String, String> entry : config.getValByRegex(fieldMapKey).entrySet()) {
+                for (Entry<String,String> entry : config.getValByRegex(fieldMapKey).entrySet()) {
                     String compositeField = entry.getKey().substring(typeName.length() + 1, entry.getKey().indexOf(COMPOSITE_FIELD_MAP));
-                    List<String> componentFields = Arrays.stream(entry.getValue().replaceAll("\\s+", "").split(",")).filter(x -> !x.isEmpty()).collect(Collectors.toList());
-
+                    List<String> componentFields = Arrays.stream(entry.getValue().replaceAll("\\s+", "").split(",")).filter(x -> !x.isEmpty())
+                                    .collect(Collectors.toList());
+                    
                     // if any members are indexOnly fields, skip this one
                     if (Sets.intersection(Sets.newHashSet(componentFields), indexOnly).size() > 0) {
                         log.warn("rejecting " + compositeField + " which includes index only field in " + indexOnly);
                         continue;
                     }
-
+                    
                     if (!compositeField.isEmpty() && !componentFields.isEmpty()) {
                         if (compositeToFieldMap.containsKey(compositeField))
                             compositeToFieldMap.replaceValues(compositeField, componentFields);
                         else
                             compositeToFieldMap.putAll(compositeField, componentFields);
                     }
-
+                    
                     // determine whether a custom separator is being used
                     String separator = config.get(typeName + "." + compositeField + COMPOSITE_FIELD_SEPARATOR);
                     if (separator != null)
                         compositeSeparator.put(compositeField, separator);
                     else
                         compositeSeparator.putIfAbsent(compositeField, COMPOSITE_DEFAULT_SEPARATOR);
-
+                    
                     // determine whether a custom grouping policy is being used
                     String groupingPolicy = config.get(typeName + "." + compositeField + COMPOSITE_FIELD_GROUPING_POLICY);
                     if (groupingPolicy != null)
                         grouping.put(compositeField, GroupingPolicy.valueOf(groupingPolicy));
                     else
                         grouping.putIfAbsent(compositeField, DEFAULT_GROUPING_POLICY);
-
+                    
                     // determine whether a custom missing policy is being used
                     String missingPolicy = config.get(typeName + "." + compositeField + COMPOSITE_FIELD_ALLOW_MISSING);
                     if (missingPolicy != null)
@@ -189,7 +183,7 @@ public interface CompositeIngest {
             String[] ignoreNormalization = getStrings(type, config, COMPOSITE_FIELD_IGNORE_NORMALIZATION_ON_FIELD, null);
             Set<String> emptySet = Collections.emptySet();
             ignoreNormalizationForFields = (null != ignoreNormalization) ? cleanSet(ignoreNormalization) : emptySet;
-
+            
             log.debug("setup with composites " + this.compositeToFieldMap);
         }
         
@@ -311,8 +305,8 @@ public interface CompositeIngest {
                 List<NormalizedContentInterface> tempResults = new ArrayList<>();
                 for (String compositeField : this.compositeToFieldMap.keySet()) {
                     tempResults.clear();
-                    addCompositeFields(tempResults, eventFields, compositeField, null, null, GroupingPolicy.IGNORE_GROUPS,
-                                    allowMissing.get(compositeField), this.compositeToFieldMap.get(compositeField).toArray(new String[0]), 0, new StringBuilder(), new StringBuilder(), null,
+                    addCompositeFields(tempResults, eventFields, compositeField, null, null, GroupingPolicy.IGNORE_GROUPS, allowMissing.get(compositeField),
+                                    this.compositeToFieldMap.get(compositeField).toArray(new String[0]), 0, new StringBuilder(), new StringBuilder(), null,
                                     CompositeIngest.isOverloadedCompositeField(this.compositeToFieldMap, compositeField));
                     for (NormalizedContentInterface value : tempResults) {
                         compositeFields.put(value.getIndexedFieldName(), value);
@@ -495,11 +489,11 @@ public interface CompositeIngest {
         public Multimap<String,String> getCompositeToFieldMap() {
             return compositeToFieldMap;
         }
-
+        
         public Map<String,String> getCompositeFieldSeparators() {
             return compositeSeparator;
         }
-
+        
         public void setCompositeToFieldMap(Multimap<String,String> compositeToFieldMap) {
             this.compositeToFieldMap = compositeToFieldMap;
         }
