@@ -9,6 +9,7 @@ import datawave.data.type.DiscreteIndexType;
 import datawave.data.type.NoOpType;
 import datawave.ingest.data.config.ingest.CompositeIngest;
 import datawave.query.composite.Composite;
+import datawave.query.composite.CompositeTerm;
 import datawave.query.composite.CompositeRange;
 import datawave.query.composite.CompositeUtils;
 import datawave.query.config.ShardQueryConfiguration;
@@ -20,7 +21,6 @@ import datawave.webservice.common.logging.ThreadConfigurableLogger;
 import datawave.webservice.query.exception.DatawaveErrorCode;
 import datawave.webservice.query.exception.QueryException;
 import org.apache.commons.jexl2.parser.ASTAndNode;
-import org.apache.commons.jexl2.parser.ASTCompositePredicate;
 import org.apache.commons.jexl2.parser.ASTDelayedPredicate;
 import org.apache.commons.jexl2.parser.ASTEQNode;
 import org.apache.commons.jexl2.parser.ASTERNode;
@@ -449,8 +449,8 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
         List<String> appendedExpressions = new ArrayList<>();
         
         boolean includeOldData = false;
-        if (config.getCompositeTransitionDates().containsKey(composite.compositeName)) {
-            Date transitionDate = config.getCompositeTransitionDates().get(composite.compositeName);
+        if (config.getCompositeTransitionDates().containsKey(composite.getCompositeName())) {
+            Date transitionDate = config.getCompositeTransitionDates().get(composite.getCompositeName());
             if (config.getBeginDate().compareTo(transitionDate) < 0)
                 includeOldData = true;
         }
@@ -461,10 +461,10 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
         // field which only contained the first component term. This means that we are running a query against
         // the base composite term, and thus need to expand our ranges to fully include both the composite and
         // non-composite events in our range.
-        boolean expandRangeForBaseTerm = CompositeIngest.isOverloadedCompositeField(config.getCompositeToFieldMap(), composite.compositeName)
-                        && composite.jexlNodeList.size() == 1;
+        boolean expandRangeForBaseTerm = CompositeIngest.isOverloadedCompositeField(config.getCompositeToFieldMap(), composite.getCompositeName())
+                        && composite.getJexlNodeList().size() == 1;
         
-        DiscreteIndexType baseTermDiscreteIndexType = config.getFieldToDiscreteIndexTypes().get(composite.fieldNameList.get(0));
+        DiscreteIndexType baseTermDiscreteIndexType = config.getFieldToDiscreteIndexTypes().get(composite.getFieldNameList().get(0));
         
         List<JexlNode> finalNodes = new ArrayList<>();
         for (int i = 0; i < nodeClasses.size(); i++) {
@@ -474,33 +474,33 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
             JexlNode newNode = null;
             if (nodeClass.equals(ASTGTNode.class)) {
                 if (expandRangeForBaseTerm)
-                    newNode = JexlNodeFactory.buildNode((ASTGENode) null, composite.compositeName,
+                    newNode = JexlNodeFactory.buildNode((ASTGENode) null, composite.getCompositeName(),
                                     CompositeUtils.getInclusiveLowerBound(appendedExpression, baseTermDiscreteIndexType));
                 else
-                    newNode = JexlNodeFactory.buildNode((ASTGTNode) null, composite.compositeName, appendedExpression);
+                    newNode = JexlNodeFactory.buildNode((ASTGTNode) null, composite.getCompositeName(), appendedExpression);
             } else if (nodeClass.equals(ASTGENode.class)) {
-                newNode = JexlNodeFactory.buildNode((ASTGENode) null, composite.compositeName, appendedExpression);
+                newNode = JexlNodeFactory.buildNode((ASTGENode) null, composite.getCompositeName(), appendedExpression);
             } else if (nodeClass.equals(ASTLTNode.class)) {
-                newNode = JexlNodeFactory.buildNode((ASTLTNode) null, composite.compositeName, appendedExpression);
+                newNode = JexlNodeFactory.buildNode((ASTLTNode) null, composite.getCompositeName(), appendedExpression);
             } else if (nodeClass.equals(ASTLENode.class)) {
                 if (expandRangeForBaseTerm)
-                    newNode = JexlNodeFactory.buildNode((ASTLTNode) null, composite.compositeName,
+                    newNode = JexlNodeFactory.buildNode((ASTLTNode) null, composite.getCompositeName(),
                                     CompositeUtils.getExclusiveUpperBound(appendedExpression, baseTermDiscreteIndexType));
                 else
-                    newNode = JexlNodeFactory.buildNode((ASTLENode) null, composite.compositeName, appendedExpression);
+                    newNode = JexlNodeFactory.buildNode((ASTLENode) null, composite.getCompositeName(), appendedExpression);
             } else if (nodeClass.equals(ASTERNode.class)) {
-                newNode = JexlNodeFactory.buildERNode(composite.compositeName, appendedExpression);
+                newNode = JexlNodeFactory.buildERNode(composite.getCompositeName(), appendedExpression);
             } else if (nodeClass.equals(ASTNENode.class)) {
-                newNode = JexlNodeFactory.buildNode((ASTNENode) null, composite.compositeName, appendedExpression);
+                newNode = JexlNodeFactory.buildNode((ASTNENode) null, composite.getCompositeName(), appendedExpression);
             } else if (nodeClass.equals(ASTEQNode.class)) {
                 // if this is for an overloaded composite field, which only includes the base term, convert to range
                 if (expandRangeForBaseTerm) {
-                    JexlNode lowerBound = JexlNodeFactory.buildNode((ASTGENode) null, composite.compositeName, appendedExpression);
-                    JexlNode upperBound = JexlNodeFactory.buildNode((ASTLTNode) null, composite.compositeName,
+                    JexlNode lowerBound = JexlNodeFactory.buildNode((ASTGENode) null, composite.getCompositeName(), appendedExpression);
+                    JexlNode upperBound = JexlNodeFactory.buildNode((ASTLTNode) null, composite.getCompositeName(),
                                     CompositeUtils.getExclusiveUpperBound(appendedExpression, baseTermDiscreteIndexType));
                     newNode = createUnwrappedAndNode(Arrays.asList(lowerBound, upperBound));
                 } else {
-                    newNode = JexlNodeFactory.buildEQNode(composite.compositeName, appendedExpression);
+                    newNode = JexlNodeFactory.buildEQNode(composite.getCompositeName(), appendedExpression);
                 }
             } else {
                 log.error("Invalid or unknown node type for composite map.");
@@ -512,23 +512,23 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
         JexlNode finalNode;
         if (finalNodes.size() > 1) {
             finalNode = createUnwrappedAndNode(finalNodes);
-            if (composite.jexlNodeList.size() > 1) {
-                JexlNode delayedNode = ASTDelayedPredicate.create(ASTCompositePredicate.create(createUnwrappedAndNode(composite.jexlNodeList.stream()
-                                .map(node -> JexlNodeFactory.wrap(copy(node))).collect(Collectors.toList()))));
+            if (composite.getJexlNodeList().size() > 1) {
+                JexlNode delayedNode = ASTDelayedPredicate.create(createUnwrappedAndNode(composite.getJexlNodeList().stream()
+                                .map(node -> JexlNodeFactory.wrap(copy(node))).collect(Collectors.toList())));
                 finalNode = createUnwrappedAndNode(Arrays.asList(JexlNodeFactory.wrap(finalNode), delayedNode));
             }
         } else {
             finalNode = finalNodes.get(0);
-            if (composite.jexlNodeList.size() > 1 && !(finalNode instanceof ASTEQNode)) {
-                JexlNode delayedNode = ASTDelayedPredicate.create(ASTCompositePredicate.create(createUnwrappedAndNode(composite.jexlNodeList.stream()
-                                .map(node -> JexlNodeFactory.wrap(copy(node))).collect(Collectors.toList()))));
+            if (composite.getJexlNodeList().size() > 1 && !(finalNode instanceof ASTEQNode)) {
+                JexlNode delayedNode = ASTDelayedPredicate.create(createUnwrappedAndNode(composite.getJexlNodeList().stream()
+                                .map(node -> JexlNodeFactory.wrap(copy(node))).collect(Collectors.toList())));
                 finalNode = createUnwrappedAndNode(Arrays.asList(finalNode, delayedNode));
             }
         }
         
-        if (!CompositeIngest.isOverloadedCompositeField(config.getCompositeToFieldMap(), composite.compositeName)) {
-            config.getIndexedFields().add(composite.compositeName);
-            config.getQueryFieldsDatatypes().put(composite.compositeName, new NoOpType());
+        if (!CompositeIngest.isOverloadedCompositeField(config.getCompositeToFieldMap(), composite.getCompositeName())) {
+            config.getIndexedFields().add(composite.getCompositeName());
+            config.getQueryFieldsDatatypes().put(composite.getCompositeName(), new NoOpType());
         }
         
         // save a mapping of generated composites to their component parts for later processing
@@ -594,7 +594,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
      * @return A list of composites which can be created from the given leaf and anded nodes
      */
     private List<Composite> findComposites(Multimap<String,JexlNode> leafNodes, Multimap<String,JexlNode> andedNodes, Multimap<String,JexlNode> usedLeafNodes,
-                    Multimap<String,JexlNode> usedAndedNodes) {
+                                               Multimap<String,JexlNode> usedAndedNodes) {
         
         // determine what composites can be made with these fields
         Multimap<String,String> filteredCompositeToFieldMap = getFilteredCompositeToFieldMap(leafNodes.keySet(), andedNodes.keySet());
@@ -605,11 +605,15 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
         
         // for each of the required fields, if is is an overloaded composite field,
         // we may need to create or tweak the leaf node's range, so we add a self-mapping
+        Multimap<String,String> overloadedCompositeMap = LinkedHashMultimap.create();
         for (String requiredField : leafNodes.keySet())
             if (CompositeIngest.isOverloadedCompositeField(config.getCompositeToFieldMap(), requiredField))
-                filteredCompositeToFieldMap.put(requiredField, requiredField);
-        
-        return findComposites(filteredCompositeToFieldMap, leafNodes, andedNodes, usedLeafNodes, usedAndedNodes);
+                overloadedCompositeMap.put(requiredField, requiredField);
+
+        // Add overloaded composite entries to the set of entries
+        List<Entry<String,Collection<String>>> compositeFieldMapList = new ArrayList<>(filteredCompositeToFieldMap.asMap().entrySet());
+        compositeFieldMapList.addAll(overloadedCompositeMap.asMap().entrySet());
+        return findComposites(compositeFieldMapList, leafNodes, andedNodes, usedLeafNodes, usedAndedNodes);
     }
     
     /**
@@ -646,8 +650,8 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
      * Returns a list of composites that can be generated from the given leaf nodes and anded nodes. The used leaf nodes and anded nodes will be returned via
      * their respective parameters.
      *
-     * @param filteredCompositeToFieldMap
-     *            A multimap of composite fields, and their component fields which can be created with the given leaf and anded nodes
+     * @param compositeToFieldMapSet
+     *            A set of composite fields, mapped to their component fields which can be created with the given leaf and anded nodes
      * @param leafNodes
      *            A multimap of leaf child nodes, keyed by field name, from the parent node
      * @param andedNodes
@@ -658,8 +662,8 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
      *            A multimap of used anded nodes, keyed by field name, used to create the returned composites
      * @return A list of composites which can be created from the given leaf and anded nodes
      */
-    private List<Composite> findComposites(Multimap<String,String> filteredCompositeToFieldMap, Multimap<String,JexlNode> leafNodes,
-                    Multimap<String,JexlNode> andedNodes, Multimap<String,JexlNode> usedLeafNodes, Multimap<String,JexlNode> usedAndedNodes) {
+    private List<Composite> findComposites(List<Entry<String, Collection<String>>> compositeToFieldMapSet, Multimap<String,JexlNode> leafNodes,
+                                               Multimap<String,JexlNode> andedNodes, Multimap<String,JexlNode> usedLeafNodes, Multimap<String,JexlNode> usedAndedNodes) {
         List<Composite> composites = new ArrayList<>();
         
         // once a leaf node is used to create a composite, take it out of the rotation
@@ -671,7 +675,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
         remainingAndedNodes.putAll(andedNodes);
         
         // look at each potential composite name to see if its fields are all available as keys in the childNodeMap
-        for (Map.Entry<String,Collection<String>> compositeToFieldMap : filteredCompositeToFieldMap.asMap().entrySet()) {
+        for (Map.Entry<String,Collection<String>> compositeToFieldMap : compositeToFieldMapSet) {
             String compositeField = compositeToFieldMap.getKey();
             List<String> componentFields = new ArrayList<>(compositeToFieldMap.getValue());
             
@@ -703,7 +707,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
             
             // we have what we need to make a composite
             List tempComposites = new ArrayList<>();
-            Composite baseComp = new Composite(compositeField, config.getCompositeFieldSeparators().get(compositeField));
+            Composite baseComp = new CompositeTerm(compositeField, config.getCompositeFieldSeparators().get(compositeField));
             tempComposites.add(baseComp);
             
             // keep track of the used nodes
@@ -719,7 +723,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
                 // add any required leaf nodes
                 for (JexlNode node : remainingLeafNodes.get(componentField)) {
                     JexlNode trimmedNode = getLeafNode(node);
-                    if (trimmedNode != null && isNodeValid(trimmedNode, i, componentFields.size(), isDiscreteIndexField(componentField))) {
+                    if (trimmedNode != null && isNodeValid(trimmedNode, i, componentFields.size(), isFixedLengthField(componentField))) {
                         nodes.add(trimmedNode);
                         tempUsedLeafNodes.put(componentField, node);
                     }
@@ -728,7 +732,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
                 // add any required anded nodes
                 for (JexlNode node : remainingAndedNodes.get(componentField)) {
                     JexlNode trimmedNode = getLeafNode(node);
-                    if (trimmedNode != null && isNodeValid(trimmedNode, i, componentFields.size(), isDiscreteIndexField(componentField))) {
+                    if (trimmedNode != null && isNodeValid(trimmedNode, i, componentFields.size(), isFixedLengthField(componentField))) {
                         nodes.add(trimmedNode);
                         tempUsedAndedNodes.put(componentField, node);
                     }
@@ -818,22 +822,31 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
         for (JexlNode node : nodes) {
             for (Composite composite : composites) {
                 Composite updatedComposite;
-                
-                // at this point, an 'and' node represents a range
-                if (node instanceof ASTAndNode)
-                    updatedComposite = CompositeRange.clone(composite);
-                else
-                    updatedComposite = (nodes.size() > 1) ? composite : composite.clone();
-                
+
+                // NOTE: The addition of nodes to the composite at this step may produce an invalid composite.  This will be caught when isValid is called
+                // if this is a node which would be invalid for a normal composite, create a composite range
+                if (!CompositeTerm.VALID_LEAF_NODE_CLASSES.contains(node) && CompositeRange.VALID_LEAF_NODE_CLASSES.contains(node)) {
+                    updatedComposite = new CompositeRange(composite);
+                }
+                // if there is more than 1 node to process, clone the composite
+                else if (nodes.size() > 1) {
+                    updatedComposite = composite.clone();
+                }
+                // if there is only 1 node to process, just update the composite
+                else {
+                    updatedComposite = composite;
+                }
+
                 // update the composite
-                addFieldToComposite(updatedComposite, node);
-                
+                updatedComposite.addComponent(node);
+
                 // is it valid? if not, we can't build the composite
                 if (!updatedComposite.isValid()) {
                     updatedComposites.clear();
                     break;
                 }
-                
+
+                // save the updated composite
                 updatedComposites.add(updatedComposite);
             }
             
@@ -844,73 +857,6 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
         }
         
         return updatedComposites;
-    }
-    
-    /**
-     * Add Field to Composite object
-     *
-     * @param composite
-     *            Composite nodes
-     * @param node
-     *            Jexl nodes to add to composite
-     */
-    private void addFieldToComposite(Composite composite, JexlNode node) {
-        if (composite instanceof CompositeRange)
-            addFieldToCompositeRange((CompositeRange) composite, node);
-        else {
-            Object lit = JexlASTHelper.getLiteralValue(node);
-            String identifier = JexlASTHelper.getIdentifier(node);
-            composite.jexlNodeList.add(node);
-            composite.fieldNameList.add(identifier);
-            composite.expressionList.add(lit.toString());
-        }
-    }
-    
-    /**
-     * Add field to CompositeRange object
-     *
-     * @param composite
-     *            Composite range node
-     * @param node
-     *            Jexl node to add to composite
-     */
-    private void addFieldToCompositeRange(CompositeRange composite, JexlNode node) {
-        List<JexlNode> nodes = new ArrayList<>();
-        if (node instanceof ASTAndNode) {
-            nodes.addAll(Arrays.asList(children(node)));
-        } else {
-            nodes.add(node);
-        }
-        
-        composite.jexlNodeList.add(node);
-        
-        for (int i = 0; i < nodes.size(); i++) {
-            JexlNode theNode = nodes.get(i);
-            Object lit = JexlASTHelper.getLiteralValue(theNode);
-            String identifier = JexlASTHelper.getIdentifier(theNode);
-            if (i == 0)
-                composite.fieldNameList.add(identifier);
-            if (theNode instanceof ASTGENode || theNode instanceof ASTGTNode) {
-                composite.jexlNodeListLowerBound.add(theNode);
-                composite.expressionListLowerBound.add(lit.toString());
-                if (nodes.size() < 2) {
-                    composite.jexlNodeListUpperBound.add(null);
-                    composite.expressionListUpperBound.add(null);
-                }
-            } else if (theNode instanceof ASTLENode || theNode instanceof ASTLTNode) {
-                composite.jexlNodeListUpperBound.add(theNode);
-                composite.expressionListUpperBound.add(lit.toString());
-                if (nodes.size() < 2) {
-                    composite.jexlNodeListLowerBound.add(null);
-                    composite.expressionListLowerBound.add(null);
-                }
-            } else if (theNode instanceof ASTEQNode) {
-                composite.jexlNodeListLowerBound.add(theNode);
-                composite.jexlNodeListUpperBound.add(theNode);
-                composite.expressionListLowerBound.add(lit.toString());
-                composite.expressionListUpperBound.add(lit.toString());
-            }
-        }
     }
     
     /**
@@ -1007,7 +953,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
             return getLeafNode((ASTAndNode) node);
         }
         
-        if (CompositeUtils.VALID_LEAF_NODE_CLASSES.contains(node.getClass())) {
+        if (CompositeUtils.ALL_VALID_LEAF_NODE_CLASSES.contains(node.getClass())) {
             return node;
         }
         
@@ -1050,7 +996,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
                 JexlNode kid = node.jjtGetChild(0);
                 if (kid instanceof ASTAndNode) {
                     return getLeafNode((ASTAndNode) kid);
-                } else if (CompositeUtils.VALID_LEAF_NODE_CLASSES.contains(kid.getClass())) {
+                } else if (CompositeUtils.ALL_VALID_LEAF_NODE_CLASSES.contains(kid.getClass())) {
                     return kid;
                 } else {
                     return getLeafNode(kid);
@@ -1164,8 +1110,8 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
      * @param fieldName
      * @return true if fieldName is a fixed length field
      */
-    private boolean isDiscreteIndexField(String fieldName) {
-        return config.getFieldToDiscreteIndexTypes().containsKey(fieldName);
+    private boolean isFixedLengthField(String fieldName) {
+        return config.getFieldToDiscreteIndexTypes().containsKey(fieldName) && config.getFieldToDiscreteIndexTypes().get(fieldName).producesFixedLengthRanges();
     }
     
     /**

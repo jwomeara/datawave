@@ -36,7 +36,7 @@ public interface CompositeIngest {
     
     String COMPOSITE_FIELD_MAP = CompositeFieldNormalizer.COMPOSITE_FIELD_MAP;
     String COMPOSITE_FIELD_SEPARATOR = CompositeFieldNormalizer.COMPOSITE_FIELD_SEPARATOR;
-    String COMPOSITE_DEFAULT_SEPARATOR = CompositeFieldNormalizer.COMPOSITE_DEFAULT_SEPARATOR;
+    String DEFAULT_SEPARATOR = CompositeFieldNormalizer.DEFAULT_SEPARATOR;
     String COMPOSITE_FIELD_ALLOW_MISSING = CompositeFieldNormalizer.COMPOSITE_FIELD_ALLOW_MISSING;
     String COMPOSITE_FIELD_GROUPING_POLICY = CompositeFieldNormalizer.COMPOSITE_FIELD_GROUPING_POLICY;
     
@@ -77,7 +77,7 @@ public interface CompositeIngest {
         private static final long serialVersionUID = -3892470989028896718L;
         private static final Logger log = Logger.getLogger(CompositeFieldNormalizer.class);
         
-        private static final String COMPOSITE_DEFAULT_SEPARATOR = new String(Character.toChars(Character.MAX_CODE_POINT));
+        private static final String DEFAULT_SEPARATOR = new String(Character.toChars(Character.MAX_CODE_POINT));
         
         /**
          * Parameter for specifying the component fields that make up each composite field. The value of this parameter is a comma separated list of component
@@ -162,7 +162,7 @@ public interface CompositeIngest {
                     if (separator != null)
                         compositeSeparator.put(compositeField, separator);
                     else
-                        compositeSeparator.putIfAbsent(compositeField, COMPOSITE_DEFAULT_SEPARATOR);
+                        compositeSeparator.putIfAbsent(compositeField, DEFAULT_SEPARATOR);
                     
                     // determine whether a custom grouping policy is being used
                     String groupingPolicy = config.get(typeName + "." + compositeField + COMPOSITE_FIELD_GROUPING_POLICY);

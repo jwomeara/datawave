@@ -1,7 +1,11 @@
 package datawave.query.composite;
 
+import com.google.common.collect.Sets;
 import datawave.data.type.DiscreteIndexType;
+import datawave.query.jexl.JexlASTHelper;
+import datawave.query.jexl.JexlNodeFactory;
 import org.apache.commons.jexl2.parser.ASTAndNode;
+import org.apache.commons.jexl2.parser.ASTEQNode;
 import org.apache.commons.jexl2.parser.ASTERNode;
 import org.apache.commons.jexl2.parser.ASTGENode;
 import org.apache.commons.jexl2.parser.ASTGTNode;
@@ -11,61 +15,79 @@ import org.apache.commons.jexl2.parser.ASTNENode;
 import org.apache.commons.jexl2.parser.JexlNode;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+
+import static org.apache.commons.jexl2.parser.JexlNodes.children;
 
 /**
- * A composite range is a special type of composite which is used to create a single bounded or unbounded range from multiple terms. Composite ranges can only
+ * A composite range is a special type of composite which is used to create a single bounded range from multiple terms. CompositeTerm ranges can only
  * be created when the base composite term produces ranges whose terms, and underlying data within that range are of fixed length.
  *
  */
 public class CompositeRange extends Composite {
-    
+
+    public static final Set<Class<?>> INVALID_LEAF_NODE_CLASSES = Sets.newHashSet(ASTNENode.class, ASTERNode.class);
+    public static final Set<Class<?>> VALID_LEAF_NODE_CLASSES = Sets.newHashSet(ASTAndNode.class, ASTEQNode.class, ASTGTNode.class, ASTGENode.class, ASTLTNode.class, ASTLENode.class);
+
     public final List<JexlNode> jexlNodeListLowerBound = new ArrayList<>();
     public final List<JexlNode> jexlNodeListUpperBound = new ArrayList<>();
     public final List<String> expressionListLowerBound = new ArrayList<>();
     public final List<String> expressionListUpperBound = new ArrayList<>();
-    
+
     public CompositeRange(String compositeName, String separator) {
         super(compositeName, separator);
     }
-    
-    public static CompositeRange clone(Composite other) {
-        final CompositeRange clone = new CompositeRange(other.compositeName, other.separator);
-        clone.fieldNameList.addAll(other.fieldNameList);
-        
-        for (JexlNode jexlNode : other.jexlNodeList) {
-            clone.jexlNodeList.add(jexlNode);
-            if (!(other instanceof CompositeRange)) {
-                clone.jexlNodeListLowerBound.add(jexlNode);
-                clone.jexlNodeListUpperBound.add(jexlNode);
-            }
-        }
-        
-        for (String expression : other.expressionList) {
-            clone.expressionList.add(expression);
-            if (!(other instanceof CompositeRange)) {
-                clone.expressionListLowerBound.add(expression);
-                clone.expressionListUpperBound.add(expression);
-            }
-        }
-        
-        if (other instanceof CompositeRange) {
-            CompositeRange otherRange = (CompositeRange) other;
-            clone.jexlNodeListLowerBound.addAll(otherRange.jexlNodeListLowerBound);
-            clone.expressionListLowerBound.addAll(otherRange.expressionListLowerBound);
-            clone.jexlNodeListUpperBound.addAll(otherRange.jexlNodeListUpperBound);
-            clone.expressionListUpperBound.addAll(otherRange.expressionListUpperBound);
-        }
-        
-        return clone;
+
+    public CompositeRange(Composite other) {
+        super(other);
     }
-    
+
     @Override
-    public CompositeRange clone() {
-        return clone(this);
+    public Composite clone() {
+        return new CompositeRange(this);
     }
-    
+
+    @Override
+    public void addComponent(JexlNode node) {
+        List<JexlNode> nodes = new ArrayList<>();
+        if (node instanceof ASTAndNode) {
+            nodes.addAll(Arrays.asList(children(node)));
+        } else if (node instanceof ASTEQNode) {
+            String fieldName = JexlASTHelper.getIdentifier(node);
+            String expression = JexlASTHelper.getLiteralValue(node).toString();
+            nodes.add(JexlNodeFactory.buildNode((ASTGENode) null, fieldName, expression));
+            nodes.add(JexlNodeFactory.buildNode((ASTLENode) null, fieldName, expression));
+        } else {
+            nodes.add(node);
+        }
+
+        jexlNodeList.add(node);
+        fieldNameList.add(JexlASTHelper.getIdentifier(nodes.get(0)));
+
+        for (JexlNode boundNode : nodes) {
+            String expression = JexlASTHelper.getLiteralValue(boundNode).toString();
+            if (boundNode instanceof ASTGENode || boundNode instanceof ASTGTNode) {
+                jexlNodeListLowerBound.add(boundNode);
+                expressionListLowerBound.add(expression);
+                if (nodes.size() < 2) {
+                    jexlNodeListUpperBound.add(null);
+                    expressionListUpperBound.add(null);
+                }
+            } else if (boundNode instanceof ASTLENode || boundNode instanceof ASTLTNode) {
+                jexlNodeListUpperBound.add(boundNode);
+                expressionListUpperBound.add(expression);
+                if (nodes.size() < 2) {
+                    jexlNodeListLowerBound.add(null);
+                    expressionListLowerBound.add(null);
+                }
+            }
+        }
+    }
+
     @Override
     public String toString() {
         return "CompositeRange [compositeName=" + compositeName + ", fieldNameList=" + fieldNameList + ", jexlNodeList=" + jexlNodeList + ", expressionList="
@@ -110,21 +132,23 @@ public class CompositeRange extends Composite {
     }
     
     private Class<? extends JexlNode> getLowerBoundNodeClass() {
-        boolean isUnbounded = isLowerUnbounded();
-        Class<? extends JexlNode> nodeClass = getNodeClass(jexlNodeListLowerBound);
-        if (isUnbounded && nodeClass.equals(ASTGTNode.class))
+        // get the last non-null jexl node class
+        Class<? extends JexlNode> nodeClass = jexlNodeListLowerBound.stream().filter(Objects::nonNull).map(JexlNode::getClass).reduce((x, y) -> y).orElse(null);
+        // if we don't have an expression for each component field, and this is a GT or EQ node, return GE.  Otherwise, return whatever the class of the last node is
+        if (expressionListLowerBound.get(expressionListLowerBound.size()-1) == null && (nodeClass.equals(ASTGTNode.class) || nodeClass.equals(ASTEQNode.class)))
             return ASTGENode.class;
         return nodeClass;
     }
     
     private Class<? extends JexlNode> getUpperBoundNodeClass() {
         boolean isUnbounded = isUpperUnbounded();
-        Class<? extends JexlNode> nodeClass = getNodeClass(jexlNodeListUpperBound);
+        // get the last non-null jexl node class
+        Class<? extends JexlNode> nodeClass = jexlNodeListUpperBound.stream().filter(Objects::nonNull).map(JexlNode::getClass).reduce((x, y) -> y).orElse(null);
         if (isUnbounded && nodeClass.equals(ASTLENode.class))
             return ASTLTNode.class;
         return nodeClass;
     }
-    
+
     // used to handle special case where our index is overloaded and runs against legacy (i.e. non-composite) data
     private String getFullyInclusiveLowerBoundExpression(Map<String,DiscreteIndexType<?>> discreteIndexTypeMap) {
         String expression;
@@ -136,32 +160,31 @@ public class CompositeRange extends Composite {
     }
     
     private String getLowerBoundExpression(Map<String,DiscreteIndexType<?>> discreteIndexTypeMap) {
-        boolean isUnbounded = isLowerUnbounded();
         StringBuilder buf = new StringBuilder();
         boolean lastNode = false;
         for (int i = 0; i < expressionListLowerBound.size(); i++) {
             String expression = expressionListLowerBound.get(i);
             JexlNode node = jexlNodeListLowerBound.get(i);
-            
-            // we need to turn > into >=
-            // if the next expression is null, then this is our last
-            // node, so we don't need any special handling
-            String nextExpression = ((i + 1) < expressionListLowerBound.size()) ? expressionListLowerBound.get(i + 1) : null;
-            if (node instanceof ASTGTNode && i != (expressionListLowerBound.size() - 1) && nextExpression != null) {
-                String inclusiveLowerBound = CompositeUtils.getInclusiveLowerBound(expression, discreteIndexTypeMap.get(fieldNameList.get(i)));
-                
-                // if the length of the term changed, use the original exclusive
-                // bound, and signal that this is the last expression
-                if (inclusiveLowerBound.length() != expression.length())
-                    lastNode = true;
-                else
-                    expression = inclusiveLowerBound;
-            } else if (isUnbounded && node instanceof ASTGTNode && nextExpression == null) {
-                expression = CompositeUtils.getInclusiveLowerBound(expression, discreteIndexTypeMap.get(fieldNameList.get(i)));
-                lastNode = true;
-            }
-            
-            if (expression != null) {
+
+            if (expression != null && node != null) {
+                // Special handling for GT nodes
+                // only the LAST component field can be >, all others must be >=
+                if (node instanceof ASTGTNode) {
+                    // if this is not the LAST component field, convert > to >=
+                    if (i != (fieldNameList.size() - 1)) {
+                        String inclusiveLowerBound = CompositeUtils.getInclusiveLowerBound(expression, discreteIndexTypeMap.get(fieldNameList.get(i)));
+
+                        // if the length of the term changed, use the original exclusive
+                        // bound, and signal that this is the last expression
+                        if (inclusiveLowerBound.length() != expression.length())
+                            lastNode = true;
+                        else
+                            expression = inclusiveLowerBound;
+                    }
+                }
+
+                // NOTE: the lower bound of an == node is always treated as >= the original expression
+
                 if (i > 0)
                     buf.append(separator);
                 
@@ -217,16 +240,70 @@ public class CompositeRange extends Composite {
         return buf.toString();
     }
     
-    // this composite is invalid if:
-    // - it contains a 'regex' node in any position
-    // - it contains a 'not equals' node in any position
+    // this composite range is invalid if
+    // - it doesn't contain any nodes, or they are all null
+    // - it contains an invalid leaf node, or doesn't contain a valid leaf node
+    // - it contains a regex node
+    // - it represents an unbounded range (i.e. contains all GT/GE nodes, or all LT/LE nodes)
+    // - there are gaps in the upper or lower bound
     @Override
     public boolean isValid() {
-        if (!super.isValid())
+        // if we have no nodes, or they are all null
+        if (jexlNodeList.isEmpty() || jexlNodeList.stream().allMatch(Objects::isNull))
             return false;
-        for (JexlNode node : jexlNodeList)
+
+        boolean allGTOrGENodes = true;
+        boolean allLTOrLENodes = true;
+        for (JexlNode node : jexlNodeList) {
+            Class nodeClass = node.getClass();
+
+            // if this is an invalid leaf node, or not a valid leaf node, we're done
+            if (INVALID_LEAF_NODE_CLASSES.contains(nodeClass) || !VALID_LEAF_NODE_CLASSES.contains(nodeClass))
+                return false;
+
+            // regex and not equals nodes are not allowed in a bounded range
             if (node instanceof ASTERNode || node instanceof ASTNENode)
                 return false;
+
+            // keeping track of whether all the nodes are GT or GE
+            if (!(node instanceof ASTGTNode || node instanceof ASTGENode))
+                allGTOrGENodes = false;
+
+            // keeping track of whether all the nodes are LT or LE
+            if (!(node instanceof ASTLTNode || node instanceof ASTLENode))
+                allLTOrLENodes = false;
+        }
+
+        // there's no value in creating composites for unbounded ranges
+        if (allGTOrGENodes || allLTOrLENodes)
+            return false;
+
+        // look for gaps in the lower bound.  trailing nulls are ok, but nulls followed by non-nulls are not
+        boolean hasNullNode = false;
+        for (JexlNode lowerNode : jexlNodeListLowerBound) {
+            if (hasNullNode && lowerNode != null)
+                return false;
+            hasNullNode = hasNullNode || lowerNode == null;
+        }
+
+        // if hasNullNode is true, that means all the nodes were null.
+        // we don't want unbounded ranges, so this is invalid
+        if (hasNullNode)
+            return false;
+
+        // look for gaps in the upper bound.  trailing nulls are ok, but nulls followed by non-nulls are not
+        hasNullNode = false;
+        for (JexlNode upperNode : jexlNodeListUpperBound) {
+            if (hasNullNode && upperNode != null)
+                return false;
+            hasNullNode = hasNullNode || upperNode == null;
+        }
+
+        // if hasNullNode is true, that means all the nodes were null.
+        // we don't want unbounded ranges, so this is invalid
+       if (hasNullNode)
+            return false;
+
         return true;
     }
     

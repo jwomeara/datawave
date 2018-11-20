@@ -22,7 +22,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Composite metadata is used when determining how to treat composite terms and ranges when they are encountered in the QueryIterator. This metadata represents
+ * CompositeTerm metadata is used when determining how to treat composite terms and ranges when they are encountered in the QueryIterator. This metadata represents
  * the mapping of composite fields to their component fields, separated by ingest type. This class is also serializable using the protostuff api.
  *
  */

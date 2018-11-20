@@ -4,6 +4,8 @@ import com.google.common.collect.LinkedListMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.Sets;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.io.WKTReader;
 import datawave.data.normalizer.NoOpNormalizer;
 import datawave.data.normalizer.Normalizer;
 import datawave.data.type.BaseType;
@@ -23,9 +25,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -65,10 +65,10 @@ public class ExpandCompositeTermsTest {
         compositeToFieldMap = Multimaps.unmodifiableMultimap(multimap);
         
         Map<String,String> sepMap = new HashMap<>();
-        sepMap.put("MAKE_COLOR", CompositeIngest.COMPOSITE_DEFAULT_SEPARATOR);
-        sepMap.put("COLOR_WHEELS", CompositeIngest.COMPOSITE_DEFAULT_SEPARATOR);
-        sepMap.put("TEAM_NAME_POINTS", CompositeIngest.COMPOSITE_DEFAULT_SEPARATOR);
-        sepMap.put("TEAM_POINTS", CompositeIngest.COMPOSITE_DEFAULT_SEPARATOR);
+        sepMap.put("MAKE_COLOR", CompositeIngest.DEFAULT_SEPARATOR);
+        sepMap.put("COLOR_WHEELS", CompositeIngest.DEFAULT_SEPARATOR);
+        sepMap.put("TEAM_NAME_POINTS", CompositeIngest.DEFAULT_SEPARATOR);
+        sepMap.put("TEAM_POINTS", CompositeIngest.DEFAULT_SEPARATOR);
         compositeFieldSeparators = Collections.unmodifiableMap(sepMap);
     }
     
@@ -211,7 +211,7 @@ public class ExpandCompositeTermsTest {
         conf.setCompositeToFieldMap(compositeToFieldMap);
         
         Map<String,String> compositeToSeparatorMap = new HashMap<>();
-        compositeToSeparatorMap.put("GEO", CompositeIngest.COMPOSITE_DEFAULT_SEPARATOR);
+        compositeToSeparatorMap.put("GEO", CompositeIngest.DEFAULT_SEPARATOR);
         conf.setCompositeFieldSeparators(compositeToSeparatorMap);
         
         Set<String> indexedFields = new HashSet<>();
@@ -237,7 +237,7 @@ public class ExpandCompositeTermsTest {
         conf.setCompositeToFieldMap(compositeToFieldMap);
         
         Map<String,String> compositeToSeparatorMap = new HashMap<>();
-        compositeToSeparatorMap.put("GEO", CompositeIngest.COMPOSITE_DEFAULT_SEPARATOR);
+        compositeToSeparatorMap.put("GEO", CompositeIngest.DEFAULT_SEPARATOR);
         conf.setCompositeFieldSeparators(compositeToSeparatorMap);
         
         Set<String> indexedFields = new HashSet<>();
@@ -262,7 +262,7 @@ public class ExpandCompositeTermsTest {
         conf.setCompositeToFieldMap(compositeToFieldMap);
         
         Map<String,String> compositeToSeparatorMap = new HashMap<>();
-        compositeToSeparatorMap.put("GEO", CompositeIngest.COMPOSITE_DEFAULT_SEPARATOR);
+        compositeToSeparatorMap.put("GEO", CompositeIngest.DEFAULT_SEPARATOR);
         conf.setCompositeFieldSeparators(compositeToSeparatorMap);
         
         Set<String> indexedFields = new HashSet<>();
@@ -329,7 +329,7 @@ public class ExpandCompositeTermsTest {
         conf.setCompositeToFieldMap(compositeToFieldMap);
         
         Map<String,String> compositeToSeparatorMap = new HashMap<>();
-        compositeToSeparatorMap.put("GEO", CompositeIngest.COMPOSITE_DEFAULT_SEPARATOR);
+        compositeToSeparatorMap.put("GEO", CompositeIngest.DEFAULT_SEPARATOR);
         conf.setCompositeFieldSeparators(compositeToSeparatorMap);
         
         Set<String> indexedFields = new HashSet<>();
@@ -344,7 +344,7 @@ public class ExpandCompositeTermsTest {
         runTestQuery(query, expected, indexedFields, conf);
     }
     
-    // Composite Range testing with an overloaded composite field
+    // CompositeTerm Range testing with an overloaded composite field
     @Test
     public void test18a() throws Exception {
         ShardQueryConfiguration conf = new ShardQueryConfiguration();
@@ -355,7 +355,7 @@ public class ExpandCompositeTermsTest {
         conf.setCompositeToFieldMap(compositeToFieldMap);
         
         Map<String,String> compositeToSeparatorMap = new HashMap<>();
-        compositeToSeparatorMap.put("GEO", CompositeIngest.COMPOSITE_DEFAULT_SEPARATOR);
+        compositeToSeparatorMap.put("GEO", CompositeIngest.DEFAULT_SEPARATOR);
         conf.setCompositeFieldSeparators(compositeToSeparatorMap);
         
         Set<String> indexedFields = new HashSet<>();
@@ -542,7 +542,7 @@ public class ExpandCompositeTermsTest {
         runTestQuery(query, expected, indexedFields, conf);
     }
     
-    // Composite Range testing with an overloaded composite field against legacy data
+    // CompositeTerm Range testing with an overloaded composite field against legacy data
     @Test
     public void test18b() throws Exception {
         ShardQueryConfiguration conf = new ShardQueryConfiguration();
@@ -556,7 +556,7 @@ public class ExpandCompositeTermsTest {
         conf.setCompositeToFieldMap(compositeToFieldMap);
         
         Map<String,String> compositeToSeparatorMap = new HashMap<>();
-        compositeToSeparatorMap.put("GEO", CompositeIngest.COMPOSITE_DEFAULT_SEPARATOR);
+        compositeToSeparatorMap.put("GEO", CompositeIngest.DEFAULT_SEPARATOR);
         conf.setCompositeFieldSeparators(compositeToSeparatorMap);
         
         Set<String> indexedFields = new HashSet<>();
@@ -747,7 +747,7 @@ public class ExpandCompositeTermsTest {
         runTestQuery(query, expected, indexedFields, conf);
     }
     
-    // Composite Range testing with a normal composite field
+    // CompositeTerm Range testing with a normal composite field
     @Test
     public void test19() throws Exception {
         ShardQueryConfiguration conf = new ShardQueryConfiguration();
@@ -759,7 +759,7 @@ public class ExpandCompositeTermsTest {
         conf.setCompositeToFieldMap(compositeToFieldMap);
         
         Map<String,String> compositeToSeparatorMap = new HashMap<>();
-        compositeToSeparatorMap.put("GEO_WKT", CompositeIngest.COMPOSITE_DEFAULT_SEPARATOR);
+        compositeToSeparatorMap.put("GEO_WKT", CompositeIngest.DEFAULT_SEPARATOR);
         conf.setCompositeFieldSeparators(compositeToSeparatorMap);
         
         Set<String> indexedFields = new HashSet<>();
@@ -957,7 +957,7 @@ public class ExpandCompositeTermsTest {
         conf.setCompositeToFieldMap(compositeToFieldMap);
         
         Map<String,String> compositeToSeparatorMap = new HashMap<>();
-        compositeToSeparatorMap.put("GEO", CompositeIngest.COMPOSITE_DEFAULT_SEPARATOR);
+        compositeToSeparatorMap.put("GEO", CompositeIngest.DEFAULT_SEPARATOR);
         conf.setCompositeFieldSeparators(compositeToSeparatorMap);
         
         Set<String> indexedFields = new HashSet<>();
@@ -982,7 +982,7 @@ public class ExpandCompositeTermsTest {
         conf.setCompositeToFieldMap(compositeToFieldMap);
         
         Map<String,String> compositeToSeparatorMap = new HashMap<>();
-        compositeToSeparatorMap.put("GEO", CompositeIngest.COMPOSITE_DEFAULT_SEPARATOR);
+        compositeToSeparatorMap.put("GEO", CompositeIngest.DEFAULT_SEPARATOR);
         conf.setCompositeFieldSeparators(compositeToSeparatorMap);
         
         Set<String> indexedFields = new HashSet<>();
@@ -1007,7 +1007,7 @@ public class ExpandCompositeTermsTest {
         conf.setCompositeToFieldMap(compositeToFieldMap);
         
         Map<String,String> compositeToSeparatorMap = new HashMap<>();
-        compositeToSeparatorMap.put("GEO", CompositeIngest.COMPOSITE_DEFAULT_SEPARATOR);
+        compositeToSeparatorMap.put("GEO", CompositeIngest.DEFAULT_SEPARATOR);
         conf.setCompositeFieldSeparators(compositeToSeparatorMap);
         
         Set<String> indexedFields = new HashSet<>();
@@ -1030,7 +1030,7 @@ public class ExpandCompositeTermsTest {
         conf.setCompositeToFieldMap(compositeToFieldMap);
         
         Map<String,String> compositeToSeparatorMap = new HashMap<>();
-        compositeToSeparatorMap.put("GEO_WKT", CompositeIngest.COMPOSITE_DEFAULT_SEPARATOR);
+        compositeToSeparatorMap.put("GEO_WKT", CompositeIngest.DEFAULT_SEPARATOR);
         conf.setCompositeFieldSeparators(compositeToSeparatorMap);
         
         Set<String> indexedFields = new HashSet<>();
@@ -1076,7 +1076,7 @@ public class ExpandCompositeTermsTest {
         conf.setCompositeToFieldMap(compositeToFieldMap);
         
         Map<String,String> compositeToSeparatorMap = new HashMap<>();
-        compositeToSeparatorMap.put("GEO_WKT", CompositeIngest.COMPOSITE_DEFAULT_SEPARATOR);
+        compositeToSeparatorMap.put("GEO_WKT", CompositeIngest.DEFAULT_SEPARATOR);
         conf.setCompositeFieldSeparators(compositeToSeparatorMap);
         
         Set<String> indexedFields = new HashSet<>();
@@ -1099,7 +1099,7 @@ public class ExpandCompositeTermsTest {
         conf.setCompositeToFieldMap(compositeToFieldMap);
         
         Map<String,String> compositeToSeparatorMap = new HashMap<>();
-        compositeToSeparatorMap.put("GEO", CompositeIngest.COMPOSITE_DEFAULT_SEPARATOR);
+        compositeToSeparatorMap.put("GEO", CompositeIngest.DEFAULT_SEPARATOR);
         conf.setCompositeFieldSeparators(compositeToSeparatorMap);
         
         Set<String> indexedFields = new HashSet<>();
@@ -1137,7 +1137,7 @@ public class ExpandCompositeTermsTest {
         conf.setCompositeToFieldMap(compositeToFieldMap);
         
         Map<String,String> compositeToSeparatorMap = new HashMap<>();
-        compositeToSeparatorMap.put("GEO", CompositeIngest.COMPOSITE_DEFAULT_SEPARATOR);
+        compositeToSeparatorMap.put("GEO", CompositeIngest.DEFAULT_SEPARATOR);
         conf.setCompositeFieldSeparators(compositeToSeparatorMap);
         
         Set<String> indexedFields = new HashSet<>();
@@ -1164,7 +1164,7 @@ public class ExpandCompositeTermsTest {
         conf.setCompositeToFieldMap(compositeToFieldMap);
         
         Map<String,String> compositeToSeparatorMap = new HashMap<>();
-        compositeToSeparatorMap.put("GEO", CompositeIngest.COMPOSITE_DEFAULT_SEPARATOR);
+        compositeToSeparatorMap.put("GEO", CompositeIngest.DEFAULT_SEPARATOR);
         conf.setCompositeFieldSeparators(compositeToSeparatorMap);
         
         Set<String> indexedFields = new HashSet<>();
@@ -1198,7 +1198,7 @@ public class ExpandCompositeTermsTest {
         conf.setCompositeToFieldMap(compositeToFieldMap);
         
         Map<String,String> compositeToSeparatorMap = new HashMap<>();
-        compositeToSeparatorMap.put("GEO", CompositeIngest.COMPOSITE_DEFAULT_SEPARATOR);
+        compositeToSeparatorMap.put("GEO", CompositeIngest.DEFAULT_SEPARATOR);
         conf.setCompositeFieldSeparators(compositeToSeparatorMap);
         
         Set<String> indexedFields = new HashSet<>();

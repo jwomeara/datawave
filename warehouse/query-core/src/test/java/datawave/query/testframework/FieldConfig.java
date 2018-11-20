@@ -11,7 +11,7 @@ import java.util.Set;
  * NOTE: When designating fields as multivalue, the field must also designated as a multivalue field for the datatype to extract the correct expected results.
  * </p>
  * <p>
- * Known Errors: Composite fields that are designated as multivalue and contain multiple values will only work correctly for the first value of the sorted
+ * Known Errors: CompositeTerm fields that are designated as multivalue and contain multiple values will only work correctly for the first value of the sorted
  * entries. Fields that are designated as multivalue but only contain a single entry will work correctly.
  * </p>>
  */

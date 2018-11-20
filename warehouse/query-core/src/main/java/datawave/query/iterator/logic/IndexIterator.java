@@ -360,9 +360,9 @@ public class IndexIterator implements SortedKeyValueIterator<Key,Value>, Documen
                 }
                 
                 if (componentFields != null && separator != null && !compositeSeeker.isKeyInRange(top, scanRange, separator)) {
-                    Range newRange = compositeSeeker.nextSeekRange(new ArrayList<>(componentFields), top, scanRange, separator);
-                    if (newRange != scanRange) {
-                        source.seek(newRange, seekColumnFamilies, includeColumnFamilies);
+                    Key newStartKey = compositeSeeker.nextSeekKey(new ArrayList<>(componentFields), top, scanRange, separator);
+                    if (newStartKey != scanRange.getStartKey()) {
+                        source.seek(new Range(newStartKey, scanRange.isStartKeyInclusive(), scanRange.getEndKey(), scanRange.isEndKeyInclusive()), seekColumnFamilies, includeColumnFamilies);
                         source.next();
                         continue;
                     }

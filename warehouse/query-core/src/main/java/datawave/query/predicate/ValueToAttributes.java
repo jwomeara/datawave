@@ -36,7 +36,7 @@ import java.util.Map.Entry;
 
 /**
  * 
- * Unused. It was written to put Composite Fields into fetched documents. It is preserved in case we change the way composite fields are managed
+ * Unused. It was written to put CompositeTerm Fields into fetched documents. It is preserved in case we change the way composite fields are managed
  * 
  * 
  */

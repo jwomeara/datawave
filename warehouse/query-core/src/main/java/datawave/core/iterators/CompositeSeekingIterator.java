@@ -86,9 +86,9 @@ public class CompositeSeekingIterator extends WrappingIterator {
     public void next() throws IOException {
         super.next();
         while (hasTop() && !compositeSeeker.isKeyInRange(getTopKey(), currentRange)) {
-            Range newRange = compositeSeeker.nextSeekRange(getTopKey(), currentRange);
-            if (newRange != currentRange) {
-                currentRange = newRange;
+            Key newStartKey = compositeSeeker.nextSeekKey(getTopKey(), currentRange);
+            if (newStartKey != currentRange.getStartKey()) {
+                currentRange = new Range(newStartKey, currentRange.isStartKeyInclusive(), currentRange.getEndKey(), currentRange.isEndKeyInclusive());
                 super.seek(currentRange, columnFamilies, inclusive);
                 super.next();
             }

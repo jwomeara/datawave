@@ -189,7 +189,7 @@
         <value>datawave.data.type.GeometryType</value>
     </property>
 
-    <!-- Normalization for Composite Fields -->
+    <!-- Normalization for CompositeTerm Fields -->
     <property>
         <name>nyctlc.PICKUP_LOCATION_DATETIME.data.field.type.class</name>
         <value>datawave.data.type.NoOpType</value>
@@ -215,7 +215,7 @@
         <value>datawave.data.type.NoOpType</value>
     </property>
 
-    <!-- Composite Field Configuration -->
+    <!-- CompositeTerm Field Configuration -->
     <property>
         <name>nyctlc.PICKUP_LOCATION_DATETIME.data.composite.field.map</name>
         <value>PICKUP_LOCATION,LPEP_PICKUP_DATETIME</value>

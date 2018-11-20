@@ -4,19 +4,12 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 import datawave.data.type.DiscreteIndexType;
 import datawave.data.type.Type;
-import datawave.query.Constants;
-import org.apache.commons.jexl2.parser.ASTAndNode;
-import org.apache.commons.jexl2.parser.ASTEQNode;
-import org.apache.commons.jexl2.parser.ASTERNode;
 import org.apache.commons.jexl2.parser.ASTGENode;
 import org.apache.commons.jexl2.parser.ASTGTNode;
 import org.apache.commons.jexl2.parser.ASTLENode;
 import org.apache.commons.jexl2.parser.ASTLTNode;
-import org.apache.commons.jexl2.parser.ASTNENode;
-import org.apache.commons.jexl2.parser.ASTNRNode;
 import org.apache.log4j.Logger;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -28,9 +21,8 @@ import java.util.Set;
 public class CompositeUtils {
     private static final Logger log = Logger.getLogger(CompositeUtils.class);
     
-    public static final Set<Class<?>> INVALID_LEAF_NODE_CLASSES = Sets.<Class<?>> newHashSet(ASTNENode.class);
-    public static final Set<Class<?>> VALID_LEAF_NODE_CLASSES = Sets.<Class<?>> newHashSet(ASTEQNode.class, ASTERNode.class, ASTGTNode.class, ASTGENode.class,
-                    ASTLTNode.class, ASTLENode.class, ASTAndNode.class);
+    public static final Set<Class<?>> ALL_VALID_LEAF_NODE_CLASSES = Sets.union(CompositeTerm.VALID_LEAF_NODE_CLASSES, CompositeRange.VALID_LEAF_NODE_CLASSES);
+    public static final Set<Class<?>> UNBOUNDED_RANGE_NODE_CLASSES = Sets.newHashSet(ASTGTNode.class, ASTGENode.class, ASTLTNode.class, ASTLENode.class);
     
     public static Map<String,DiscreteIndexType<?>> getFieldToDiscreteIndexTypeMap(Multimap<String,?> fieldDatatypes) {
         Map<String,DiscreteIndexType<?>> fieldToDiscreteIndexTypeMap = new HashMap<>();

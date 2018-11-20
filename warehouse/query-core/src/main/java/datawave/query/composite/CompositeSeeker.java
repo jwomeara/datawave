@@ -23,7 +23,7 @@ public abstract class CompositeSeeker {
     
     abstract public boolean isKeyInRange(Key currentKey, Range currentRange, String separator);
     
-    abstract public Range nextSeekRange(List<String> fields, Key currentKey, Range currentRange, String separator);
+    abstract public Key nextSeekKey(List<String> fields, Key currentKey, Range currentRange, String separator);
     
     boolean isInRange(List<String> values, List<String> startValues, boolean isStartInclusive, List<String> endValues, boolean isEndInclusive) {
         for (int i = values.size(); i >= 0; i--) {
@@ -205,12 +205,12 @@ public abstract class CompositeSeeker {
             return isInRange(values, startValues, currentRange.isStartKeyInclusive(), endValues, currentRange.isEndKeyInclusive());
         }
         
-        public Range nextSeekRange(Key currentKey, Range currentRange) {
-            return nextSeekRange(fields, currentKey, currentRange, separator);
+        public Key nextSeekKey(Key currentKey, Range currentRange) {
+            return nextSeekKey(fields, currentKey, currentRange, separator);
         }
         
         @Override
-        public Range nextSeekRange(List<String> fields, Key currentKey, Range currentRange, String separator) {
+        public Key nextSeekKey(List<String> fields, Key currentKey, Range currentRange, String separator) {
             Key startKey = currentRange.getStartKey();
             Key endKey = currentRange.getEndKey();
             
@@ -224,12 +224,11 @@ public abstract class CompositeSeeker {
             Key newStartKey = new Key(new Text(nextLowerBound), startKey.getColumnFamily(), startKey.getColumnQualifier(), startKey.getColumnVisibility(),
                             startKey.getTimestamp());
             
-            // build a new range only if the new start key falls within the current range
-            Range finalRange = currentRange;
+            // return a new seek key only if it falls within the current range
             if (currentRange.contains(newStartKey))
-                finalRange = new Range(newStartKey, endKey);
+                return newStartKey;
             
-            return finalRange;
+            return startKey;
         }
     }
     
@@ -240,7 +239,7 @@ public abstract class CompositeSeeker {
         public FieldIndexCompositeSeeker(Multimap<String,?> fieldDatatypes) {
             super(CompositeUtils.getFieldToDiscreteIndexTypeMap(fieldDatatypes));
         }
-        
+
         @Override
         public boolean isKeyInRange(Key currentKey, Range currentRange, String separator) {
             List<String> values = Arrays.asList(currentKey.getColumnQualifier().toString().split("\0")[0].split(separator));
@@ -250,29 +249,33 @@ public abstract class CompositeSeeker {
         }
         
         @Override
-        public Range nextSeekRange(List<String> fields, Key currentKey, Range currentRange, String separator) {
+        public Key nextSeekKey(List<String> fields, Key currentKey, Range currentRange, String separator) {
             Key startKey = currentRange.getStartKey();
             Key endKey = currentRange.getEndKey();
-            
-            List<String> values = Arrays.asList(currentKey.getColumnQualifier().toString().split("\0")[0].split(separator));
-            List<String> startValues = Arrays.asList(startKey.getColumnQualifier().toString().split("\0")[0].split(separator));
-            List<String> endValues = Arrays.asList(endKey.getColumnQualifier().toString().split("\0")[0].split(separator));
+
+            String currentValue = currentKey.getColumnQualifier().toString().split("\0")[0];
+
+            String startColQual = startKey.getColumnQualifier().toString();
+            String lowerBound = startColQual.split("\0")[0];
+
+            String endColQual = endKey.getColumnQualifier().toString();
+            String upperBound = endColQual.split("\0")[0];
+
+            List<String> values = Arrays.asList(currentValue.split(separator));
+            List<String> startValues = Arrays.asList(lowerBound.split(separator));
+            List<String> endValues = Arrays.asList(upperBound.split(separator));
             
             String nextLowerBound = nextLowerBound(fields, values, separator, startValues, currentRange.isStartKeyInclusive(), endValues,
                             currentRange.isEndKeyInclusive());
-            
-            String startColQual = startKey.getColumnQualifier().toString();
-            
-            String newColQual = nextLowerBound + startColQual.substring(startColQual.indexOf("\0"));
-            Key newStartKey = new Key(startKey.getRow(), startKey.getColumnFamily(), new Text(newColQual), startKey.getColumnVisibility(),
-                            startKey.getTimestamp());
-            
-            // build a new range only if the new start key falls within the current range
-            Range finalRange = currentRange;
-            if (currentRange.contains(newStartKey))
-                finalRange = new Range(newStartKey, endKey);
-            
-            return finalRange;
+
+            // build a new range only if the new lower bound exceeds the current value without exceeding the upper bound of the range
+            if (nextLowerBound.compareTo(currentValue) > 0 && nextLowerBound.compareTo(upperBound) <= 0) {
+                String newColQual = nextLowerBound + startColQual.substring(startColQual.indexOf("\0"));
+                return new Key(currentKey.getRow(), currentKey.getColumnFamily(), new Text(newColQual), startKey.getColumnVisibility(),
+                        startKey.getTimestamp());
+            }
+
+            return startKey;
         }
     }
 }
