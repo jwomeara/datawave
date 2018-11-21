@@ -55,6 +55,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.commons.jexl2.parser.JexlNodes.children;
+import static org.apache.commons.jexl2.parser.JexlNodes.wrap;
 
 /**
  * This is a visitor which runs across the query tree and creates composite jexl nodes where applicable. Composite field mappings are determined via ingest
@@ -508,22 +509,30 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
             
             finalNodes.add(newNode);
         }
-        
+
         JexlNode finalNode;
         if (finalNodes.size() > 1) {
             finalNode = createUnwrappedAndNode(finalNodes);
             if (composite.getJexlNodeList().size() > 1) {
-                JexlNode delayedNode = ASTDelayedPredicate.create(createUnwrappedAndNode(composite.getJexlNodeList().stream()
-                                .map(node -> JexlNodeFactory.wrap(copy(node))).collect(Collectors.toList())));
-                finalNode = createUnwrappedAndNode(Arrays.asList(JexlNodeFactory.wrap(finalNode), delayedNode));
+                if (includeOldData) {
+                    JexlNode delayedNode = ASTDelayedPredicate.create(createUnwrappedAndNode(composite.getJexlNodeList().stream()
+                            .map(node -> JexlNodeFactory.wrap(copy(node))).collect(Collectors.toList())));
+                    finalNode = createUnwrappedAndNode(Arrays.asList(JexlNodeFactory.wrap(finalNode), delayedNode));
+
+                    // save a mapping of generated composites to their component parts for later processing
+                    jexlNodeToCompMap.put(getLeafNode(finalNode), composite);
+                } else {
+                    // save a mapping of generated composites to their component parts for later processing
+                    jexlNodeToCompMap.put(getLeafNode(finalNode), composite);
+
+                    finalNode = JexlNodeFactory.wrap(finalNode);
+                }
             }
         } else {
             finalNode = finalNodes.get(0);
-            if (composite.getJexlNodeList().size() > 1 && !(finalNode instanceof ASTEQNode)) {
-                JexlNode delayedNode = ASTDelayedPredicate.create(createUnwrappedAndNode(composite.getJexlNodeList().stream()
-                                .map(node -> JexlNodeFactory.wrap(copy(node))).collect(Collectors.toList())));
-                finalNode = createUnwrappedAndNode(Arrays.asList(finalNode, delayedNode));
-            }
+
+            // save a mapping of generated composites to their component parts for later processing
+            jexlNodeToCompMap.put(getLeafNode(finalNode), composite);
         }
         
         if (!CompositeIngest.isOverloadedCompositeField(config.getCompositeToFieldMap(), composite.getCompositeName())) {
@@ -531,8 +540,8 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
             config.getQueryFieldsDatatypes().put(composite.getCompositeName(), new NoOpType());
         }
         
-        // save a mapping of generated composites to their component parts for later processing
-        jexlNodeToCompMap.put(finalNode, composite);
+//        // save a mapping of generated composites to their component parts for later processing
+//        jexlNodeToCompMap.put(getLeafNode(finalNode), composite);
         
         return finalNode;
     }
