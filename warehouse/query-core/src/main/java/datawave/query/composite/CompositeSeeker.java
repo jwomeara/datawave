@@ -239,7 +239,7 @@ public abstract class CompositeSeeker {
         public FieldIndexCompositeSeeker(Multimap<String,?> fieldDatatypes) {
             super(CompositeUtils.getFieldToDiscreteIndexTypeMap(fieldDatatypes));
         }
-
+        
         @Override
         public boolean isKeyInRange(Key currentKey, Range currentRange, String separator) {
             List<String> values = Arrays.asList(currentKey.getColumnQualifier().toString().split("\0")[0].split(separator));
@@ -252,29 +252,28 @@ public abstract class CompositeSeeker {
         public Key nextSeekKey(List<String> fields, Key currentKey, Range currentRange, String separator) {
             Key startKey = currentRange.getStartKey();
             Key endKey = currentRange.getEndKey();
-
+            
             String currentValue = currentKey.getColumnQualifier().toString().split("\0")[0];
-
+            
             String startColQual = startKey.getColumnQualifier().toString();
             String lowerBound = startColQual.split("\0")[0];
-
+            
             String endColQual = endKey.getColumnQualifier().toString();
             String upperBound = endColQual.split("\0")[0];
-
+            
             List<String> values = Arrays.asList(currentValue.split(separator));
             List<String> startValues = Arrays.asList(lowerBound.split(separator));
             List<String> endValues = Arrays.asList(upperBound.split(separator));
             
             String nextLowerBound = nextLowerBound(fields, values, separator, startValues, currentRange.isStartKeyInclusive(), endValues,
                             currentRange.isEndKeyInclusive());
-
+            
             // build a new range only if the new lower bound exceeds the current value without exceeding the upper bound of the range
             if (nextLowerBound.compareTo(currentValue) > 0 && nextLowerBound.compareTo(upperBound) <= 0) {
                 String newColQual = nextLowerBound + startColQual.substring(startColQual.indexOf("\0"));
-                return new Key(currentKey.getRow(), currentKey.getColumnFamily(), new Text(newColQual), startKey.getColumnVisibility(),
-                        startKey.getTimestamp());
+                return new Key(currentKey.getRow(), currentKey.getColumnFamily(), new Text(newColQual), startKey.getColumnVisibility(), startKey.getTimestamp());
             }
-
+            
             return startKey;
         }
     }

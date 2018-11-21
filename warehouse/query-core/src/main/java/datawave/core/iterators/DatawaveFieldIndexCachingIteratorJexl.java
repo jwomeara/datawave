@@ -910,7 +910,7 @@ public abstract class DatawaveFieldIndexCachingIteratorJexl extends WrappingIter
         }
         return false;
     }
-
+    
     /**
      * This method will asynchronously fill the set with matches from within the specified bounding FI range.
      * 
@@ -938,10 +938,11 @@ public abstract class DatawaveFieldIndexCachingIteratorJexl extends WrappingIter
                 source.seek(boundingFiRange, EMPTY_CFS, false);
                 scanned++;
                 DatawaveFieldIndexCachingIteratorJexl.this.scannedKeys.incrementAndGet();
-
+                
                 // if this is a range iterator, build the composite-safe Fi range
-                Range compositeSafeFiRange = (this instanceof DatawaveFieldIndexRangeIteratorJexl) ? ((DatawaveFieldIndexRangeIteratorJexl)this).buildCompositeSafeFiRange(fiRow, fiName, fieldValue) : null;
-
+                Range compositeSafeFiRange = (this instanceof DatawaveFieldIndexRangeIteratorJexl) ? ((DatawaveFieldIndexRangeIteratorJexl) this)
+                                .buildCompositeSafeFiRange(fiRow, fiName, fieldValue) : null;
+                
                 while (source.hasTop()) {
                     checkTiming();
                     
@@ -962,11 +963,13 @@ public abstract class DatawaveFieldIndexCachingIteratorJexl extends WrappingIter
                             componentFields = compositeToFieldMap.get(fieldName);
                             separator = compositeSeparatorMap.get(fieldName);
                         }
-
+                        
                         if (componentFields != null && separator != null && !compositeSeeker.isKeyInRange(top, compositeSafeFiRange, separator)) {
                             Key newStartKey = compositeSeeker.nextSeekKey(new ArrayList<>(componentFields), top, compositeSafeFiRange, separator);
-                            if (newStartKey != boundingFiRange.getStartKey() && newStartKey.compareTo(boundingFiRange.getStartKey()) > 0 && newStartKey.compareTo(boundingFiRange.getEndKey()) <= 0) {
-                                source.seek(new Range(newStartKey, boundingFiRange.isStartKeyInclusive(), boundingFiRange.getEndKey(), boundingFiRange.isEndKeyInclusive()), EMPTY_CFS, false);
+                            if (newStartKey != boundingFiRange.getStartKey() && newStartKey.compareTo(boundingFiRange.getStartKey()) > 0
+                                            && newStartKey.compareTo(boundingFiRange.getEndKey()) <= 0) {
+                                source.seek(new Range(newStartKey, boundingFiRange.isStartKeyInclusive(), boundingFiRange.getEndKey(), boundingFiRange
+                                                .isEndKeyInclusive()), EMPTY_CFS, false);
                                 source.next();
                                 scanned++;
                                 continue;
@@ -1008,7 +1011,7 @@ public abstract class DatawaveFieldIndexCachingIteratorJexl extends WrappingIter
         return IteratorThreadPoolManager.executeIvarator(runnable, DatawaveFieldIndexCachingIteratorJexl.this.toString() + " in " + boundingFiRange.toString());
         
     }
-
+    
     private static void releaseSource(SortedKeyValueIterator source) {
         try {
             if (source != null && source instanceof AutoCloseable) {
@@ -1098,7 +1101,7 @@ public abstract class DatawaveFieldIndexCachingIteratorJexl extends WrappingIter
      */
     @SuppressWarnings("hiding")
     protected abstract List<Range> buildBoundingFiRanges(Text rowId, Text fiName, Text fieldValue);
-
+    
     /**
      * Does the last range seeked contain the passed in range
      * 

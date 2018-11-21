@@ -183,7 +183,7 @@ public class MultiValueCompositeIndexTest {
         
         // Test Data with 2 wkt and 1 number
         testData.add(new TestData(Arrays.asList("POLYGON ((-110 -15, -105 -15, -105 -10, -110 -10, -110 -15))", "POINT (45 45)"), Collections.singletonList(60)));
-
+        
         // Test Data with 1 wkt and 2 numbers
         testData.add(new TestData(Collections.singletonList("POINT (0 0)"), Arrays.asList(11, 22)));
         
@@ -300,14 +300,12 @@ public class MultiValueCompositeIndexTest {
     
     @Test
     public void compositeWithoutIvaratorTest() throws Exception {
-//        String query = "((" + GEO_FIELD + " >= '0311' && " + GEO_FIELD + " <= '0312') && " + WKT_BYTE_LENGTH_FIELD + " == 15) ||" + "(" + GEO_FIELD
-//                        + " == '1f20aaaaaaaaaaaaaa' && (" + WKT_BYTE_LENGTH_FIELD + " >= 59 && " + WKT_BYTE_LENGTH_FIELD + " <= 61)) ||" + "(" + GEO_FIELD
-//                        + " == '1f0aaaaaaaaaaaaaaa' && " + WKT_BYTE_LENGTH_FIELD + " >= 22)";
-
-        String query = "(" + GEO_FIELD + " == '1f0aaaaaaaaaaaaaaa' && " + WKT_BYTE_LENGTH_FIELD + " >= 22)";
-
+        String query = "((" + GEO_FIELD + " >= '0311' && " + GEO_FIELD + " <= '0312') && " + WKT_BYTE_LENGTH_FIELD + " == 15) ||" + "(" + GEO_FIELD
+                        + " == '1f20aaaaaaaaaaaaaa' && (" + WKT_BYTE_LENGTH_FIELD + " >= 59 && " + WKT_BYTE_LENGTH_FIELD + " <= 61)) ||" + "(" + GEO_FIELD
+                        + " == '1f0aaaaaaaaaaaaaaa' && " + WKT_BYTE_LENGTH_FIELD + " >= 22)";
+        
         List<QueryData> queries = getQueryRanges(query, false);
-//        Assert.assertEquals(3, queries.size());
+        // Assert.assertEquals(3, queries.size());
         
         List<DefaultEvent> events = getQueryResults(query, false);
         
@@ -336,7 +334,7 @@ public class MultiValueCompositeIndexTest {
                         + " == '1f0aaaaaaaaaaaaaaa' && " + WKT_BYTE_LENGTH_FIELD + " >= 22)";
         
         List<QueryData> queries = getQueryRanges(query, true);
-//        Assert.assertEquals(732, queries.size());
+        // Assert.assertEquals(732, queries.size());
         
         List<DefaultEvent> events = getQueryResults(query, true);
         

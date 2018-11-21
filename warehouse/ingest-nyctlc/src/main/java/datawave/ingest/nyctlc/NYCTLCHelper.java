@@ -17,12 +17,19 @@ import java.util.Set;
  */
 public class NYCTLCHelper extends CSVHelper {
     
+    /**
+     * Parameter to specify that we should generate extra geometries in the ALL_LOCATIONS field for testing purposes.
+     */
+    public static final String GENERATE_EXTRA_GEOMETRIES = ".generate.extra.goemetries";
+    
     private static final Logger log = LoggerFactory.getLogger(NYCTLCHelper.class);
     
     private static Set<String> KNOWN_FIELDS = new HashSet<>(Arrays.asList("VENDORID", "LPEP_PICKUP_DATETIME", "LPEP_DROPOFF_DATETIME", "STORE_AND_FWD_FLAG",
                     "RATECODEID", "PICKUP_LONGITUDE", "PICKUP_LATITUDE", "DROPOFF_LONGITUDE", "DROPOFF_LATITUDE", "PASSENGER_COUNT", "TRIP_DISTANCE",
                     "FARE_AMOUNT", "EXTRA", "MTA_TAX", "TIP_AMOUNT", "TOLLS_AMOUNT", "EHAIL_FEE", "IMPROVEMENT_SURCHARGE", "TOTAL_AMOUNT", "PAYMENT_TYPE",
                     "TRIP_TYPE"));
+    
+    private boolean generateExtraGeometries = false;
     
     private String[] parsedHeader;
     
@@ -33,6 +40,8 @@ public class NYCTLCHelper extends CSVHelper {
             config.setBoolean(type + DATA_HEADER_ENABLED, false);
             config.set(type + DATA_SEP, ",");
             config.setBoolean(type + PROCESS_EXTRA_FIELDS, true);
+            
+            generateExtraGeometries = config.getBoolean(type + GENERATE_EXTRA_GEOMETRIES, false);
         }
         super.setup(config);
     }
@@ -51,5 +60,9 @@ public class NYCTLCHelper extends CSVHelper {
     
     public String[] getParsedHeader() {
         return parsedHeader;
+    }
+    
+    public boolean isGenerateExtraGeometries() {
+        return generateExtraGeometries;
     }
 }

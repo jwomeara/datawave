@@ -145,13 +145,13 @@ public class DatawaveFieldIndexRangeIteratorJexl extends DatawaveFieldIndexCachi
             return new RangeSplitter(new Range(startKey, true, endKey, true), getMaxRangeSplit());
         }
     }
-
+    
     protected Range buildCompositeSafeFiRange(Text rowId, Text fiName, Text fieldValue) {
         Key startKey = new Key(rowId, fiName, new Text(fieldValue));
         Key endKey = new Key(rowId, fiName, new Text(upperBound));
         return new Range(startKey, lowerInclusive, endKey, upperInclusive);
     }
-
+    
     // -------------------------------------------------------------------------
     // ------------- Other stuff
     

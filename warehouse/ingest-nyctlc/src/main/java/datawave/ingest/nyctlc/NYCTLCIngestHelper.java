@@ -95,18 +95,20 @@ public class NYCTLCIngestHelper extends CSVIngestHelper {
         }
         
         // create some extra geos for testing purposes
-        if (pickupLat != null && pickupLon != null && dropoffLat != null && dropoffLon != null) {
-            double pickupLonDouble = Double.parseDouble(pickupLon), pickupLatDouble = Double.parseDouble(pickupLat), dropoffLonDouble = Double
-                            .parseDouble(dropoffLon), dropoffLatDouble = Double.parseDouble(dropoffLat);
-            double tripDistance = distance(pickupLonDouble, pickupLatDouble, dropoffLonDouble, dropoffLatDouble);
-            derivedFields.put(ALL_LOCATIONS, createCircle(pickupLonDouble, pickupLatDouble, tripDistance / 2.0).toText());
-            derivedFields.put(ALL_LOCATIONS, createCircle(dropoffLonDouble, dropoffLatDouble, tripDistance / 2.0).toText());
-            
-            double minLon = Math.min(pickupLonDouble, dropoffLonDouble);
-            double minLat = Math.min(pickupLatDouble, dropoffLatDouble);
-            double maxLon = Math.max(pickupLonDouble, dropoffLonDouble);
-            double maxLat = Math.max(pickupLatDouble, dropoffLatDouble);
-            derivedFields.put(ALL_LOCATIONS, createCircle(minLon + (maxLon - minLon), minLat + (maxLat - minLat), tripDistance / 2.0).toText());
+        if (helper instanceof NYCTLCHelper && ((NYCTLCHelper) helper).isGenerateExtraGeometries()) {
+            if (pickupLat != null && pickupLon != null && dropoffLat != null && dropoffLon != null) {
+                double pickupLonDouble = Double.parseDouble(pickupLon), pickupLatDouble = Double.parseDouble(pickupLat), dropoffLonDouble = Double
+                                .parseDouble(dropoffLon), dropoffLatDouble = Double.parseDouble(dropoffLat);
+                double tripDistance = distance(pickupLonDouble, pickupLatDouble, dropoffLonDouble, dropoffLatDouble);
+                derivedFields.put(ALL_LOCATIONS, createCircle(pickupLonDouble, pickupLatDouble, tripDistance / 2.0).toText());
+                derivedFields.put(ALL_LOCATIONS, createCircle(dropoffLonDouble, dropoffLatDouble, tripDistance / 2.0).toText());
+                
+                double minLon = Math.min(pickupLonDouble, dropoffLonDouble);
+                double minLat = Math.min(pickupLatDouble, dropoffLatDouble);
+                double maxLon = Math.max(pickupLonDouble, dropoffLonDouble);
+                double maxLat = Math.max(pickupLatDouble, dropoffLatDouble);
+                derivedFields.put(ALL_LOCATIONS, createCircle(minLon + (maxLon - minLon), minLat + (maxLat - minLat), tripDistance / 2.0).toText());
+            }
         }
         
         // add an indexed version of TOTAL_AMOUNT for testing purposes

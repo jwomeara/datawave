@@ -55,6 +55,12 @@
         <value>ALL</value>
     </property>
 
+    <!-- NYCTLC Helper Options -->
+    <property>
+        <name>nyctlc.generate.extra.geometries</name>
+        <value>true</value>
+    </property>
+
     <!-- Indexing -->
     <property>
         <name>nyctlc.data.category.index</name>

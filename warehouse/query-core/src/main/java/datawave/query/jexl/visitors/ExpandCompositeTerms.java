@@ -594,7 +594,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
      * @return A list of composites which can be created from the given leaf and anded nodes
      */
     private List<Composite> findComposites(Multimap<String,JexlNode> leafNodes, Multimap<String,JexlNode> andedNodes, Multimap<String,JexlNode> usedLeafNodes,
-                                               Multimap<String,JexlNode> usedAndedNodes) {
+                    Multimap<String,JexlNode> usedAndedNodes) {
         
         // determine what composites can be made with these fields
         Multimap<String,String> filteredCompositeToFieldMap = getFilteredCompositeToFieldMap(leafNodes.keySet(), andedNodes.keySet());
@@ -609,7 +609,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
         for (String requiredField : leafNodes.keySet())
             if (CompositeIngest.isOverloadedCompositeField(config.getCompositeToFieldMap(), requiredField))
                 overloadedCompositeMap.put(requiredField, requiredField);
-
+        
         // Add overloaded composite entries to the set of entries
         List<Entry<String,Collection<String>>> compositeFieldMapList = new ArrayList<>(filteredCompositeToFieldMap.asMap().entrySet());
         compositeFieldMapList.addAll(overloadedCompositeMap.asMap().entrySet());
@@ -662,8 +662,8 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
      *            A multimap of used anded nodes, keyed by field name, used to create the returned composites
      * @return A list of composites which can be created from the given leaf and anded nodes
      */
-    private List<Composite> findComposites(List<Entry<String, Collection<String>>> compositeToFieldMapSet, Multimap<String,JexlNode> leafNodes,
-                                               Multimap<String,JexlNode> andedNodes, Multimap<String,JexlNode> usedLeafNodes, Multimap<String,JexlNode> usedAndedNodes) {
+    private List<Composite> findComposites(List<Entry<String,Collection<String>>> compositeToFieldMapSet, Multimap<String,JexlNode> leafNodes,
+                    Multimap<String,JexlNode> andedNodes, Multimap<String,JexlNode> usedLeafNodes, Multimap<String,JexlNode> usedAndedNodes) {
         List<Composite> composites = new ArrayList<>();
         
         // once a leaf node is used to create a composite, take it out of the rotation
@@ -793,8 +793,9 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
         if (node instanceof ASTEQNode) {
             return true;
         }
-        // if this is a range node, and it is of fixed length, or it is the last field of the composite
-        else if (node instanceof ASTAndNode && (isFixedLengthField || position == (numCompFields - 1))) {
+        // if this is a range node, and it is of fixed length, or it is the last field of a multi-term (i.e. non-overloaded) composite
+        // this guards against allowing a range to be built against an overloaded composite which doesn't satisfy isFixedLengthField
+        else if (node instanceof ASTAndNode && (isFixedLengthField || (position == (numCompFields - 1) && numCompFields > 1))) {
             return true;
         }
         // if this is an unbounded range, or a regex node in the last position
@@ -822,10 +823,10 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
         for (JexlNode node : nodes) {
             for (Composite composite : composites) {
                 Composite updatedComposite;
-
-                // NOTE: The addition of nodes to the composite at this step may produce an invalid composite.  This will be caught when isValid is called
+                
+                // NOTE: The addition of nodes to the composite at this step may produce an invalid composite. This will be caught when isValid is called
                 // if this is a node which would be invalid for a normal composite, create a composite range
-                if (!CompositeTerm.VALID_LEAF_NODE_CLASSES.contains(node) && CompositeRange.VALID_LEAF_NODE_CLASSES.contains(node)) {
+                if (!CompositeTerm.VALID_LEAF_NODE_CLASSES.contains(node.getClass()) && CompositeRange.VALID_LEAF_NODE_CLASSES.contains(node.getClass())) {
                     updatedComposite = new CompositeRange(composite);
                 }
                 // if there is more than 1 node to process, clone the composite
@@ -836,16 +837,16 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
                 else {
                     updatedComposite = composite;
                 }
-
+                
                 // update the composite
                 updatedComposite.addComponent(node);
-
+                
                 // is it valid? if not, we can't build the composite
                 if (!updatedComposite.isValid()) {
                     updatedComposites.clear();
                     break;
                 }
-
+                
                 // save the updated composite
                 updatedComposites.add(updatedComposite);
             }

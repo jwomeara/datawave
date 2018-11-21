@@ -23,23 +23,26 @@ import java.util.Set;
  *
  */
 public class CompositeTerm extends Composite {
-
-    public static final Set<Class<?>> INVALID_LEAF_NODE_CLASSES = Sets.newHashSet(ASTNENode.class, ASTGTNode.class, ASTGENode.class, ASTLTNode.class, ASTLENode.class, ASTAndNode.class);
+    
+    public static final Set<Class<?>> INVALID_LEAF_NODE_CLASSES = Sets.newHashSet(ASTNENode.class, ASTGTNode.class, ASTGENode.class, ASTLTNode.class,
+                    ASTLENode.class, ASTAndNode.class);
     public static final Set<Class<?>> VALID_LEAF_NODE_CLASSES = Sets.newHashSet(ASTEQNode.class, ASTERNode.class);
-
+    
     public CompositeTerm(String compositeName, String separator) {
         super(compositeName, separator);
     }
-
+    
     public CompositeTerm(Composite other) {
-        super(other);
+        this(other.compositeName, other.separator);
+        for (JexlNode node : other.jexlNodeList)
+            addComponent(node);
     }
-
+    
     @Override
     public Composite clone() {
         return new CompositeRange(this);
     }
-
+    
     public void addComponent(JexlNode node) {
         Object lit = JexlASTHelper.getLiteralValue(node);
         String identifier = JexlASTHelper.getIdentifier(node);
@@ -47,11 +50,11 @@ public class CompositeTerm extends Composite {
         fieldNameList.add(identifier);
         expressionList.add(lit.toString());
     }
-
+    
     @Override
     public String toString() {
-        return "CompositeTerm [compositeName=" + compositeName + ", separator=" + separator + ", fieldNameList=" + fieldNameList + ", jexlNodeList=" + jexlNodeList
-                        + ", expressionList=" + expressionList + "]";
+        return "CompositeTerm [compositeName=" + compositeName + ", separator=" + separator + ", fieldNameList=" + fieldNameList + ", jexlNodeList="
+                        + jexlNodeList + ", expressionList=" + expressionList + "]";
     }
     
     public void getNodesAndExpressions(List<Class<? extends JexlNode>> nodeClasses, List<String> expressions,
@@ -63,7 +66,7 @@ public class CompositeTerm extends Composite {
             if (nodeClass.equals(ASTEQNode.class)) {
                 expressions.add(expressionList.get(0));
                 nodeClasses.add(ASTGENode.class);
-
+                
                 expressions.add(expression);
                 nodeClasses.add(ASTLENode.class);
             } else if (nodeClass.equals(ASTERNode.class)) {
@@ -83,7 +86,7 @@ public class CompositeTerm extends Composite {
     private String getAppendedExpressions() {
         return String.join(separator, expressionList);
     }
-
+    
     // what this essentially boils down to is that the only valid nodes are equals or equals regex nodes
     // this composite is invalid if:
     // - it doesn't contain any nodes, or they are all null
@@ -93,15 +96,15 @@ public class CompositeTerm extends Composite {
         // if we have no nodes, or they are all null
         if (jexlNodeList.isEmpty() || jexlNodeList.stream().allMatch(Objects::isNull))
             return false;
-
+        
         for (JexlNode node : jexlNodeList) {
             Class nodeClass = node.getClass();
-
+            
             // if this is an invalid leaf node, or not a valid leaf node, we're done
             if (INVALID_LEAF_NODE_CLASSES.contains(nodeClass) || !VALID_LEAF_NODE_CLASSES.contains(nodeClass))
                 return false;
         }
-
+        
         return true;
     }
     
