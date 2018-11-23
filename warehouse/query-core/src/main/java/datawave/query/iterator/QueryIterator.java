@@ -220,6 +220,8 @@ public class QueryIterator extends QueryOptions implements SortedKeyValueIterato
         try {
             
             script = JexlASTHelper.parseJexlQuery(this.getQuery());
+
+            // TODO: Decompose composite terms for evaluation
             myEvaluationFunction = new JexlEvaluation(this.getQuery(), arithmetic);
             
         } catch (Exception e) {

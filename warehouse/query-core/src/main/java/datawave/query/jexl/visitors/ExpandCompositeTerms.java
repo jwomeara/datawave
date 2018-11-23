@@ -520,10 +520,10 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
                     finalNode = createUnwrappedAndNode(Arrays.asList(JexlNodeFactory.wrap(finalNode), delayedNode));
 
                     // save a mapping of generated composites to their component parts for later processing
-                    jexlNodeToCompMap.put(getLeafNode(finalNode), composite);
+                    jexlNodeToCompMap.put(finalNode, composite);
                 } else {
                     // save a mapping of generated composites to their component parts for later processing
-                    jexlNodeToCompMap.put(getLeafNode(finalNode), composite);
+                    jexlNodeToCompMap.put(finalNode, composite);
 
                     finalNode = JexlNodeFactory.wrap(finalNode);
                 }
@@ -532,7 +532,7 @@ public class ExpandCompositeTerms extends RebuildingVisitor {
             finalNode = finalNodes.get(0);
 
             // save a mapping of generated composites to their component parts for later processing
-            jexlNodeToCompMap.put(getLeafNode(finalNode), composite);
+            jexlNodeToCompMap.put(finalNode, composite);
         }
         
         if (!CompositeIngest.isOverloadedCompositeField(config.getCompositeToFieldMap(), composite.getCompositeName())) {
