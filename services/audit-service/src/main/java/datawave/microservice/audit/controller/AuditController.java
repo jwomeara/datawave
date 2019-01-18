@@ -4,6 +4,7 @@ import datawave.microservice.audit.common.AuditMessage;
 import datawave.microservice.audit.config.AuditProperties;
 import datawave.microservice.audit.config.AuditProperties.Retry;
 import datawave.microservice.audit.config.AuditServiceConfig;
+import datawave.microservice.audit.hdfs.HdfsAuditor;
 import datawave.microservice.audit.health.HealthChecker;
 import datawave.webservice.common.audit.AuditParameters;
 import io.swagger.annotations.ApiImplicitParam;
@@ -62,6 +63,10 @@ public class AuditController {
     private final AuditParameters restAuditParams;
     
     private final MessageChannel messageChannel;
+    
+    @Autowired
+    @Qualifier("hdfsAuditor")
+    private HdfsAuditor hdfsAuditor;
     
     @Autowired(required = false)
     private HealthChecker healthChecker;
@@ -177,14 +182,27 @@ public class AuditController {
             currentTime = System.currentTimeMillis();
         } while (!success && (currentTime - auditStartTime) < retry.getFailTimeoutMillis() && attempts < retry.getMaxAttempts());
         
+        // last ditch effort to write the audit message to hdfs for subsequent processing
+        if (!success && hdfsAuditor != null) {
+            success = true;
+            try {
+                if (log.isDebugEnabled())
+                    log.debug("[" + restAuditParams.getAuditId() + "] Attempting to log audit to HDFS");
+                
+                hdfsAuditor.audit(restAuditParams);
+            } catch (Exception e) {
+                success = false;
+            }
+        }
+        
         if (!success) {
             log.warn("[" + restAuditParams.getAuditId() + "] Audit failed. { attempts = " + attempts + ", elapsedMillis = " + (currentTime - auditStartTime)
-                            + "}");
+                            + ((hdfsAuditor != null) ? ", hdfsElapsedMillis = " + (System.currentTimeMillis() - currentTime) + "}" : "}"));
             
             throw new RuntimeException("Unable to process audit message with id [" + restAuditParams.getAuditId() + "]");
         } else {
             log.info("[" + restAuditParams.getAuditId() + "] Audit successful. { attempts = " + attempts + ", elapsedMillis = " + (currentTime - auditStartTime)
-                            + "}");
+                            + ((hdfsAuditor != null) ? ", hdfsElapsedMillis = " + (System.currentTimeMillis() - currentTime) + "}" : "}"));
             
             return restAuditParams.getAuditId();
         }
