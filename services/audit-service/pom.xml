@@ -11,6 +11,7 @@
     <version>1.7-SNAPSHOT</version>
     <description>DATAWAVE Auditing Microservice</description>
     <properties>
+        <version.hadoop>2.6.0-cdh5.9.1</version.hadoop>
         <version.in-memory-accumulo>1.9.2.1</version.in-memory-accumulo>
         <version.microservice.audit-api>1.4</version.microservice.audit-api>
         <version.microservice.starter>1.2</version.microservice.starter>
@@ -28,6 +29,17 @@
                 <version>${version.microservice.starter}</version>
             </dependency>
             <dependency>
+                <groupId>org.apache.hadoop</groupId>
+                <artifactId>hadoop-hdfs</artifactId>
+                <version>${version.hadoop}</version>
+                <exclusions>
+                    <exclusion>
+                        <artifactId>*</artifactId>
+                        <groupId>org.slf4j</groupId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
                 <groupId>gov.nsa.datawave.contrib</groupId>
                 <artifactId>datawave-in-memory-accumulo</artifactId>
                 <version>${version.in-memory-accumulo}</version>
@@ -42,7 +54,7 @@
             <dependency>
                 <groupId>org.apache.hadoop</groupId>
                 <artifactId>hadoop-auth</artifactId>
-                <version>2.6.4</version>
+                <version>${version.hadoop}</version>
                 <scope>test</scope>
                 <exclusions>
                     <exclusion>
@@ -61,6 +73,10 @@
         <dependency>
             <groupId>gov.nsa.datawave.microservice</groupId>
             <artifactId>spring-boot-starter-datawave</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-hdfs</artifactId>
         </dependency>
         <dependency>
             <groupId>gov.nsa.datawave.contrib</groupId>

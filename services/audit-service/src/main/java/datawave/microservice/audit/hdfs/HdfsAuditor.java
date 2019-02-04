@@ -47,9 +47,13 @@ public class HdfsAuditor implements Auditor {
         this.maxFileLenBytes = builder.maxFileLenBytes;
         this.maxFileAgeMillis = builder.maxFileAgeMillis;
         
-        this.sdf = new SimpleDateFormat("'." + builder.prefix + "'-yyyyMMdd_HHmmss'.json'");
+        this.sdf = new SimpleDateFormat("'." + builder.prefix + "'-yyyyMMdd_HHmmss.SSS'.json'");
         
         Configuration config = new Configuration();
+        config.set("fs.hdfs.impl", org.apache.hadoop.hdfs.DistributedFileSystem.class.getName());
+        config.set("fs.file.impl", org.apache.hadoop.fs.LocalFileSystem.class.getName());
+        config.addResource(new Path("/usr/lib/hadoop/etc/hadoop/core-site.xml"));
+        config.addResource(new Path("/usr/lib/hadoop/etc/hadoop/hdfs-site.xml"));
         hdfs = FileSystem.get(new URI(builder.hdfsUri), config);
         
         basePath = Path.mergePaths(new Path(builder.hdfsUri), new Path(builder.path));

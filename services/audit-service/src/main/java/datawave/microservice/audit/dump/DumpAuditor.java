@@ -25,6 +25,8 @@ public class DumpAuditor extends HdfsAuditor {
 
     private Timer lastUpdateTimer = null;
 
+    private boolean auditsReceived = false;
+
     protected DumpAuditor(Builder builder) throws URISyntaxException, IOException {
         super(builder);
         updateTimeoutMillis = builder.updateTimeoutMillis;
@@ -32,23 +34,31 @@ public class DumpAuditor extends HdfsAuditor {
 
     @Override
     protected void writeAudit(String jsonAuditParams) throws Exception {
-        if (lastUpdateTimer != null)
-            lastUpdateTimer.cancel();
+        // setup the last update timer
+        if (lastUpdateTimer == null) {
+            lastUpdateTimer = new Timer();
+            lastUpdateTimer.scheduleAtFixedRate(new TimerTask() {
+                @Override
+                public void run() {
+                    if (!auditsReceived) {
+                        try {
+                            close();
+                        } catch (IOException e) {
+                            log.warn("Unable to close the audit dump file.", e);
+                        }
 
-        super.writeAudit(jsonAuditParams);
-
-        lastUpdateTimer = new Timer();
-        lastUpdateTimer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                try {
-                    close();
-                } catch (IOException e) {
-                    log.warn("Unable to close the audit dump file.", e);
+                        lastUpdateTimer.cancel();
+                        lastUpdateTimer = null;
+                    }
+                    auditsReceived = false;
                 }
-            }
-        },
-        updateTimeoutMillis);
+            },
+            updateTimeoutMillis,
+            updateTimeoutMillis);
+        }
+
+        auditsReceived = true;
+        super.writeAudit(jsonAuditParams);
     }
 
     @PreDestroy

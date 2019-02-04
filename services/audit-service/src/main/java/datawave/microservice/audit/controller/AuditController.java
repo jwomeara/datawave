@@ -1,5 +1,10 @@
 package datawave.microservice.audit.controller;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import datawave.microservice.audit.common.AuditMessage;
 import datawave.microservice.audit.config.AuditProperties;
 import datawave.microservice.audit.config.AuditProperties.Retry;
@@ -10,6 +15,13 @@ import datawave.webservice.common.audit.AuditParameters;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
 import io.swagger.annotations.ApiOperation;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.LocatedFileStatus;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.RemoteIterator;
+import org.apache.hadoop.io.compress.CompressionCodec;
+import org.apache.hadoop.io.compress.CompressionCodecFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +33,7 @@ import org.springframework.integration.annotation.ServiceActivator;
 import org.springframework.integration.support.MessageBuilder;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
+import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -29,6 +42,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.security.RolesAllowed;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -206,5 +227,125 @@ public class AuditController {
             
             return restAuditParams.getAuditId();
         }
+    }
+
+    /**
+     * Reads JSON-formatted audit messages from the given path, and attempts to perform auditing on them.
+     *
+     * @param path
+     *            the path in hdfs where the audit files are located
+     * @return the audit IDs for the processed messages, which can be used for tracking purposes
+     */
+    @ApiOperation(value = "Performs auditing for the audits located at the given path.")
+    @RolesAllowed({"Administrator", "JBossAdministrator"})
+    @RequestMapping(path = "/replay", method = RequestMethod.POST)
+    public String replay(@RequestParam String path) {
+        final ObjectMapper mapper = new ObjectMapper();
+
+        String workingFolder = "/tmp/audit-data/";
+
+        File folder = new File(workingFolder);
+        if (!folder.exists())
+            folder.mkdirs();
+
+        Configuration config = new Configuration();
+        config.set("fs.hdfs.impl", org.apache.hadoop.hdfs.DistributedFileSystem.class.getName());
+        config.set("fs.file.impl", org.apache.hadoop.fs.LocalFileSystem.class.getName());
+        config.addResource(new Path("/usr/lib/hadoop/etc/hadoop/core-site.xml"));
+        config.addResource(new Path("/usr/lib/hadoop/etc/hadoop/hdfs-site.xml"));
+
+        CompressionCodecFactory factory = new CompressionCodecFactory(config);
+
+        FileSystem hdfs = null;
+        try {
+            hdfs = FileSystem.get(new URI(path), config);
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        }
+
+        List<String> auditIds = new ArrayList<>();
+        long numAudits = 0;
+
+        if (hdfs != null ) {
+            try {
+                RemoteIterator<LocatedFileStatus> filesIter = hdfs.listFiles(new Path(path), false);
+                while(filesIter.hasNext()) {
+                    LocatedFileStatus fileStatus = filesIter.next();
+
+                    // ignore unfinished, processing, or processed files
+                    if (fileStatus.getPath().getName().startsWith("_") || fileStatus.getPath().getName().startsWith("."))
+                        continue;
+
+                    // rename the file to mark it as processing
+                    Path processingPath = new Path(fileStatus.getPath().getParent(), "_PROCESSING." + fileStatus.getPath().getName());
+                    hdfs.rename(fileStatus.getPath(), processingPath);
+
+                    // read each audit message, and process via the audit service
+                    CompressionCodec codec = factory.getCodec(processingPath);
+
+                    BufferedReader reader = null;
+                    if (codec != null) {
+                        reader = new BufferedReader(new InputStreamReader(codec.createInputStream(hdfs.open(processingPath))));
+                    } else {
+                        reader = new BufferedReader(new InputStreamReader(hdfs.open(processingPath)));
+                    }
+
+                    boolean encounteredError = false;
+
+                    TypeReference<LinkedMultiValueMap<String,String>> typeRef = new TypeReference<LinkedMultiValueMap<String, String>>() {};
+                    String line = null;
+                    try {
+                        while (null != (line = reader.readLine())) {
+                            try {
+                                MultiValueMap<String,String> auditParams = mapper.readValue(line, typeRef);
+                                numAudits++;
+
+                                auditIds.add(audit(auditParams));
+                            } catch (JsonParseException e) {
+                                e.printStackTrace();
+                            } catch (JsonMappingException e) {
+                                e.printStackTrace();
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    } catch (IOException e) {
+                        encounteredError = true;
+                        e.printStackTrace();
+                    } finally {
+                        try {
+                            reader.close();
+                        } catch (IOException e) {
+                            encounteredError = true;
+                            e.printStackTrace();
+                        }
+                    }
+
+                    if (!encounteredError) {
+                        // rename the file to mark it as processed
+                        Path processedPath = new Path(fileStatus.getPath().getParent(), "_PROCESSED." + fileStatus.getPath().getName());
+                        hdfs.rename(processingPath, processedPath);
+                    }
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        MultiValueMap<String, Object> results = new LinkedMultiValueMap<>();
+        results.addAll("auditIds", auditIds);
+        results.add("auditsRead", numAudits);
+        results.add("auditsSent", auditIds.size());
+
+        String resultString = "";
+        try {
+            resultString = mapper.writeValueAsString(results);
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
+
+        return resultString;
     }
 }
