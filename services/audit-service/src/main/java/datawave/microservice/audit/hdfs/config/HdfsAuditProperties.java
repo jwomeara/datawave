@@ -1,20 +1,16 @@
 package datawave.microservice.audit.hdfs.config;
 
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import java.util.List;
 
-import java.util.concurrent.TimeUnit;
-
-@EnableConfigurationProperties(HdfsAuditProperties.class)
-@ConfigurationProperties(prefix = "audit.hdfs")
 public class HdfsAuditProperties {
     
     private String hdfsUri;
     private String path;
-    private String prefix = "audits";
-    private String codecName = null;
-    private long maxFileLenBytes = 1024L * 1024L * 512L;
-    private long maxFileAgeMillis = TimeUnit.MINUTES.toMillis(30);
+    private String prefix;
+    private String codecName;
+    private long maxFileLenBytes;
+    private long maxFileAgeMillis;
+    private List<String> configResources;
     
     public String getHdfsUri() {
         return hdfsUri;
@@ -62,5 +58,13 @@ public class HdfsAuditProperties {
     
     public void setMaxFileAgeMillis(long maxFileAgeMillis) {
         this.maxFileAgeMillis = maxFileAgeMillis;
+    }
+    
+    public List<String> getConfigResources() {
+        return configResources;
+    }
+    
+    public void setConfigResources(List<String> configResources) {
+        this.configResources = configResources;
     }
 }

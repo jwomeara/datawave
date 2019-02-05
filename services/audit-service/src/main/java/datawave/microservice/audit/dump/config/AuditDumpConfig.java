@@ -6,7 +6,9 @@ import datawave.microservice.audit.dump.DumpAuditor;
 import datawave.microservice.audit.hdfs.HdfsAuditor;
 import datawave.webservice.common.audit.AuditParameters;
 import datawave.webservice.common.audit.Auditor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.stream.annotation.EnableBinding;
 import org.springframework.cloud.stream.annotation.Input;
@@ -22,10 +24,15 @@ import javax.annotation.Resource;
  * configuration will also enable the appropriate Spring Cloud Stream configuration for the audit dump binding, as specified in the audit config.
  */
 @Configuration
-@EnableConfigurationProperties(AuditDumpProperties.class)
 @EnableBinding(AuditDumpConfig.AuditDumpBinding.class)
 @ConditionalOnProperty(name = "audit.dump.enabled", havingValue = "true")
 public class AuditDumpConfig {
+    
+    @Bean("auditDumpProperties")
+    @ConfigurationProperties("audit.dump")
+    public AuditDumpProperties auditDumpProperties() {
+        return new AuditDumpProperties();
+    }
     
     @Resource(name = "msgHandlerAuditParams")
     private AuditParameters msgHandlerAuditParams;
@@ -42,10 +49,11 @@ public class AuditDumpConfig {
     }
     
     @Bean
-    public Auditor dumpAuditor(AuditDumpProperties auditDumpProperties) throws Exception {
+    public Auditor dumpAuditor(@Qualifier("auditDumpProperties") AuditDumpProperties auditDumpProperties) throws Exception {
         return new DumpAuditor.Builder().setHdfsUri(auditDumpProperties.getHdfsUri()).setPath(auditDumpProperties.getPath())
-                .setCodecName(auditDumpProperties.getCodecName()).setMaxFileAgeMillis(auditDumpProperties.getMaxFileAgeMillis())
-                .setMaxFileLenBytes(auditDumpProperties.getMaxFileLenBytes()).build();
+                        .setCodecName(auditDumpProperties.getCodecName()).setMaxFileAgeMillis(auditDumpProperties.getMaxFileAgeMillis())
+                        .setMaxFileLenBytes(auditDumpProperties.getMaxFileLenBytes()).setConfigResources(auditDumpProperties.getConfigResources())
+                        .setUpdateTimeoutMillis(auditDumpProperties.getUpdateTimeoutMillis()).build();
     }
     
     public interface AuditDumpBinding {

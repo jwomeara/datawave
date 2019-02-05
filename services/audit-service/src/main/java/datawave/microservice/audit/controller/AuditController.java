@@ -12,6 +12,7 @@ import datawave.microservice.audit.config.AuditServiceConfig;
 import datawave.microservice.audit.hdfs.HdfsAuditor;
 import datawave.microservice.audit.health.HealthChecker;
 import datawave.webservice.common.audit.AuditParameters;
+import datawave.webservice.common.audit.Auditor;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
 import io.swagger.annotations.ApiOperation;
@@ -85,12 +86,12 @@ public class AuditController {
     
     private final MessageChannel messageChannel;
     
-    @Autowired
-    @Qualifier("hdfsAuditor")
-    private HdfsAuditor hdfsAuditor;
-    
     @Autowired(required = false)
     private HealthChecker healthChecker;
+    
+    @Autowired(required = false)
+    @Qualifier("hdfsAuditor")
+    private Auditor hdfsAuditor;
     
     private static final Map<String,CountDownLatch> correlationLatchMap = new ConcurrentHashMap<>();
     
@@ -175,10 +176,11 @@ public class AuditController {
     @RolesAllowed({"AuthorizedUser", "AuthorizedServer", "InternalUser", "Administrator"})
     @RequestMapping(path = "/audit", method = RequestMethod.POST)
     public String audit(@RequestParam MultiValueMap<String,String> parameters) {
-        log.info("Received audit request with parameters {}", parameters);
         
         restAuditParams.clear();
         restAuditParams.validate(parameters);
+        
+        log.info("[{}] Received audit request with parameters {}", restAuditParams.getAuditId(), restAuditParams);
         
         boolean success;
         final long auditStartTime = System.currentTimeMillis();
@@ -203,6 +205,9 @@ public class AuditController {
             currentTime = System.currentTimeMillis();
         } while (!success && (currentTime - auditStartTime) < retry.getFailTimeoutMillis() && attempts < retry.getMaxAttempts());
         
+        // TODO: Remove this
+        success = false;
+        
         // last ditch effort to write the audit message to hdfs for subsequent processing
         if (!success && hdfsAuditor != null) {
             success = true;
@@ -217,18 +222,18 @@ public class AuditController {
         }
         
         if (!success) {
-            log.warn("[" + restAuditParams.getAuditId() + "] Audit failed. { attempts = " + attempts + ", elapsedMillis = " + (currentTime - auditStartTime)
+            log.warn("[" + restAuditParams.getAuditId() + "] Audit failed. {attempts = " + attempts + ", elapsedMillis = " + (currentTime - auditStartTime)
                             + ((hdfsAuditor != null) ? ", hdfsElapsedMillis = " + (System.currentTimeMillis() - currentTime) + "}" : "}"));
             
             throw new RuntimeException("Unable to process audit message with id [" + restAuditParams.getAuditId() + "]");
         } else {
-            log.info("[" + restAuditParams.getAuditId() + "] Audit successful. { attempts = " + attempts + ", elapsedMillis = " + (currentTime - auditStartTime)
+            log.info("[" + restAuditParams.getAuditId() + "] Audit successful. {attempts = " + attempts + ", elapsedMillis = " + (currentTime - auditStartTime)
                             + ((hdfsAuditor != null) ? ", hdfsElapsedMillis = " + (System.currentTimeMillis() - currentTime) + "}" : "}"));
             
             return restAuditParams.getAuditId();
         }
     }
-
+    
     /**
      * Reads JSON-formatted audit messages from the given path, and attempts to perform auditing on them.
      *
@@ -241,21 +246,21 @@ public class AuditController {
     @RequestMapping(path = "/replay", method = RequestMethod.POST)
     public String replay(@RequestParam String path) {
         final ObjectMapper mapper = new ObjectMapper();
-
+        
         String workingFolder = "/tmp/audit-data/";
-
+        
         File folder = new File(workingFolder);
         if (!folder.exists())
             folder.mkdirs();
-
+        
         Configuration config = new Configuration();
         config.set("fs.hdfs.impl", org.apache.hadoop.hdfs.DistributedFileSystem.class.getName());
         config.set("fs.file.impl", org.apache.hadoop.fs.LocalFileSystem.class.getName());
         config.addResource(new Path("/usr/lib/hadoop/etc/hadoop/core-site.xml"));
         config.addResource(new Path("/usr/lib/hadoop/etc/hadoop/hdfs-site.xml"));
-
+        
         CompressionCodecFactory factory = new CompressionCodecFactory(config);
-
+        
         FileSystem hdfs = null;
         try {
             hdfs = FileSystem.get(new URI(path), config);
@@ -264,44 +269,44 @@ public class AuditController {
         } catch (URISyntaxException e) {
             e.printStackTrace();
         }
-
+        
         List<String> auditIds = new ArrayList<>();
         long numAudits = 0;
-
-        if (hdfs != null ) {
+        
+        if (hdfs != null) {
             try {
                 RemoteIterator<LocatedFileStatus> filesIter = hdfs.listFiles(new Path(path), false);
-                while(filesIter.hasNext()) {
+                while (filesIter.hasNext()) {
                     LocatedFileStatus fileStatus = filesIter.next();
-
+                    
                     // ignore unfinished, processing, or processed files
                     if (fileStatus.getPath().getName().startsWith("_") || fileStatus.getPath().getName().startsWith("."))
                         continue;
-
+                    
                     // rename the file to mark it as processing
                     Path processingPath = new Path(fileStatus.getPath().getParent(), "_PROCESSING." + fileStatus.getPath().getName());
                     hdfs.rename(fileStatus.getPath(), processingPath);
-
+                    
                     // read each audit message, and process via the audit service
                     CompressionCodec codec = factory.getCodec(processingPath);
-
+                    
                     BufferedReader reader = null;
                     if (codec != null) {
                         reader = new BufferedReader(new InputStreamReader(codec.createInputStream(hdfs.open(processingPath))));
                     } else {
                         reader = new BufferedReader(new InputStreamReader(hdfs.open(processingPath)));
                     }
-
+                    
                     boolean encounteredError = false;
-
-                    TypeReference<LinkedMultiValueMap<String,String>> typeRef = new TypeReference<LinkedMultiValueMap<String, String>>() {};
+                    
+                    TypeReference<LinkedMultiValueMap<String,String>> typeRef = new TypeReference<LinkedMultiValueMap<String,String>>() {};
                     String line = null;
                     try {
                         while (null != (line = reader.readLine())) {
                             try {
                                 MultiValueMap<String,String> auditParams = mapper.readValue(line, typeRef);
                                 numAudits++;
-
+                                
                                 auditIds.add(audit(auditParams));
                             } catch (JsonParseException e) {
                                 e.printStackTrace();
@@ -322,7 +327,7 @@ public class AuditController {
                             e.printStackTrace();
                         }
                     }
-
+                    
                     if (!encounteredError) {
                         // rename the file to mark it as processed
                         Path processedPath = new Path(fileStatus.getPath().getParent(), "_PROCESSED." + fileStatus.getPath().getName());
@@ -333,19 +338,19 @@ public class AuditController {
                 e.printStackTrace();
             }
         }
-
-        MultiValueMap<String, Object> results = new LinkedMultiValueMap<>();
+        
+        MultiValueMap<String,Object> results = new LinkedMultiValueMap<>();
         results.addAll("auditIds", auditIds);
         results.add("auditsRead", numAudits);
         results.add("auditsSent", auditIds.size());
-
+        
         String resultString = "";
         try {
             resultString = mapper.writeValueAsString(results);
         } catch (JsonProcessingException e) {
             e.printStackTrace();
         }
-
+        
         return resultString;
     }
 }
