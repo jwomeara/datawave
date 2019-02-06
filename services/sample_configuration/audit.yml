@@ -9,7 +9,7 @@ spring:
           accumuloAuditSink:
             consumer:
               autoBindDlq: true
-          auditDumpSink:
+          dumpAuditSink:
             consumer:
               autoBindDlq: true
               bindQueue: false
@@ -24,7 +24,7 @@ spring:
         accumuloAuditSink:
           destination: 'audit'
           group: 'accumulo'
-        auditDumpSink:
+        dumpAuditSink:
           destination: 'audit'
           group: 'dump'
           consumer:

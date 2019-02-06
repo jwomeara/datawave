@@ -1,7 +1,7 @@
-package datawave.microservice.audit.accumulo;
+package datawave.microservice.audit.auditors.accumulo;
 
 import datawave.accumulo.inmemory.InMemoryInstance;
-import datawave.microservice.audit.accumulo.config.AccumuloAuditProperties;
+import datawave.microservice.audit.auditors.accumulo.config.AccumuloAuditProperties;
 import datawave.webservice.common.audit.AuditParameters;
 import datawave.webservice.common.audit.Auditor;
 import org.apache.accumulo.core.client.AccumuloException;

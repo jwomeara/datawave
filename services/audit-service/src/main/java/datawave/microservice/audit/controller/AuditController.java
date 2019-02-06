@@ -9,7 +9,6 @@ import datawave.microservice.audit.common.AuditMessage;
 import datawave.microservice.audit.config.AuditProperties;
 import datawave.microservice.audit.config.AuditProperties.Retry;
 import datawave.microservice.audit.config.AuditServiceConfig;
-import datawave.microservice.audit.hdfs.HdfsAuditor;
 import datawave.microservice.audit.health.HealthChecker;
 import datawave.webservice.common.audit.AuditParameters;
 import datawave.webservice.common.audit.Auditor;
@@ -205,9 +204,6 @@ public class AuditController {
             currentTime = System.currentTimeMillis();
         } while (!success && (currentTime - auditStartTime) < retry.getFailTimeoutMillis() && attempts < retry.getMaxAttempts());
         
-        // TODO: Remove this
-        success = false;
-        
         // last ditch effort to write the audit message to hdfs for subsequent processing
         if (!success && hdfsAuditor != null) {
             success = true;
@@ -217,6 +213,7 @@ public class AuditController {
                 
                 hdfsAuditor.audit(restAuditParams);
             } catch (Exception e) {
+                log.error("[" + restAuditParams.getAuditId() + "] Unable to save audit to HDFS", e);
                 success = false;
             }
         }

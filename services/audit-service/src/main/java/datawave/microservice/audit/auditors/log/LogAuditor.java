@@ -1,4 +1,4 @@
-package datawave.microservice.audit.log;
+package datawave.microservice.audit.auditors.log;
 
 import datawave.webservice.common.audit.AuditParameters;
 import datawave.webservice.common.audit.Auditor;

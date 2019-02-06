@@ -1,4 +1,4 @@
-package datawave.microservice.audit.accumulo;
+package datawave.microservice.audit.auditors.accumulo;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -16,9 +16,9 @@ import static org.junit.Assert.assertFalse;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@ContextConfiguration(classes = AccumuloAuditConfigMissingTest.AccumuloAuditConfigTestConfiguration.class)
-@ActiveProfiles({"AccumuloAuditConfigMissingTest", "missing"})
-public class AccumuloAuditConfigMissingTest {
+@ContextConfiguration(classes = AccumuloAuditConfigDisabledTest.AccumuloAuditConfigTestConfiguration.class)
+@ActiveProfiles({"AccumuloAuditConfigDisabledTest", "accumulo-disabled"})
+public class AccumuloAuditConfigDisabledTest {
     
     @Autowired
     private ApplicationContext context;
@@ -31,7 +31,7 @@ public class AccumuloAuditConfigMissingTest {
     }
     
     @Configuration
-    @Profile("AccumuloAuditConfigMissingTest")
+    @Profile("AccumuloAuditConfigDisabledTest")
     @ComponentScan(basePackages = "datawave.microservice")
     public static class AccumuloAuditConfigTestConfiguration {
         

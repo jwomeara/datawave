@@ -1,7 +1,7 @@
-package datawave.microservice.audit.accumulo.config;
+package datawave.microservice.audit.auditors.accumulo.config;
 
-import datawave.microservice.audit.accumulo.AccumuloAuditor;
-import datawave.microservice.audit.accumulo.config.AccumuloAuditProperties.Accumulo;
+import datawave.microservice.audit.auditors.accumulo.AccumuloAuditor;
+import datawave.microservice.audit.auditors.accumulo.config.AccumuloAuditProperties.Accumulo;
 import datawave.microservice.audit.common.AuditMessage;
 import datawave.microservice.audit.common.AuditMessageHandler;
 import datawave.webservice.common.audit.AuditParameters;

@@ -1,4 +1,4 @@
-package datawave.microservice.audit.log;
+package datawave.microservice.audit.auditors.log;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;

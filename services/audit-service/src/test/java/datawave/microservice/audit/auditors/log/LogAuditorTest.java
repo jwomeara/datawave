@@ -1,4 +1,4 @@
-package datawave.microservice.audit.log;
+package datawave.microservice.audit.auditors.log;
 
 import datawave.webservice.common.audit.AuditParameters;
 import datawave.webservice.common.audit.Auditor;
@@ -55,9 +55,9 @@ public class LogAuditorTest {
         testAppender.start();
         config.addAppender(testAppender);
         AppenderRef[] refs = new AppenderRef[] {AppenderRef.createAppenderRef(testAppender.getName(), null, null)};
-        LoggerConfig loggerConfig = LoggerConfig.createLogger(false, Level.ALL, "datawave.microservice.audit.log", "true", refs, null, config, null);
+        LoggerConfig loggerConfig = LoggerConfig.createLogger(false, Level.ALL, "datawave.microservice.audit.auditors.log", "true", refs, null, config, null);
         loggerConfig.addAppender(testAppender, null, null);
-        config.addLogger("datawave.microservice.audit.log", loggerConfig);
+        config.addLogger("datawave.microservice.audit.auditors.log", loggerConfig);
         ctx.updateLoggers();
     }
     

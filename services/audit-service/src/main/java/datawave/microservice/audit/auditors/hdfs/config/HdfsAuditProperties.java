@@ -1,4 +1,4 @@
-package datawave.microservice.audit.hdfs.config;
+package datawave.microservice.audit.auditors.hdfs.config;
 
 import java.util.List;
 
@@ -7,7 +7,6 @@ public class HdfsAuditProperties {
     private String hdfsUri;
     private String path;
     private String prefix;
-    private String codecName;
     private long maxFileLenBytes;
     private long maxFileAgeMillis;
     private List<String> configResources;
@@ -34,14 +33,6 @@ public class HdfsAuditProperties {
     
     public void setPrefix(String prefix) {
         this.prefix = prefix;
-    }
-    
-    public String getCodecName() {
-        return codecName;
-    }
-    
-    public void setCodecName(String codecName) {
-        this.codecName = codecName;
     }
     
     public long getMaxFileLenBytes() {

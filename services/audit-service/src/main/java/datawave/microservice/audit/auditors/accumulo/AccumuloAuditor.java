@@ -1,4 +1,4 @@
-package datawave.microservice.audit.accumulo;
+package datawave.microservice.audit.auditors.accumulo;
 
 import datawave.webservice.common.audit.AuditParameters;
 import datawave.webservice.common.audit.Auditor;

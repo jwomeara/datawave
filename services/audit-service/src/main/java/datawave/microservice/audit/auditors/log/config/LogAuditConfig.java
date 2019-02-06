@@ -1,8 +1,8 @@
-package datawave.microservice.audit.log.config;
+package datawave.microservice.audit.auditors.log.config;
 
 import datawave.microservice.audit.common.AuditMessage;
 import datawave.microservice.audit.common.AuditMessageHandler;
-import datawave.microservice.audit.log.LogAuditor;
+import datawave.microservice.audit.auditors.log.LogAuditor;
 import datawave.webservice.common.audit.AuditParameters;
 import datawave.webservice.common.audit.Auditor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

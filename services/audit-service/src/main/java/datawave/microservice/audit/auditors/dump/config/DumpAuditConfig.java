@@ -1,15 +1,14 @@
-package datawave.microservice.audit.dump.config;
+package datawave.microservice.audit.auditors.dump.config;
 
 import datawave.microservice.audit.common.AuditMessage;
 import datawave.microservice.audit.common.AuditMessageHandler;
-import datawave.microservice.audit.dump.DumpAuditor;
-import datawave.microservice.audit.hdfs.HdfsAuditor;
+import datawave.microservice.audit.auditors.hdfs.HdfsAuditor;
+import datawave.microservice.audit.auditors.hdfs.config.HdfsAuditProperties;
 import datawave.webservice.common.audit.AuditParameters;
 import datawave.webservice.common.audit.Auditor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.stream.annotation.EnableBinding;
 import org.springframework.cloud.stream.annotation.Input;
 import org.springframework.cloud.stream.annotation.StreamListener;
@@ -24,14 +23,14 @@ import javax.annotation.Resource;
  * configuration will also enable the appropriate Spring Cloud Stream configuration for the audit dump binding, as specified in the audit config.
  */
 @Configuration
-@EnableBinding(AuditDumpConfig.AuditDumpBinding.class)
+@EnableBinding(DumpAuditConfig.AuditDumpBinding.class)
 @ConditionalOnProperty(name = "audit.dump.enabled", havingValue = "true")
-public class AuditDumpConfig {
+public class DumpAuditConfig {
     
-    @Bean("auditDumpProperties")
+    @Bean("dumpAuditProperties")
     @ConfigurationProperties("audit.dump")
-    public AuditDumpProperties auditDumpProperties() {
-        return new AuditDumpProperties();
+    public HdfsAuditProperties dumpAuditProperties() {
+        return new HdfsAuditProperties();
     }
     
     @Resource(name = "msgHandlerAuditParams")
@@ -41,7 +40,7 @@ public class AuditDumpConfig {
     public AuditMessageHandler auditDumpMessageHandler(Auditor dumpAuditor) {
         return new AuditMessageHandler(msgHandlerAuditParams, dumpAuditor) {
             @Override
-            @StreamListener(AuditDumpConfig.AuditDumpBinding.NAME)
+            @StreamListener(DumpAuditConfig.AuditDumpBinding.NAME)
             public void onMessage(AuditMessage msg) throws Exception {
                 super.onMessage(msg);
             }
@@ -49,15 +48,14 @@ public class AuditDumpConfig {
     }
     
     @Bean
-    public Auditor dumpAuditor(@Qualifier("auditDumpProperties") AuditDumpProperties auditDumpProperties) throws Exception {
-        return new DumpAuditor.Builder().setHdfsUri(auditDumpProperties.getHdfsUri()).setPath(auditDumpProperties.getPath())
-                        .setCodecName(auditDumpProperties.getCodecName()).setMaxFileAgeMillis(auditDumpProperties.getMaxFileAgeMillis())
-                        .setMaxFileLenBytes(auditDumpProperties.getMaxFileLenBytes()).setConfigResources(auditDumpProperties.getConfigResources())
-                        .setUpdateTimeoutMillis(auditDumpProperties.getUpdateTimeoutMillis()).build();
+    public Auditor dumpAuditor(@Qualifier("dumpAuditProperties") HdfsAuditProperties dumpAuditProperties) throws Exception {
+        return new HdfsAuditor.Builder().setHdfsUri(dumpAuditProperties.getHdfsUri()).setPath(dumpAuditProperties.getPath())
+                        .setMaxFileAgeMillis(dumpAuditProperties.getMaxFileAgeMillis()).setMaxFileLenBytes(dumpAuditProperties.getMaxFileLenBytes())
+                        .setConfigResources(dumpAuditProperties.getConfigResources()).setPrefix(dumpAuditProperties().getPrefix()).build();
     }
     
     public interface AuditDumpBinding {
-        String NAME = "auditDumpSink";
+        String NAME = "dumpAuditSink";
         
         @Input(NAME)
         SubscribableChannel auditDumpSink();
