@@ -36,7 +36,7 @@ import javax.annotation.Resource;
 @Configuration
 @EnableConfigurationProperties(AccumuloAuditProperties.class)
 @EnableBinding(AccumuloAuditConfig.AccumuloAuditBinding.class)
-@ConditionalOnProperty(name = "audit.accumulo.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "audit.auditors.accumulo.enabled", havingValue = "true")
 public class AccumuloAuditConfig {
     
     private Logger log = LoggerFactory.getLogger(this.getClass());

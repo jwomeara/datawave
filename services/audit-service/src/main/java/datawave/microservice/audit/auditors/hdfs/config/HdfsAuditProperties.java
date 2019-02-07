@@ -1,23 +1,13 @@
 package datawave.microservice.audit.auditors.hdfs.config;
 
-import java.util.List;
+import datawave.microservice.audit.config.AuditProperties;
 
-public class HdfsAuditProperties {
+public class HdfsAuditProperties extends AuditProperties.Hdfs {
     
-    private String hdfsUri;
     private String path;
     private String prefix;
     private long maxFileLenBytes;
     private long maxFileAgeMillis;
-    private List<String> configResources;
-    
-    public String getHdfsUri() {
-        return hdfsUri;
-    }
-    
-    public void setHdfsUri(String hdfsUri) {
-        this.hdfsUri = hdfsUri;
-    }
     
     public String getPath() {
         return path;
@@ -49,13 +39,5 @@ public class HdfsAuditProperties {
     
     public void setMaxFileAgeMillis(long maxFileAgeMillis) {
         this.maxFileAgeMillis = maxFileAgeMillis;
-    }
-    
-    public List<String> getConfigResources() {
-        return configResources;
-    }
-    
-    public void setConfigResources(List<String> configResources) {
-        this.configResources = configResources;
     }
 }

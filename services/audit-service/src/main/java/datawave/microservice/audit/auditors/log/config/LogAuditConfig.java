@@ -21,7 +21,7 @@ import javax.annotation.Resource;
  */
 @Configuration
 @EnableBinding(LogAuditConfig.LogAuditBinding.class)
-@ConditionalOnProperty(name = "audit.log.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "audit.auditors.log.enabled", havingValue = "true")
 public class LogAuditConfig {
     
     @Resource(name = "msgHandlerAuditParams")

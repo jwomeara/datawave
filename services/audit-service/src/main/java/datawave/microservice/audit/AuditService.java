@@ -23,7 +23,13 @@ public class AuditService {
     public AuditParameters restAuditParams() {
         return new AuditParameters();
     }
-    
+
+    @Bean("replayAuditParams")
+    @RequestScope
+    public AuditParameters replayAuditParams() {
+        return new AuditParameters();
+    }
+
     @Bean("msgHandlerAuditParams")
     public AuditParameters msgHandlerAuditParams() {
         return new AuditParameters();

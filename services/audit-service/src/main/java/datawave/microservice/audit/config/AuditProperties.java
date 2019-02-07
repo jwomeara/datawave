@@ -3,6 +3,7 @@ package datawave.microservice.audit.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @EnableConfigurationProperties(AuditProperties.class)
@@ -12,6 +13,7 @@ public class AuditProperties {
     private long confirmAckTimeoutMillis = 500L;
     
     private Retry retry = new Retry();
+    private Hdfs hdfs = new Hdfs();
     
     public boolean isConfirmAckEnabled() {
         return confirmAckEnabled;
@@ -37,6 +39,14 @@ public class AuditProperties {
         if (retry == null)
             throw new NullPointerException("Audit Retry properties must not be null.");
         this.retry = retry;
+    }
+    
+    public Hdfs getHdfs() {
+        return hdfs;
+    }
+    
+    public void setHdfs(Hdfs hdfs) {
+        this.hdfs = hdfs;
     }
     
     public static class Retry {
@@ -66,6 +76,27 @@ public class AuditProperties {
         
         public void setBackoffIntervalMillis(long backoffIntervalMillis) {
             this.backoffIntervalMillis = backoffIntervalMillis;
+        }
+    }
+    
+    public static class Hdfs {
+        protected String hdfsUri;
+        protected List<String> configResources;
+        
+        public String getHdfsUri() {
+            return hdfsUri;
+        }
+        
+        public void setHdfsUri(String hdfsUri) {
+            this.hdfsUri = hdfsUri;
+        }
+        
+        public List<String> getConfigResources() {
+            return configResources;
+        }
+        
+        public void setConfigResources(List<String> configResources) {
+            this.configResources = configResources;
         }
     }
 }

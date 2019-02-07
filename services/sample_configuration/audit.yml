@@ -31,10 +31,11 @@ spring:
             concurrency: 5
 
 audit:
-  log:
-    enabled: true
-  accumulo:
-    enabled: false
+  auditors:
+    log:
+      enabled: true
+    accumulo:
+      enabled: false
 
 logging:
   level:

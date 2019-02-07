@@ -4,7 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
 @EnableConfigurationProperties(AccumuloAuditProperties.class)
-@ConfigurationProperties(prefix = "audit.accumulo")
+@ConfigurationProperties(prefix = "audit.auditors.accumulo")
 public class AccumuloAuditProperties {
     
     private String tableName = "QueryAuditTable";

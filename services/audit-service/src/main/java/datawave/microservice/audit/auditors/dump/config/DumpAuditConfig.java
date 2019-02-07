@@ -4,6 +4,7 @@ import datawave.microservice.audit.common.AuditMessage;
 import datawave.microservice.audit.common.AuditMessageHandler;
 import datawave.microservice.audit.auditors.hdfs.HdfsAuditor;
 import datawave.microservice.audit.auditors.hdfs.config.HdfsAuditProperties;
+import datawave.microservice.audit.config.AuditProperties;
 import datawave.webservice.common.audit.AuditParameters;
 import datawave.webservice.common.audit.Auditor;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -17,6 +18,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.SubscribableChannel;
 
 import javax.annotation.Resource;
+import java.util.List;
 
 /**
  * Configures an HdfsAuditor to dump messages to HDFS by request. This configuration is activated via the 'audit.dump.enabled' property. When enabled, this
@@ -24,11 +26,11 @@ import javax.annotation.Resource;
  */
 @Configuration
 @EnableBinding(DumpAuditConfig.AuditDumpBinding.class)
-@ConditionalOnProperty(name = "audit.dump.enabled", havingValue = "true")
+@ConditionalOnProperty(name = "audit.auditors.dump.enabled", havingValue = "true")
 public class DumpAuditConfig {
     
     @Bean("dumpAuditProperties")
-    @ConfigurationProperties("audit.dump")
+    @ConfigurationProperties("audit.auditors.dump")
     public HdfsAuditProperties dumpAuditProperties() {
         return new HdfsAuditProperties();
     }
@@ -48,10 +50,14 @@ public class DumpAuditConfig {
     }
     
     @Bean
-    public Auditor dumpAuditor(@Qualifier("dumpAuditProperties") HdfsAuditProperties dumpAuditProperties) throws Exception {
-        return new HdfsAuditor.Builder().setHdfsUri(dumpAuditProperties.getHdfsUri()).setPath(dumpAuditProperties.getPath())
+    public Auditor dumpAuditor(AuditProperties auditProperties, @Qualifier("dumpAuditProperties") HdfsAuditProperties dumpAuditProperties) throws Exception {
+        String hdfsUri = (dumpAuditProperties.getHdfsUri() != null) ? dumpAuditProperties.getHdfsUri() : auditProperties.getHdfs().getHdfsUri();
+        List<String> configResources = (dumpAuditProperties.getConfigResources() != null) ? dumpAuditProperties.getConfigResources()
+                        : auditProperties.getHdfs().getConfigResources();
+        
+        return new HdfsAuditor.Builder().setHdfsUri(hdfsUri).setPath(dumpAuditProperties.getPath())
                         .setMaxFileAgeMillis(dumpAuditProperties.getMaxFileAgeMillis()).setMaxFileLenBytes(dumpAuditProperties.getMaxFileLenBytes())
-                        .setConfigResources(dumpAuditProperties.getConfigResources()).setPrefix(dumpAuditProperties().getPrefix()).build();
+                        .setConfigResources(configResources).setPrefix(dumpAuditProperties().getPrefix()).build();
     }
     
     public interface AuditDumpBinding {
