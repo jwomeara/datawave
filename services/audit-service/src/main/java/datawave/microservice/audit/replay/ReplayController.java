@@ -72,13 +72,49 @@ public class ReplayController {
     }
 
     // post to create a replay
+    @ApiOperation(value = "Creates an audit replay request.")
+    @RequestMapping(path = "/create", method = RequestMethod.POST)
+    public String create(@RequestParam String path, @RequestParam(defaultValue = "") String hdfsUri, @RequestParam(defaultValue = "100") Long sendRate) {
+        String id = "";
+
+        return id;
+    }
 
     // get status of a replay
+    @ApiOperation(value = "Gets the status of the audit replay request.")
+    @RequestMapping(path = "/{id}/status", method = RequestMethod.GET)
+    public ReplayStatus status(@PathVariable("id") String id) {
+        ReplayStatus status = new ReplayStatus();
+
+        return status;
+    }
+
+    // post to update the send rate
+    @ApiOperation(value = "Updates the audit replay request.")
+    @RequestMapping(path = "/{id}/update", method = RequestMethod.POST)
+    public String update(@PathVariable("id") String id, @RequestParam Long sendRate) {
+        String response = "";
+
+        return response;
+    }
 
     // post to cancel a replay
+    @ApiOperation(value = "Stops the audit replay request.")
+    @RequestMapping(path = "/{id}/stop", method = RequestMethod.POST)
+    public String stop(@PathVariable("id") String id) {
+        String response = "";
+
+        return response;
+    }
 
     // get list of replays
+    @ApiOperation(value = "Lists the status for each audit replay request.")
+    @RequestMapping(path = "/list", method = RequestMethod.GET)
+    public List<ReplayStatus> list(@RequestParam(defaultValue = "") String state) {
+        List<ReplayStatus> replays = new ArrayList<>();
 
+        return replays;
+    }
 
     // TODO: Break this off, make it asynchronous, and enable a 'replay status' endpoint
     // TODO: Add ability to read compressed files too
@@ -206,40 +242,5 @@ public class ReplayController {
             log.error("Unable to URL encode value: " + value);
         }
         return value;
-    }
-
-    /**
-     * Reads JSON-formatted audit messages from the given path, and attempts to perform auditing on them.
-     *
-     * @param replayId the ID of the replay to be canceled
-     * @return the audit IDs for the processed messages, which can be used for tracking purposes
-     */
-    @ApiOperation(value = "Cancels an audit replay request.")
-    @RequestMapping(path = "/{id}/cancel", method = RequestMethod.POST)
-    public String cancel(@PathVariable("id") String replayId) {
-        return "";
-    }
-
-    /**
-     * Reads JSON-formatted audit messages from the given path, and attempts to perform auditing on them.
-     *
-     * @param replayId the ID of the replay to be canceled
-     * @return the audit IDs for the processed messages, which can be used for tracking purposes
-     */
-    @ApiOperation(value = "Returns status for the specified replay request.")
-    @RequestMapping(path = "/{id}/status", method = RequestMethod.GET)
-    public String status(@PathVariable("id") String replayId) {
-        return "";
-    }
-
-    /**
-     * Reads JSON-formatted audit messages from the given path, and attempts to perform auditing on them.
-     *
-     * @return the audit IDs for the processed messages, which can be used for tracking purposes
-     */
-    @ApiOperation(value = "Lists the replay requests.")
-    @RequestMapping(path = "/list", method = RequestMethod.GET)
-    public List<String> list() {
-        return "";
     }
 }
