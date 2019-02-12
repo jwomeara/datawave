@@ -6,11 +6,11 @@ import java.util.List;
 public class ReplayStatus {
 
     public enum ReplayState {
-        RUNNING, STOPPED, FINISHED, FAILED
+        CREATED, RUNNING, IDLE, STOPPED, CANCELED, FINISHED, FAILED
     }
 
     public enum FileState {
-        QUEUED, REPLAYING, REPLAYED, FINISHED, FAILED
+        QUEUED, REPLAYING, FINISHED, FAILED
     }
 
     private String id;

@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,6 +35,11 @@ import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * The ReplayController presents the REST endpoints for audit replay.
@@ -55,8 +61,13 @@ public class ReplayController {
 
     private final Configuration config = new Configuration();
 
+    private Map<String, Future> replayTasks = new HashMap<>();
+
     @Autowired
     public AuditController auditController;
+
+    @Autowired
+    public ThreadPoolTaskExecutor auditReplayExecutor;
 
     public ReplayController(AuditProperties auditProperties, @Qualifier("restAuditParams") AuditParameters restAuditParams) {
         this.auditProperties = auditProperties;
@@ -75,18 +86,64 @@ public class ReplayController {
     @ApiOperation(value = "Creates an audit replay request.")
     @RequestMapping(path = "/create", method = RequestMethod.POST)
     public String create(@RequestParam String path, @RequestParam(defaultValue = "") String hdfsUri, @RequestParam(defaultValue = "100") Long sendRate) {
-        String id = "";
+        String id = UUID.randomUUID().toString();
+
+        // create a replay task which writes idleCheck updates to the distributed cache
+        replayTasks.put(id, auditReplayExecutor.submit(new ReplayTask()));
 
         return id;
     }
 
-    // get status of a replay
-    @ApiOperation(value = "Gets the status of the audit replay request.")
-    @RequestMapping(path = "/{id}/status", method = RequestMethod.GET)
+    // post to create and start a replay
+    @ApiOperation(value = "Creates an audit replay request, and starts it.")
+    @RequestMapping(path = "/createAndStart", method = RequestMethod.POST)
+    public String createAndStart(@RequestParam String path, @RequestParam(defaultValue = "") String hdfsUri, @RequestParam(defaultValue = "100") Long sendRate) {
+        String id = UUID.randomUUID().toString();
+
+        // create a replay task which writes idleCheck updates to the distributed cache
+        replayTasks.put(id, auditReplayExecutor.submit(new ReplayTask()));
+
+        return id;
+    }
+
+    // post to start a replay
+    @ApiOperation(value = "Starts an audit replay request.")
+    @RequestMapping(path = "/{id}/start", method = RequestMethod.POST)
+    public String start(@RequestParam String id) {
+        String response = "";
+
+        return response;
+    }
+
+    // post to start all replays
+    @ApiOperation(value = "Starts all audit replay requests.")
+    @RequestMapping(path = "/startAll", method = RequestMethod.POST)
+    public String startAll() {
+        String response = "";
+
+        return response;
+    }
+
+    // get idleCheck of a replay
+    @ApiOperation(value = "Gets the idleCheck of the audit replay request.")
+    @RequestMapping(path = "/{id}/idleCheck", method = RequestMethod.GET)
     public ReplayStatus status(@PathVariable("id") String id) {
         ReplayStatus status = new ReplayStatus();
 
+        // pull the replay idleCheck from the distributed cache
+
         return status;
+    }
+
+    // get idleCheck for all replays
+    @ApiOperation(value = "Lists the idleCheck for all audit replay requests.")
+    @RequestMapping(path = "/statusAll", method = RequestMethod.GET)
+    public List<ReplayStatus> statusAll(@RequestParam(defaultValue = "") String state) {
+        List<ReplayStatus> replays = new ArrayList<>();
+
+        // pull all replay statuses from the distributed cache
+
+        return replays;
     }
 
     // post to update the send rate
@@ -95,28 +152,78 @@ public class ReplayController {
     public String update(@PathVariable("id") String id, @RequestParam Long sendRate) {
         String response = "";
 
+        // send an event out to all audit services to update the rate?
+
         return response;
     }
 
-    // post to cancel a replay
+    // post to stop a replay
     @ApiOperation(value = "Stops the audit replay request.")
     @RequestMapping(path = "/{id}/stop", method = RequestMethod.POST)
     public String stop(@PathVariable("id") String id) {
         String response = "";
 
+        // if we own the replay, just stop it.  otherwise, send an event out to all audit services to stop the replay
+
         return response;
     }
 
-    // get list of replays
-    @ApiOperation(value = "Lists the status for each audit replay request.")
-    @RequestMapping(path = "/list", method = RequestMethod.GET)
-    public List<ReplayStatus> list(@RequestParam(defaultValue = "") String state) {
-        List<ReplayStatus> replays = new ArrayList<>();
+    // post to stop all replays
+    @ApiOperation(value = "Stops all audit replay requests.")
+    @RequestMapping(path = "/stopAll", method = RequestMethod.POST)
+    public String stopAll() {
+        String response = "";
 
-        return replays;
+        // stop all of our replays.  then, send an event out to all audit services to stop all replays
+
+        return response;
     }
 
-    // TODO: Break this off, make it asynchronous, and enable a 'replay status' endpoint
+    // post to cancel a replay
+    @ApiOperation(value = "Cancels the audit replay request.")
+    @RequestMapping(path = "/{id}/cancel", method = RequestMethod.POST)
+    public String cancel(@PathVariable("id") String id) {
+        String response = "";
+
+        // if we own the replay, just cancel it.  otherwise, send an event out to all audit services to cancel a replay
+
+        return response;
+    }
+
+    // post to cancel all replays
+    @ApiOperation(value = "Cancels all audit replay requests.")
+    @RequestMapping(path = "/cancelAll", method = RequestMethod.POST)
+    public String cancelAll() {
+        String response = "";
+
+        // cancel all of our replays.  then, send an event out to all audit services to cancel all replays
+
+        return response;
+    }
+
+    // post to resume a replay
+    @ApiOperation(value = "Resumes the audit replay request.")
+    @RequestMapping(path = "/{id}/resume", method = RequestMethod.POST)
+    public String resume(@PathVariable("id") String id) {
+        String response = "";
+
+        // if we own the stopped replay, just resume it.  otherwise, send an event out to all audit services to resume the replay
+
+        return response;
+    }
+
+    // post to resume all replay
+    @ApiOperation(value = "Resumes all audit replay requests.")
+    @RequestMapping(path = "/resumeAll", method = RequestMethod.POST)
+    public String resumeAll() {
+        String response = "";
+
+        // resume all of our stopped replays.  then, send an event out to all audit services to resume all replays
+
+        return response;
+    }
+
+    // TODO: Break this off, make it asynchronous, and enable a 'replay idleCheck' endpoint
     // TODO: Add ability to read compressed files too
 
     /**
@@ -128,7 +235,7 @@ public class ReplayController {
      */
     @ApiOperation(value = "Creates an audit replay request.")
     @RequestMapping(path = "/create", method = RequestMethod.POST)
-    public MultiValueMap<String, Object> replay(@RequestParam String path, @RequestParam(required = false, defaultValue = "") String hdfsUri) {
+    public MultiValueMap<String, Object> create(@RequestParam String path, @RequestParam(required = false, defaultValue = "") String hdfsUri) {
         final ObjectMapper mapper = new ObjectMapper();
 
         FileSystem hdfs = null;
