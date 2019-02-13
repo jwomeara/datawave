@@ -95,10 +95,33 @@ public class AuditReplayService {
         return replayStatuses;
     }
 
-    public String update(String id, Long sendRate) {
+    public String update(String id, long sendRate) {
         String response = "";
 
-        // if the id exists, send an event out to all audit services to update the rate
+        // only update if the send rate is valid
+        if (sendRate >= 0) {
+            // pull the replay status from cache to ensure it exists
+            ReplayStatus status = status(id);
+            if (status != null) {
+
+                // is the replay running?
+                if (status.getState() == ReplayStatus.ReplayState.RUNNING) {
+
+                    // if we own it, update it, otherwise fire an event to all of the audit services
+                    RunningReplay replay = runningReplays.get(id);
+                    if (replay != null) {
+                        replay.getStatus().setSendRate(sendRate);
+                    } else {
+                        // TODO: Fire an update event
+                    }
+                } else {
+
+                    // just update the cache if it's not running
+                    status.setSendRate(sendRate);
+                    replayStatusCache.update(status);
+                }
+            }
+        }
 
         return response;
     }
