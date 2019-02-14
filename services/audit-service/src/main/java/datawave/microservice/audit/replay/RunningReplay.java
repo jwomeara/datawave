@@ -22,4 +22,6 @@ public class RunningReplay {
     public void setFuture(Future future) {
         this.future = future;
     }
+
+    // TODO: Add safe stop method
 }

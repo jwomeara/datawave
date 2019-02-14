@@ -2,26 +2,28 @@ package org.springframework.cloud.bus.event;
 
 import datawave.microservice.audit.replay.ReplayStatus;
 
+import java.util.List;
+
 public class AuditReplayUpdateEvent extends RemoteApplicationEvent {
 
-    private final ReplayStatus replayStatus;
+    private final List<ReplayStatus> replayStatuses;
 
     @SuppressWarnings("unused")
     public AuditReplayUpdateEvent() {
         // this constructor is only for serialization/deserialization
-        replayStatus = null;
+        replayStatuses = null;
     }
 
-    public AuditReplayUpdateEvent(Object source, String originService, ReplayStatus replayStatus) {
-        this(source, originService, null, replayStatus);
+    public AuditReplayUpdateEvent(Object source, String originService, List<ReplayStatus> replayStatuses) {
+        this(source, originService, null, replayStatuses);
     }
 
-    public AuditReplayUpdateEvent(Object source, String originService, String destinationService, ReplayStatus replayStatus) {
+    public AuditReplayUpdateEvent(Object source, String originService, String destinationService, List<ReplayStatus> replayStatuses) {
         super(source, originService, destinationService);
-        this.replayStatus = replayStatus;
+        this.replayStatuses = replayStatuses;
     }
 
-    public ReplayStatus getReplayStatus() {
-        return replayStatus;
+    public List<ReplayStatus> getReplayStatuses() {
+        return replayStatuses;
     }
 }
