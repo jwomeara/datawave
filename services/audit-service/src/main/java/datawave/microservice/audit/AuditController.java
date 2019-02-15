@@ -159,10 +159,13 @@ public class AuditController {
         restAuditParams.clear();
         restAuditParams.validate(parameters);
 
-        return audit(restAuditParams);
+        if (!audit(restAuditParams))
+            throw new RuntimeException("Unable to process audit message with id [" + restAuditParams.getAuditId() + "]");
+
+        return restAuditParams.getAuditId();
     }
 
-    public String audit(AuditParameters auditParameters) {
+    public boolean audit(AuditParameters auditParameters) {
         log.info("[{}] Received audit request with parameters {}", restAuditParams.getAuditId(), restAuditParams);
 
         boolean success;
@@ -202,16 +205,13 @@ public class AuditController {
             }
         }
 
-        if (!success) {
+        if (!success)
             log.warn("[" + restAuditParams.getAuditId() + "] Audit failed. {attempts = " + attempts + ", elapsedMillis = " + (currentTime - auditStartTime)
                     + ((hdfsAuditor != null) ? ", hdfsElapsedMillis = " + (System.currentTimeMillis() - currentTime) + "}" : "}"));
-
-            throw new RuntimeException("Unable to process audit message with id [" + restAuditParams.getAuditId() + "]");
-        } else {
+        else
             log.info("[" + restAuditParams.getAuditId() + "] Audit successful. {attempts = " + attempts + ", elapsedMillis = " + (currentTime - auditStartTime)
                     + ((hdfsAuditor != null) ? ", hdfsElapsedMillis = " + (System.currentTimeMillis() - currentTime) + "}" : "}"));
 
-            return restAuditParams.getAuditId();
-        }
+        return success;
     }
 }

@@ -2,7 +2,6 @@ package datawave.microservice.audit.replay;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import datawave.webservice.common.audit.AuditParameters;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.LocatedFileStatus;
@@ -10,8 +9,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -22,8 +19,14 @@ import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
-public class ReplayTask implements Runnable {
+import static datawave.microservice.audit.replay.ReplayStatus.ReplayState;
+import static datawave.microservice.audit.replay.ReplayStatus.FileState;
+
+public abstract class ReplayTask implements Runnable {
 
     private static final ObjectMapper mapper = new ObjectMapper();
 
@@ -31,12 +34,14 @@ public class ReplayTask implements Runnable {
 
     private final Configuration config;
     private final ReplayStatus status;
+    private final ReplayStatusCache replayStatusCache;
 
     private FileSystem hdfs;
 
-    public ReplayTask(Configuration config, ReplayStatus status) throws Exception {
+    public ReplayTask(Configuration config, ReplayStatus status, ReplayStatusCache replayStatusCache) throws Exception {
         this.config = config;
         this.status = status;
+        this.replayStatusCache = replayStatusCache;
         init();
     }
 
@@ -49,121 +54,199 @@ public class ReplayTask implements Runnable {
 
     @Override
     public void run() {
-        long i = 0;
-        while (i++ >= 0) {
-            // do nothing
+
+        if (status.getState() != ReplayState.RUNNING)
+            return;
+
+        // if we need to, get a list of files
+        if (status.getFiles() == null)
+            status.setFiles(listFiles());
+
+        // sort the files to process.  'RUNNING' first, followed by 'QUEUED'
+        List<ReplayStatus.FileStatus> filesToProcess = status.getFiles().stream().filter(fileStatus -> fileStatus.getState() == FileState.RUNNING || fileStatus.getState() == FileState.QUEUED).sorted((o1, o2) -> o2.getState().ordinal() - o1.getState().ordinal()).collect(Collectors.toList());
+
+        // then, process any unmarked/remaining files
+        for (ReplayStatus.FileStatus fileStatus : filesToProcess) {
+            if (!processFile(fileStatus)) {
+                status.setState(ReplayState.FAILED);
+                break;
+            } else if (status.getState() != ReplayState.RUNNING) {
+                break;
+            }
+
+            replayStatusCache.update(status);
+        }
+
+        // if we're still running, finish the replay
+        if (status.getState() == ReplayState.RUNNING) {
+            // finally, update our status as FINISHED
+            if (status.getState() != ReplayState.FAILED)
+                status.setState(ReplayState.FINISHED);
+        }
+
+        replayStatusCache.update(status);
+    }
+
+    private List<ReplayStatus.FileStatus> listFiles() {
+        List<ReplayStatus.FileStatus> fileStatuses = new ArrayList<>();
+
+        try {
+            RemoteIterator<LocatedFileStatus> filesIter = hdfs.listFiles(new Path(status.getPath()), false);
+            while (filesIter.hasNext()) {
+                LocatedFileStatus locatedFile = filesIter.next();
+                String fileName = locatedFile.getPath().getName();
+
+                ReplayStatus.FileStatus fileStatus = null;
+                if (fileName.startsWith("_" + FileState.RUNNING)) {
+                    fileStatuses.add(new ReplayStatus.FileStatus(locatedFile.toString(), FileState.RUNNING));
+                } else if (fileName.startsWith("_" + FileState.FINISHED)) {
+                    fileStatuses.add(new ReplayStatus.FileStatus(locatedFile.toString(), FileState.FINISHED));
+                } else if (fileName.startsWith("_" + FileState.FAILED)) {
+                    fileStatuses.add(new ReplayStatus.FileStatus(locatedFile.toString(), FileState.FAILED));
+                } else if (!locatedFile.getPath().getName().startsWith("_") && !locatedFile.getPath().getName().startsWith(".")) {
+                    fileStatuses.add(new ReplayStatus.FileStatus(locatedFile.toString(), FileState.QUEUED));
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Encountered an error while listing files at [" + status.getPath() + "]");
+        }
+
+        return fileStatuses;
+    }
+
+    private boolean processFile(ReplayStatus.FileStatus fileStatus) {
+        Path file = new Path(fileStatus.getPath());
+
+        long numToSkip = 0;
+        if (fileStatus.getState() == FileState.RUNNING) {
+
+            numToSkip = fileStatus.getLinesRead();
+        } else {
+
+            Path runningFile = new Path(file.getParent(), "_" + FileState.RUNNING + file.getName());
+            boolean renameSuccess = true;
             try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+                if (!hdfs.rename(file, runningFile))
+                    renameSuccess = false;
+            } catch (IOException e) {
+                renameSuccess = false;
+            }
+
+            if (renameSuccess) {
+                file = runningFile;
+            } else {
+                log.error("Unable to rename file from \"" + file + "\" to \"" + runningFile + "\"");
+                fileStatus.setState(FileState.FAILED);
+                return false;
             }
         }
+
+        boolean encounteredError = false;
+        long linesRead = fileStatus.getLinesRead();
+        long auditsSent = fileStatus.getAuditsSent();
+        long auditsFailed = fileStatus.getAuditsFailed();
+
+        BufferedReader reader = null;
+        try {
+            // read each audit message, and process via the audit service
+            reader = new BufferedReader(new InputStreamReader(hdfs.open(file)));
+            TypeReference<HashMap<String, String>> typeRef = new TypeReference<HashMap<String, String>>() {};
+
+            String line = null;
+            while (null != (line = reader.readLine()) && status.getState() == ReplayState.RUNNING) {
+                if (++linesRead > numToSkip && status.getState() == ReplayState.RUNNING) {
+                    try {
+                        HashMap<String, String> auditParamsMap = mapper.readValue(line, typeRef);
+                        auditParamsMap.forEach((key, value) -> auditParamsMap.put(key, urlDecodeString(value)));
+
+                        auditsSent++;
+                        if (audit(auditParamsMap)) {
+                            log.warn("Failed to audit: " + auditParamsMap);
+                            auditsFailed++;
+                        }
+
+                        // send rate of 0 will pause the audit replay
+                        long sendRate = status.getSendRate();
+                        while(sendRate == 0) {
+                            try {
+                                Thread.sleep(TimeUnit.SECONDS.toMillis(5));
+                            } catch (InterruptedException e) {
+                                // not a problem if we exit a little early
+                            }
+                            sendRate = status.getSendRate();
+                        }
+
+                        try {
+                            Thread.sleep((long) (1000.0 / sendRate));
+                        } catch (InterruptedException e) {
+                            // not a problem if we exit a little early
+                        }
+                    } catch (IOException e) {
+                        log.warn("Unable to parse a JSON audit message from [" + line + "]");
+                    }
+                }
+
+                // occasionally update the cached status
+                if (linesRead % 1000 == 0) {
+                    fileStatus.setLinesRead(linesRead);
+                    fileStatus.setAuditsSent(auditsSent);
+                    fileStatus.setAuditsFailed(auditsFailed);
+                    replayStatusCache.update(status);
+                }
+            }
+        } catch (IOException e) {
+            encounteredError = true;
+            log.error("Unable to read from file [" + file + "]");
+        }
+
+        fileStatus.setLinesRead(linesRead);
+        fileStatus.setAuditsSent(auditsSent);
+        fileStatus.setAuditsFailed(auditsFailed);
+
+        if (reader != null) {
+            try {
+                reader.close();
+            } catch (IOException e) {
+                log.error("Unable to close file [" + file + "]");
+            }
+        }
+
+        if (status.getState() == ReplayState.RUNNING) {
+
+            Path finalPath = null;
+            if (!encounteredError)
+                finalPath = new Path(file.getParent(), "_" + FileState.FINISHED + file.getName());
+            else
+                finalPath = new Path(file.getParent(), "_" + FileState.FAILED + file.getName());
+
+            boolean renameSuccess = true;
+            try {
+                if (!hdfs.rename(file, finalPath))
+                    renameSuccess = false;
+            } catch (IOException e) {
+                renameSuccess = false;
+            }
+
+            if (!renameSuccess) {
+                log.error("Unable to rename file from \"" + file + "\" to \"" + finalPath + "\"");
+                fileStatus.setState(FileState.FAILED);
+                return false;
+            }
+        }
+
+        return true;
     }
 
     // TODO: Add ability to do a timed safe stop/cancel
-
-    // TODO: Rethink how messages should be passed to the audit controller
-
-    public MultiValueMap<String, Object> replay() {
-
-        List<String> auditIds = new ArrayList<>();
-        long numAudits = 0;
-        int filesReplayed = 0;
-        int filesFailed = 0;
-
-        if (hdfs != null) {
-            // first, get a list of valid files from the directory
-            List<LocatedFileStatus> replayableFiles = new ArrayList<>();
-
-            try {
-                RemoteIterator<LocatedFileStatus> filesIter = hdfs.listFiles(new Path(status.getPath()), false);
-                while (filesIter.hasNext()) {
-                    LocatedFileStatus fileStatus = filesIter.next();
-                    if (!fileStatus.getPath().getName().startsWith("_") && !fileStatus.getPath().getName().startsWith("."))
-                        replayableFiles.add(fileStatus);
-                }
-            } catch (Exception e) {
-                throw new RuntimeException("Encountered an error while listing files at [" + status.getPath() + "]");
-            }
-
-            for (LocatedFileStatus replayFile : replayableFiles) {
-                try {
-                    // rename the file to mark it as '_REPLAYING"
-                    Path replayingPath = new Path(replayFile.getPath().getParent(), "_REPLAYING." + replayFile.getPath().getName());
-                    hdfs.rename(replayFile.getPath(), replayingPath);
-
-                    // read each audit message, and process via the audit service
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(hdfs.open(replayingPath)));
-
-                    boolean encounteredError = false;
-
-                    TypeReference<HashMap<String, String>> typeRef = new TypeReference<HashMap<String, String>>() {
-                    };
-                    String line = null;
-                    try {
-                        while (null != (line = reader.readLine())) {
-                            try {
-                                HashMap<String, String> auditParamsMap = mapper.readValue(line, typeRef);
-                                AuditParameters auditParams = new AuditParameters().fromMap(auditParamsMap);
-                                numAudits++;
-
-                                auditIds.add(auditController.audit(auditParams));
-                            } catch (Exception e) {
-                                log.warn("Unable to parse a JSON audit message from [" + line + "]");
-                            }
-                        }
-                    } catch (IOException e) {
-                        encounteredError = true;
-                        log.error("Unable to read line from file [" + replayingPath + "]");
-                    } finally {
-                        try {
-                            reader.close();
-                        } catch (IOException e) {
-                            encounteredError = true;
-                            log.error("Unable to close file [" + replayingPath + "]");
-                        }
-                    }
-
-                    Path finalPath = null;
-                    if (!encounteredError) {
-                        finalPath = new Path(replayFile.getPath().getParent(), "_REPLAYED." + replayFile.getPath().getName());
-                        filesReplayed++;
-                    } else {
-                        finalPath = new Path(replayFile.getPath().getParent(), "_FAILED." + replayFile.getPath().getName());
-                        filesFailed++;
-                    }
-
-                    hdfs.rename(replayingPath, finalPath);
-                } catch (IOException e) {
-                    log.error("Unable to replay file [" + replayFile.getPath() + "]");
-                    filesFailed++;
-                }
-            }
-        }
-
-        MultiValueMap<String, Object> results = new LinkedMultiValueMap<>();
-        results.addAll("auditIds", auditIds);
-        results.add("auditsRead", numAudits);
-        results.add("auditsReplayed", auditIds.size());
-        results.add("filesReplayed", filesReplayed);
-        results.add("filesFailed", filesFailed);
-
-        return results;
-    }
-
-    protected List<String> urlDecodeStrings(List<String> values) {
-        List<String> decoded = new ArrayList<>();
-        for (String value : values)
-            decoded.add(urlDecodeString(value));
-        return decoded;
-    }
 
     protected String urlDecodeString(String value) {
         try {
             return URLDecoder.decode(value, "UTF8");
         } catch (UnsupportedEncodingException e) {
-            log.error("Unable to URL encode value: " + value);
+            log.error("Unable to decode URL value: " + value);
         }
         return value;
     }
+
+    abstract protected boolean audit(Map<String, String> auditParamsMap);
 }

@@ -1,6 +1,5 @@
 package datawave.microservice.audit.replay.config;
 
-import datawave.microservice.audit.replay.AuditReplayService;
 import datawave.microservice.audit.replay.ReplayStatusCache;
 import datawave.microservice.audit.replay.RunningReplay;
 import datawave.microservice.cached.CacheInspector;

@@ -3,6 +3,8 @@ package datawave.microservice.audit.replay;
 import java.util.Date;
 import java.util.List;
 
+import static datawave.microservice.audit.replay.ReplayStatus.FileState.QUEUED;
+
 public class ReplayStatus {
 
     public enum ReplayState {
@@ -10,7 +12,7 @@ public class ReplayStatus {
     }
 
     public enum FileState {
-        QUEUED, REPLAYING, FINISHED, FAILED
+        QUEUED, RUNNING, FINISHED, FAILED
     }
 
     private String id;
@@ -80,7 +82,19 @@ public class ReplayStatus {
     public static final class FileStatus {
         private FileState state;
         private String path;
-        private List<String> auditIds;
+        private long linesRead;
+        private long auditsSent;
+        private long auditsFailed;
+        private boolean encounteredError;
+
+        public FileStatus(String path, FileState state) {
+            this.path = path;
+            this.state = state;
+            this.linesRead = 0;
+            this.auditsSent = 0;
+            this.auditsFailed = 0;
+            this.encounteredError = false;
+        }
 
         public FileState getState() {
             return state;
@@ -98,12 +112,36 @@ public class ReplayStatus {
             this.path = path;
         }
 
-        public List<String> getAuditIds() {
-            return auditIds;
+        public long getLinesRead() {
+            return linesRead;
         }
 
-        public void setAuditIds(List<String> auditIds) {
-            this.auditIds = auditIds;
+        public void setLinesRead(long linesRead) {
+            this.linesRead = linesRead;
+        }
+
+        public long getAuditsSent() {
+            return auditsSent;
+        }
+
+        public void setAuditsSent(long auditsSent) {
+            this.auditsSent = auditsSent;
+        }
+
+        public long getAuditsFailed() {
+            return auditsFailed;
+        }
+
+        public void setAuditsFailed(long auditsFailed) {
+            this.auditsFailed = auditsFailed;
+        }
+
+        public boolean isEncounteredError() {
+            return encounteredError;
+        }
+
+        public void setEncounteredError(boolean encounteredError) {
+            this.encounteredError = encounteredError;
         }
     }
 }
