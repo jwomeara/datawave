@@ -69,13 +69,13 @@ public class ReplayController {
     
     private final BusProperties busProperties;
     
-    private final Map<String,RunningReplay> runningReplays = new HashMap<>();
+    private final Map<String,RunningReplay> runningReplays;
     
     private final Configuration config = new Configuration();
     
     public ReplayController(AuditController auditController, @Qualifier("msgHandlerAuditParams") AuditParameters msgHandlerAuditParams,
                     AuditProperties auditProperties, ThreadPoolTaskExecutor auditReplayExecutor, ReplayStatusCache replayStatusCache, ApplicationContext appCtx,
-                    BusProperties busProperties) {
+                    BusProperties busProperties, Map<String,RunningReplay> runningReplays) {
         this.auditController = auditController;
         this.msgHandlerAuditParams = msgHandlerAuditParams;
         this.auditProperties = auditProperties;
@@ -83,6 +83,7 @@ public class ReplayController {
         this.replayStatusCache = replayStatusCache;
         this.appCtx = appCtx;
         this.busProperties = busProperties;
+        this.runningReplays = runningReplays;
         init();
     }
     

@@ -96,6 +96,10 @@
                 </exclusions>
             </dependency>
             <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-cache</artifactId>
+            </dependency>
+            <dependency>
                 <groupId>gov.nsa.datawave.contrib</groupId>
                 <artifactId>datawave-in-memory-accumulo</artifactId>
                 <version>${version.in-memory-accumulo}</version>

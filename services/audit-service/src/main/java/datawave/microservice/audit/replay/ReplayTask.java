@@ -98,7 +98,7 @@ public abstract class ReplayTask implements Runnable {
                 } else if (fileName.startsWith("_" + FileState.FAILED)) {
                     fileStatuses.add(new ReplayStatus.FileStatus(locatedFile.getPath().toString(), FileState.FAILED));
                 } else if (!locatedFile.getPath().getName().startsWith("_") && !locatedFile.getPath().getName().startsWith(".")) {
-                    Path queuedFile = renameFile("_" + FileState.QUEUED + ".", locatedFile.getPath());
+                    Path queuedFile = renameFile(FileState.QUEUED, locatedFile.getPath());
                     if (queuedFile != null) {
                         fileStatuses.add(new ReplayStatus.FileStatus(queuedFile.toString(), FileState.QUEUED));
                     } else {
@@ -122,7 +122,7 @@ public abstract class ReplayTask implements Runnable {
             numToSkip = fileStatus.getLinesRead();
         } else {
             
-            Path runningFile = renameFile("_" + FileState.RUNNING + ".", file);
+            Path runningFile = renameFile(FileState.RUNNING, file);
             if (runningFile != null) {
                 file = runningFile;
             } else {
@@ -208,25 +208,24 @@ public abstract class ReplayTask implements Runnable {
         
         if (status.getState() == ReplayState.RUNNING) {
             
-            Path finalPath;
-            if (!encounteredError)
-                finalPath = renameFile("_" + FileState.FINISHED + ".", file);
-            else
-                finalPath = renameFile("_" + FileState.FAILED + ".", file);
-            
-            if (finalPath == null) {
-                log.error("Unable to rename file from \"" + file + "\" to \"" + finalPath + "\"");
+            FileState fileState = (encounteredError) ? FileState.FAILED : FileState.FINISHED;
+            Path finalPath = renameFile(fileState, file);
+
+            if (finalPath != null) {
+                fileStatus.setState(fileState);
+                fileStatus.setPath(finalPath.toString());
+            } else {
                 fileStatus.setState(FileState.FAILED);
+                log.error("Unable to rename file \"" + file + "\" to \"" + finalPath + "\"");
                 return false;
             }
-            
-            fileStatus.setPath(finalPath.toString());
         }
         
         return true;
     }
     
-    private Path renameFile(String prefix, Path file) {
+    private Path renameFile(FileState newState, Path file) {
+        String prefix = "_" + newState + ".";
         String fileName = file.getName();
         fileName = (fileName.startsWith("_")) ? prefix + fileName.substring(fileName.indexOf('.') + 1) : prefix + fileName;
         Path renamedFile = new Path(file.getParent(), fileName);
