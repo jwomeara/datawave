@@ -6,6 +6,7 @@ import datawave.microservice.audit.replay.RunningReplay;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cloud.bus.ConditionalOnBusEnabled;
 import org.springframework.cloud.bus.ServiceMatcher;
 import org.springframework.cloud.bus.event.AuditReplayUpdateEvent;
@@ -21,14 +22,15 @@ import static datawave.microservice.audit.replay.ReplayStatus.ReplayState.STOPPE
 
 @Component
 @ConditionalOnBusEnabled
+@ConditionalOnProperty(name = "audit.replay.enabled", havingValue = "true")
 public class AuditReplayUpdateEventListener implements ApplicationListener<AuditReplayUpdateEvent> {
     private Logger log = LoggerFactory.getLogger(getClass());
     private final ReplayStatusCache replayStatusCache;
     private final ServiceMatcher serviceMatcher;
-    private final Map<String, RunningReplay> runningReplays;
-
+    private final Map<String,RunningReplay> runningReplays;
+    
     @Autowired
-    public AuditReplayUpdateEventListener(ReplayStatusCache replayStatusCache, ServiceMatcher serviceMatcher, Map<String, RunningReplay> runningReplays) {
+    public AuditReplayUpdateEventListener(ReplayStatusCache replayStatusCache, ServiceMatcher serviceMatcher, Map<String,RunningReplay> runningReplays) {
         this.replayStatusCache = replayStatusCache;
         this.serviceMatcher = serviceMatcher;
         this.runningReplays = runningReplays;
@@ -42,33 +44,34 @@ public class AuditReplayUpdateEventListener implements ApplicationListener<Audit
             log.debug("Dropping {} since it is from us.", event);
             return;
         }
-
+        
         for (ReplayStatus statusUpdate : event.getReplayStatuses()) {
-
+            
             RunningReplay replay = runningReplays.get(statusUpdate.getId());
             if (replay != null) {
-
+                
                 boolean updateCache = false;
-
+                
                 // update the send rate if it has changed
                 if (replay.getStatus().getSendRate() != statusUpdate.getSendRate()) {
                     replay.getStatus().setSendRate(statusUpdate.getSendRate());
                     updateCache = true;
                 }
-
+                
                 // update the state if it has changed
                 if (replay.getStatus().getState() != statusUpdate.getState()) {
-                    if ((statusUpdate.getState() == STOPPED || statusUpdate.getState() == CANCELED) && (replay.getStatus().getState() != FINISHED && replay.getStatus().getState() != FAILED)) {
+                    if ((statusUpdate.getState() == STOPPED || statusUpdate.getState() == CANCELED)
+                                    && (replay.getStatus().getState() != FINISHED && replay.getStatus().getState() != FAILED)) {
                         replay.getFuture().cancel(true);
                         replay.getStatus().setState(statusUpdate.getState());
                         runningReplays.remove(replay.getStatus().getId());
                         updateCache = true;
                     }
                 }
-
+                
                 if (updateCache)
                     replayStatusCache.update(replay.getStatus());
-
+                
             }
         }
     }

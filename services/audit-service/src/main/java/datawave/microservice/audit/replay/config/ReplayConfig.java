@@ -5,8 +5,6 @@ import datawave.microservice.audit.replay.RunningReplay;
 import datawave.microservice.cached.CacheInspector;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cache.annotation.EnableCaching;
-import org.springframework.cloud.bus.BusProperties;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -18,7 +16,7 @@ import java.util.Map;
 @EnableCaching
 @ConditionalOnProperty(name = "audit.replay.enabled", havingValue = "true")
 public class ReplayConfig {
-
+    
     @Bean
     public ThreadPoolTaskExecutor auditReplayExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
@@ -29,20 +27,14 @@ public class ReplayConfig {
         executor.initialize();
         return executor;
     }
-
+    
     @Bean
-    public Map<String, RunningReplay> runningReplays() {
+    public Map<String,RunningReplay> runningReplays() {
         return new HashMap<>();
     }
-
+    
     @Bean
     public ReplayStatusCache replayStatusCache(CacheInspector cacheInspector) {
         return new ReplayStatusCache(cacheInspector);
     }
-
-    @Bean
-    public AuditReplayService auditReplayService(ThreadPoolTaskExecutor auditReplayExecutor, ReplayStatusCache replayStatusCache, Map<String, RunningReplay> runningReplays, ApplicationContext appCtx, BusProperties busProperties) {
-        return new AuditReplayService(auditReplayExecutor, replayStatusCache, runningReplays, appCtx, busProperties);
-    }
-
 }

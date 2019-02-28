@@ -65,7 +65,7 @@ public class AuditController {
     private final AuditParameters restAuditParams;
     
     private final MessageChannel messageChannel;
-
+    
     @Autowired(required = false)
     private HealthChecker healthChecker;
     
@@ -158,23 +158,23 @@ public class AuditController {
     public String audit(@RequestParam MultiValueMap<String,String> parameters) {
         restAuditParams.clear();
         restAuditParams.validate(parameters);
-
+        
         if (!audit(restAuditParams))
             throw new RuntimeException("Unable to process audit message with id [" + restAuditParams.getAuditId() + "]");
-
+        
         return restAuditParams.getAuditId();
     }
-
+    
     public boolean audit(AuditParameters auditParameters) {
-        log.info("[{}] Received audit request with parameters {}", restAuditParams.getAuditId(), restAuditParams);
-
+        log.info("[{}] Received audit request with parameters {}", auditParameters.getAuditId(), auditParameters);
+        
         boolean success;
         final long auditStartTime = System.currentTimeMillis();
         long currentTime;
         int attempts = 0;
-
+        
         Retry retry = auditProperties.getRetry();
-
+        
         do {
             if (attempts++ > 0) {
                 try {
@@ -183,35 +183,38 @@ public class AuditController {
                     // Ignore -- we'll just end up retrying a little too fast
                 }
             }
-
+            
             if (log.isDebugEnabled())
-                log.debug("[" + restAuditParams.getAuditId() + "] Audit attempt " + attempts + " of " + retry.getMaxAttempts());
-
-            success = sendMessage(restAuditParams);
+                log.debug("[" + auditParameters.getAuditId() + "] Audit attempt " + attempts + " of " + retry.getMaxAttempts());
+            
+            success = sendMessage(auditParameters);
             currentTime = System.currentTimeMillis();
         } while (!success && (currentTime - auditStartTime) < retry.getFailTimeoutMillis() && attempts < retry.getMaxAttempts());
-
+        
+        // TODO: Remove this
+        success = false;
+        
         // last ditch effort to write the audit message to hdfs for subsequent processing
         if (!success && hdfsAuditor != null) {
             success = true;
             try {
                 if (log.isDebugEnabled())
-                    log.debug("[" + restAuditParams.getAuditId() + "] Attempting to log audit to HDFS");
-
-                hdfsAuditor.audit(restAuditParams);
+                    log.debug("[" + auditParameters.getAuditId() + "] Attempting to log audit to HDFS");
+                
+                hdfsAuditor.audit(auditParameters);
             } catch (Exception e) {
-                log.error("[" + restAuditParams.getAuditId() + "] Unable to save audit to HDFS", e);
+                log.error("[" + auditParameters.getAuditId() + "] Unable to save audit to HDFS", e);
                 success = false;
             }
         }
-
+        
         if (!success)
-            log.warn("[" + restAuditParams.getAuditId() + "] Audit failed. {attempts = " + attempts + ", elapsedMillis = " + (currentTime - auditStartTime)
-                    + ((hdfsAuditor != null) ? ", hdfsElapsedMillis = " + (System.currentTimeMillis() - currentTime) + "}" : "}"));
+            log.warn("[" + auditParameters.getAuditId() + "] Audit failed. {attempts = " + attempts + ", elapsedMillis = " + (currentTime - auditStartTime)
+                            + ((hdfsAuditor != null) ? ", hdfsElapsedMillis = " + (System.currentTimeMillis() - currentTime) + "}" : "}"));
         else
-            log.info("[" + restAuditParams.getAuditId() + "] Audit successful. {attempts = " + attempts + ", elapsedMillis = " + (currentTime - auditStartTime)
-                    + ((hdfsAuditor != null) ? ", hdfsElapsedMillis = " + (System.currentTimeMillis() - currentTime) + "}" : "}"));
-
+            log.info("[" + auditParameters.getAuditId() + "] Audit successful. {attempts = " + attempts + ", elapsedMillis = " + (currentTime - auditStartTime)
+                            + ((hdfsAuditor != null) ? ", hdfsElapsedMillis = " + (System.currentTimeMillis() - currentTime) + "}" : "}"));
+        
         return success;
     }
 }
