@@ -2,6 +2,7 @@ package datawave.microservice.audit.replay;
 
 import datawave.microservice.audit.AuditController;
 import datawave.microservice.audit.config.AuditProperties;
+import datawave.microservice.audit.replay.config.ReplayProperties;
 import datawave.webservice.common.audit.AuditParameters;
 import io.swagger.annotations.ApiOperation;
 import org.apache.hadoop.conf.Configuration;
@@ -23,6 +24,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.security.RolesAllowed;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.net.URI;
 import java.util.Collections;
 import java.util.HashMap;
@@ -61,6 +64,8 @@ public class ReplayController {
     
     private final AuditProperties auditProperties;
     
+    private final ReplayProperties replayProperties;
+    
     private final ThreadPoolTaskExecutor auditReplayExecutor;
     
     private final ReplayStatusCache replayStatusCache;
@@ -74,11 +79,12 @@ public class ReplayController {
     private final Configuration config = new Configuration();
     
     public ReplayController(AuditController auditController, @Qualifier("msgHandlerAuditParams") AuditParameters msgHandlerAuditParams,
-                    AuditProperties auditProperties, ThreadPoolTaskExecutor auditReplayExecutor, ReplayStatusCache replayStatusCache, ApplicationContext appCtx,
-                    BusProperties busProperties, Map<String,RunningReplay> runningReplays) {
+                    AuditProperties auditProperties, ReplayProperties replayProperties, ThreadPoolTaskExecutor auditReplayExecutor,
+                    ReplayStatusCache replayStatusCache, ApplicationContext appCtx, BusProperties busProperties, Map<String,RunningReplay> runningReplays) {
         this.auditController = auditController;
         this.msgHandlerAuditParams = msgHandlerAuditParams;
         this.auditProperties = auditProperties;
+        this.replayProperties = replayProperties;
         this.auditReplayExecutor = auditReplayExecutor;
         this.replayStatusCache = replayStatusCache;
         this.appCtx = appCtx;
@@ -97,10 +103,18 @@ public class ReplayController {
     // post to create a replay
     @ApiOperation(value = "Creates an audit replay request.")
     @RequestMapping(path = "/create", method = RequestMethod.POST)
-    public String create(@RequestParam String path, @RequestParam(defaultValue = "") String hdfsUri, @RequestParam(defaultValue = "100") Long sendRate) {
+    public String create(@RequestParam String path, @RequestParam(defaultValue = "") String fileUri, @RequestParam(defaultValue = "100") Long sendRate,
+                    @RequestParam(defaultValue = "false") boolean replayUnfinished) {
+        
+        log.info("Creating audit replay with params: path=" + path + ", fileUri=" + fileUri + ", sendRate=" + sendRate + ", replayUnfinished="
+                        + replayUnfinished);
+        
         String id = UUID.randomUUID().toString();
         
-        ReplayStatus status = replayStatusCache.create(id, path, (!hdfsUri.isEmpty()) ? hdfsUri : FileSystem.getDefaultUri(config).toString(), sendRate);
+        ReplayStatus status = replayStatusCache.create(id, path, (!fileUri.isEmpty()) ? fileUri : FileSystem.getDefaultUri(config).toString(), sendRate,
+                        replayUnfinished);
+        
+        log.info("Created audit replay [" + status + "]");
         
         return status.getId();
     }
@@ -108,12 +122,19 @@ public class ReplayController {
     // post to create and start a replay
     @ApiOperation(value = "Creates an audit replay request, and starts it.")
     @RequestMapping(path = "/createAndStart", method = RequestMethod.POST)
-    public String createAndStart(@RequestParam String path, @RequestParam(defaultValue = "") String hdfsUri,
-                    @RequestParam(defaultValue = "100") Long sendRate) {
+    public String createAndStart(@RequestParam String path, @RequestParam(defaultValue = "") String fileUri, @RequestParam(defaultValue = "100") Long sendRate,
+                    @RequestParam(defaultValue = "false") boolean replayUnfinished) {
+        
+        log.info("Creating and starting audit replay with params: path=" + path + ", fileUri=" + fileUri + ", sendRate=" + sendRate + ", replayUnfinished="
+                        + replayUnfinished);
+        
         String id = UUID.randomUUID().toString();
         
-        runningReplays.put(id,
-                        start(replayStatusCache.create(id, path, (!hdfsUri.isEmpty()) ? hdfsUri : FileSystem.getDefaultUri(config).toString(), sendRate)));
+        ReplayStatus replayStatus = replayStatusCache.create(id, path, (!fileUri.isEmpty()) ? fileUri : FileSystem.getDefaultUri(config).toString(), sendRate,
+                        replayUnfinished);
+        runningReplays.put(id, start(replayStatus));
+        
+        log.info("Created and started audit replay [" + replayStatus + "]");
         
         return "Started audit replay with id " + id;
     }
@@ -121,21 +142,35 @@ public class ReplayController {
     // post to start a replay
     @ApiOperation(value = "Starts an audit replay request.")
     @RequestMapping(path = "/{id}/start", method = RequestMethod.POST)
-    public String start(@PathVariable String id) {
-        ReplayStatus status = status(id);
+    public String start(@PathVariable String id, HttpServletResponse response) {
         
+        log.info("Starting audit replay with id " + id);
+        
+        ReplayStatus status = statusInternal(id);
+        
+        String resp;
         // if the state is 'created' or 'stopped', we can run the replay
         if (status != null) {
             if (status.getState() == CREATED) {
-                runningReplays.put(id, start(status));
+                RunningReplay runningReplay = start(status);
+                if (runningReplay != null) {
+                    runningReplays.put(id, runningReplay);
+                    resp = "Started audit replay with id " + id;
+                } else {
+                    resp = "Cannot start audit replay with id " + id;
+                    response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                }
             } else {
-                throw new RuntimeException("Cannot start audit replay with state " + status.getState());
+                resp = "Cannot start audit replay with state " + status.getState();
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             }
         } else {
-            throw new RuntimeException("No audit replay found with id " + id);
+            resp = "No audit replay found with id " + id;
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
         }
         
-        return "Started audit replay with id " + id;
+        log.info(resp);
+        return resp;
     }
     
     private RunningReplay start(ReplayStatus status) {
@@ -152,7 +187,7 @@ public class ReplayController {
                 }
             };
         } catch (Exception e) {
-            throw new RuntimeException("Unable to create replay task");
+            return null;
         }
         
         replay.setFuture(auditReplayExecutor.submit(replayTask));
@@ -164,38 +199,55 @@ public class ReplayController {
     @ApiOperation(value = "Starts all audit replay requests.")
     @RequestMapping(path = "/startAll", method = RequestMethod.POST)
     public String startAll() {
+        
+        log.info("Starting all audit replays");
+        
         int replaysStarted = 0;
         List<ReplayStatus> replayStatuses = replayStatusCache.retrieveAll();
         if (replayStatuses != null) {
             for (ReplayStatus status : replayStatuses) {
                 if (status.getState() == CREATED) {
                     RunningReplay replay = start(status);
-                    runningReplays.put(status.getId(), replay);
-                    replaysStarted++;
+                    if (replay != null) {
+                        runningReplays.put(status.getId(), replay);
+                        replaysStarted++;
+                    }
                 }
             }
         }
         
+        log.info(replaysStarted + " audit replays started");
         return replaysStarted + " audit replays started";
     }
     
     // get status of a replay
     @ApiOperation(value = "Gets the status of the audit replay request.")
     @RequestMapping(path = "/{id}/status", method = RequestMethod.GET)
-    public ReplayStatus status(@PathVariable("id") String id) {
+    public ReplayStatus status(@PathVariable("id") String id, HttpServletResponse response) throws IOException {
+        
+        log.info("Getting status for audit replay with id " + id);
+        
+        ReplayStatus status = statusInternal(id);
+        
+        if (status == null)
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "No audit replay found with id " + id);
+        
+        return status;
+    }
+    
+    private ReplayStatus statusInternal(String id) {
         ReplayStatus status = replayStatusCache.retrieve(id);
         if (status != null)
             return idleCheck(status);
-        else
-            throw new RuntimeException("No audit replay found with id " + id);
+        return null;
     }
     
     private ReplayStatus idleCheck(ReplayStatus status) {
-        // if the replay is RUNNING, and this hasn't been updated in the last 5 minutes, set the state to IDLE, and send out a stop request
-        if (status.getState() == RUNNING && System.currentTimeMillis() - status.getLastUpdated().getTime() > TimeUnit.MINUTES.toMillis(5)) {
+        // if the replay is RUNNING, and this hasn't been updated within the timeout interval, set the state to IDLE, and send out a stop request
+        if (status.getState() == RUNNING && System.currentTimeMillis() - status.getLastUpdated().getTime() > replayProperties.getIdleTimeoutMillis()) {
             status.setState(IDLE);
             replayStatusCache.update(status);
-            stop(status.getId());
+            stop(status);
         }
         
         return status;
@@ -205,6 +257,9 @@ public class ReplayController {
     @ApiOperation(value = "Lists the status for all audit replay requests.")
     @RequestMapping(path = "/statusAll", method = RequestMethod.GET)
     public List<ReplayStatus> statusAll() {
+        
+        log.info("Getting status for all audit replays");
+        
         List<ReplayStatus> replayStatuses = replayStatusCache.retrieveAll();
         if (replayStatuses != null)
             replayStatuses = replayStatuses.stream().map(this::idleCheck).collect(Collectors.toList());
@@ -214,11 +269,16 @@ public class ReplayController {
     // post to update the send rate
     @ApiOperation(value = "Updates the audit replay request.")
     @RequestMapping(path = "/{id}/update", method = RequestMethod.POST)
-    public String update(@PathVariable("id") String id, @RequestParam Long sendRate) {
+    public String update(@PathVariable("id") String id, @RequestParam Long sendRate, HttpServletResponse response) {
+        
+        log.info("Updating sendRate to " + sendRate + " for audit replay with id " + id);
+        
+        String resp;
+        
         // only update if the send rate is valid
         if (sendRate >= 0) {
             // pull the replay status from cache to ensure it exists
-            ReplayStatus status = status(id);
+            ReplayStatus status = statusInternal(id);
             if (status != null) {
                 
                 // is the replay running?
@@ -241,29 +301,45 @@ public class ReplayController {
                     status.setSendRate(sendRate);
                     replayStatusCache.update(status);
                 }
+                
+                resp = "Updated audit replay with id " + id;
             } else {
-                throw new RuntimeException("No audit replay found with id " + id);
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                resp = "No audit replay found with id " + id;
             }
         } else {
-            throw new RuntimeException("Send rate must be >= 0");
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            resp = "Send rate must be >= 0";
         }
         
-        return "Updated audit replay with id " + id;
+        log.info(resp);
+        return resp;
     }
     
     // post to stop a replay
     @ApiOperation(value = "Stops the audit replay request.")
     @RequestMapping(path = "/{id}/stop", method = RequestMethod.POST)
-    public String stop(@PathVariable("id") String id) {
-        ReplayStatus status = status(id);
+    public String stop(@PathVariable("id") String id, HttpServletResponse response) {
+        
+        log.info("Stopping audit replay with id " + id);
+        
+        String resp;
+        
+        ReplayStatus status = statusInternal(id);
         if (status != null) {
-            if (!stop(status))
-                throw new RuntimeException("Cannot stop audit replay with id " + id);
+            if (stop(status)) {
+                resp = "Stopped audit replay with id " + id;
+            } else {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                resp = "Cannot stop audit replay with id " + id;
+            }
         } else {
-            throw new RuntimeException("No audit replay found with id " + id);
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            resp = "No audit replay found with id " + id;
         }
         
-        return "Stopped audit replay with id " + id;
+        log.info(resp);
+        return resp;
     }
     
     private boolean stop(ReplayStatus status) {
@@ -304,30 +380,46 @@ public class ReplayController {
     @ApiOperation(value = "Stops all audit replay requests.")
     @RequestMapping(path = "/stopAll", method = RequestMethod.POST)
     public String stopAll() {
+        
+        log.info("Stopping all audit replays");
+        
         int replaysStopped = 0;
         
         // stop all of our replays. then, send an event out to all audit services to stop all replays
         List<ReplayStatus> replayStatuses = statusAll().stream().filter(status -> status.getState() == RUNNING).collect(Collectors.toList());
-        for (ReplayStatus status : replayStatuses)
+        for (ReplayStatus status : replayStatuses) {
             if (stop(status))
                 replaysStopped++;
-            
-        return replaysStopped + " audit replays stopped";
+        }
+        
+        String resp = replaysStopped + " audit replays stopped";
+        log.info(resp);
+        return resp;
     }
     
     // post to cancel a replay
     @ApiOperation(value = "Cancels the audit replay request.")
     @RequestMapping(path = "/{id}/cancel", method = RequestMethod.POST)
-    public String cancel(@PathVariable("id") String id) {
-        ReplayStatus status = status(id);
+    public String cancel(@PathVariable("id") String id, HttpServletResponse response) {
+        
+        log.info("Canceling audit replay with id " + id);
+        
+        String resp;
+        ReplayStatus status = statusInternal(id);
         if (status != null) {
-            if (!cancel(status))
-                throw new RuntimeException("Cannot cancel audit replay with id " + id);
+            if (cancel(status)) {
+                resp = "Canceled audit replay with id " + id;
+            } else {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                resp = "Cannot cancel audit replay with id " + id;
+            }
         } else {
-            throw new RuntimeException("No audit replay found with id " + id);
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            resp = "No audit replay found with id " + id;
         }
         
-        return "Canceled audit replay with id " + id;
+        log.info(resp);
+        return resp;
     }
     
     private boolean cancel(ReplayStatus status) {
@@ -374,43 +466,56 @@ public class ReplayController {
     @ApiOperation(value = "Cancels all audit replay requests.")
     @RequestMapping(path = "/cancelAll", method = RequestMethod.POST)
     public String cancelAll() {
+        
+        log.info("Canceling all audit replays");
+        
         int replaysCanceled = 0;
         
         // cancel all of our replays. then, send an event out to all audit services to cancel all replays
         List<ReplayStatus> replayStatuses = statusAll().stream()
                         .filter(status -> status.getState() != CANCELED && status.getState() != FINISHED && status.getState() != FAILED)
                         .collect(Collectors.toList());
-        for (ReplayStatus status : replayStatuses)
+        for (ReplayStatus status : replayStatuses) {
             if (cancel(status))
                 replaysCanceled++;
-            
-        return replaysCanceled + " audit replays canceled";
+        }
+        
+        String resp = replaysCanceled + " audit replays canceled";
+        log.info(resp);
+        return resp;
     }
     
     // post to resume a replay
     @ApiOperation(value = "Resumes the audit replay request.")
     @RequestMapping(path = "/{id}/resume", method = RequestMethod.POST)
-    public String resume(@PathVariable("id") String id) {
-        ReplayStatus status = status(id);
+    public String resume(@PathVariable("id") String id, HttpServletResponse response) {
+        
+        log.info("Resuming audit replay with id " + id);
+        
+        String resp;
+        ReplayStatus status = statusInternal(id);
         if (status != null) {
-            if (!resume(status))
-                throw new RuntimeException("Cannot resume audit replay with id " + id);
+            if (resume(status)) {
+                resp = "Resumed audit replay with id " + id;
+            } else {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                resp = "Cannot resume audit replay with id " + id;
+            }
         } else {
-            throw new RuntimeException("No audit replay found with id " + id);
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            resp = "No audit replay found with id " + id;
         }
         
-        return "Resumed audit replay with id " + id;
+        log.info(resp);
+        return resp;
     }
     
     private boolean resume(ReplayStatus status) {
         // if the audit replay is idle or stopped, start it
-        if (status.getState() == IDLE || status.getState() == STOPPED) {
-            
+        if (status.getState() == IDLE || status.getState() == STOPPED)
             runningReplays.put(status.getId(), start(status));
-        } else {
-            
+        else
             return false;
-        }
         
         return true;
     }
@@ -419,6 +524,9 @@ public class ReplayController {
     @ApiOperation(value = "Resumes all audit replay requests.")
     @RequestMapping(path = "/resumeAll", method = RequestMethod.POST)
     public String resumeAll() {
+        
+        log.info("Resuming all audit replays");
+        
         int replaysResumed = 0;
         
         // resume all of our replays
@@ -429,134 +537,55 @@ public class ReplayController {
             replaysResumed++;
         }
         
-        return replaysResumed + " audit replays resumed";
+        String resp = replaysResumed + " audit replays resumed";
+        log.info(resp);
+        return resp;
     }
     
-    // TODO: Move this logic to the ReplayTask
-    // TODO: Add ability to read compressed files too
+    // get status of a replay
+    @ApiOperation(value = "Deletes an audit replay request as long as it is not running.")
+    @RequestMapping(path = "/{id}/delete", method = RequestMethod.POST)
+    public String delete(@PathVariable("id") String id, HttpServletResponse response) {
+        
+        log.info("Deleting audit replay with id " + id);
+        
+        String resp;
+        ReplayStatus status = statusInternal(id);
+        
+        if (status != null) {
+            if (status.getState() != RUNNING) {
+                replayStatusCache.delete(status.getId());
+                resp = "Deleted audit replay with id " + id;
+            } else {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                resp = "Cannot delete an audit replay with state " + status.getState();
+            }
+        } else {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            resp = "No audit replay found with id " + id;
+        }
+        
+        log.info(resp);
+        return resp;
+    }
     
-    // /**
-    // * Reads JSON-formatted audit messages from the given path, and attempts to perform auditing on them.
-    // *
-    // * @param hdfsUri the path in hdfs where the audit files are located
-    // * @param path the path in hdfs where the audit files are located
-    // * @return the audit IDs for the processed messages, which can be used for tracking purposes
-    // */
-    // @ApiOperation(value = "Creates an audit replay request.")
-    // @RequestMapping(path = "/create", method = RequestMethod.POST)
-    // public MultiValueMap<String, Object> create(@RequestParam String path, @RequestParam(required = false, defaultValue = "") String hdfsUri) {
-    // final ObjectMapper mapper = new ObjectMapper();
-    //
-    // FileSystem hdfs = null;
-    // String selectedHdfsUri = (!hdfsUri.isEmpty()) ? hdfsUri : auditProperties.getHdfs().getHdfsUri();
-    // try {
-    // if (selectedHdfsUri != null)
-    // hdfs = FileSystem.get(new URI(selectedHdfsUri), config);
-    // else
-    // hdfs = FileSystem.get(config);
-    // } catch (Exception e) {
-    // log.error("Unable to determine the filesystem.", e);
-    // }
-    //
-    // List<String> auditIds = new ArrayList<>();
-    // long numAudits = 0;
-    // int filesReplayed = 0;
-    // int filesFailed = 0;
-    //
-    // if (hdfs != null) {
-    // // first, get a list of valid files from the directory
-    // List<LocatedFileStatus> replayableFiles = new ArrayList<>();
-    //
-    // try {
-    // RemoteIterator<LocatedFileStatus> filesIter = hdfs.listFiles(new Path(path), false);
-    // while (filesIter.hasNext()) {
-    // LocatedFileStatus fileStatus = filesIter.next();
-    // if (!fileStatus.getPath().getName().startsWith("_") && !fileStatus.getPath().getName().startsWith("."))
-    // replayableFiles.add(fileStatus);
-    // }
-    // } catch (Exception e) {
-    // throw new RuntimeException("Encountered an error while listing files at [" + path + "]");
-    // }
-    //
-    // for (LocatedFileStatus replayFile : replayableFiles) {
-    // try {
-    // // rename the file to mark it as '_REPLAYING"
-    // Path replayingPath = new Path(replayFile.getPath().getParent(), "_REPLAYING." + replayFile.getPath().getName());
-    // hdfs.rename(replayFile.getPath(), replayingPath);
-    //
-    // // read each audit message, and process via the audit service
-    // BufferedReader reader = new BufferedReader(new InputStreamReader(hdfs.open(replayingPath)));
-    //
-    // boolean encounteredError = false;
-    //
-    // TypeReference<HashMap<String, String>> typeRef = new TypeReference<HashMap<String, String>>() {
-    // };
-    // String line = null;
-    // try {
-    // while (null != (line = reader.readLine())) {
-    // try {
-    // MultiValueMap<String, String> auditParamsMap = new LinkedMultiValueMap<>();
-    // HashMap<String, String> auditParams = mapper.readValue(line, typeRef);
-    // auditParams.forEach((key, value) -> auditParamsMap.add(key, urlDecodeString(value)));
-    // numAudits++;
-    //
-    // auditIds.add(auditController.audit(auditParamsMap));
-    // } catch (Exception e) {
-    // log.warn("Unable to parse a JSON audit message from [" + line + "]");
-    // }
-    // }
-    // } catch (IOException e) {
-    // encounteredError = true;
-    // log.error("Unable to read line from file [" + replayingPath + "]");
-    // } finally {
-    // try {
-    // reader.close();
-    // } catch (IOException e) {
-    // encounteredError = true;
-    // log.error("Unable to close file [" + replayingPath + "]");
-    // }
-    // }
-    //
-    // Path finalPath = null;
-    // if (!encounteredError) {
-    // finalPath = new Path(replayFile.getPath().getParent(), "_REPLAYED." + replayFile.getPath().getName());
-    // filesReplayed++;
-    // } else {
-    // finalPath = new Path(replayFile.getPath().getParent(), "_FAILED." + replayFile.getPath().getName());
-    // filesFailed++;
-    // }
-    //
-    // hdfs.rename(replayingPath, finalPath);
-    // } catch (IOException e) {
-    // log.error("Unable to replay file [" + replayFile.getPath() + "]");
-    // filesFailed++;
-    // }
-    // }
-    // }
-    //
-    // MultiValueMap<String, Object> results = new LinkedMultiValueMap<>();
-    // results.addAll("auditIds", auditIds);
-    // results.add("auditsRead", numAudits);
-    // results.add("auditsReplayed", auditIds.size());
-    // results.add("filesReplayed", filesReplayed);
-    // results.add("filesFailed", filesFailed);
-    //
-    // return results;
-    // }
-    //
-    // protected List<String> urlDecodeStrings(List<String> values) {
-    // List<String> decoded = new ArrayList<>();
-    // for (String value : values)
-    // decoded.add(urlDecodeString(value));
-    // return decoded;
-    // }
-    //
-    // protected String urlDecodeString(String value) {
-    // try {
-    // return URLDecoder.decode(value, "UTF8");
-    // } catch (UnsupportedEncodingException e) {
-    // log.error("Unable to URL encode value: " + value);
-    // }
-    // return value;
-    // }
+    // get status for all replays
+    @ApiOperation(value = "Deletes all audit replay requests as long as they are not running.")
+    @RequestMapping(path = "/deleteAll", method = RequestMethod.POST)
+    public String deleteAll() {
+        
+        log.info("Deleting all audit replays");
+        
+        int replaysDeleted = 0;
+        
+        List<ReplayStatus> replayStatuses = statusAll().stream().filter(status -> status.getState() != RUNNING).collect(Collectors.toList());
+        for (ReplayStatus status : replayStatuses) {
+            replayStatusCache.delete(status.getId());
+            replaysDeleted++;
+        }
+        
+        String resp = replaysDeleted + " audit replays deleted";
+        log.info(resp);
+        return resp;
+    }
 }

@@ -4,6 +4,7 @@ import datawave.microservice.audit.replay.ReplayStatusCache;
 import datawave.microservice.audit.replay.RunningReplay;
 import datawave.microservice.cached.CacheInspector;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.concurrent.ConcurrentMapCache;
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 
 @Configuration
 @EnableCaching
+@EnableConfigurationProperties(ReplayProperties.class)
 @ConditionalOnProperty(name = "audit.replay.enabled", havingValue = "true")
 public class ReplayConfig {
     

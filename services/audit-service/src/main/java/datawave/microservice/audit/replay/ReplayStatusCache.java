@@ -4,7 +4,6 @@ import datawave.microservice.cached.CacheInspector;
 import org.springframework.cache.annotation.CacheConfig;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
-import org.springframework.cache.annotation.Cacheable;
 
 import java.util.Date;
 import java.util.List;
@@ -22,14 +21,15 @@ public class ReplayStatusCache {
     }
     
     @CachePut(key = "#id")
-    public ReplayStatus create(String id, String path, String hdfsUri, long sendRate) {
+    public ReplayStatus create(String id, String path, String fileUri, long sendRate, boolean replayUnfinished) {
         ReplayStatus status = new ReplayStatus();
         status.setId(id);
         status.setState(ReplayStatus.ReplayState.CREATED);
         status.setPath(path);
-        status.setHdfsUri(hdfsUri);
+        status.setFileUri(fileUri);
         status.setSendRate(sendRate);
         status.setLastUpdated(new Date());
+        status.setReplayUnfinished(replayUnfinished);
         return status;
     }
     
@@ -43,6 +43,7 @@ public class ReplayStatusCache {
     
     @CachePut(key = "#status.getId()")
     public ReplayStatus update(ReplayStatus status) {
+        status.setLastUpdated(new Date());
         return status;
     }
     

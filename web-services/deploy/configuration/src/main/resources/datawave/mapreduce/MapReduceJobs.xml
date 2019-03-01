@@ -25,7 +25,7 @@
 				<entry key="BulkResultsJob">
 					<bean class="datawave.webservice.mr.configuration.BulkResultsJobConfiguration">
 						<property name="description" value="MapReduce job that runs a query and either puts the results into a table or files in HDFS" />
-						<property name="hdfsUri" value="${mapReduce.hdfs.uri}"/>
+						<property name="fileUri" value="${mapReduce.hdfs.uri}"/>
 						<property name="jobTracker" value="${mapReduce.job.tracker}"/>
 						<property name="requiredRoles">
 							<list value-type="java.lang.String">

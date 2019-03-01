@@ -32,17 +32,15 @@ public abstract class ReplayTask implements Runnable {
     
     private final Logger log = LoggerFactory.getLogger(this.getClass());
     
-    private final Configuration config;
     private final ReplayStatus status;
     private final ReplayStatusCache replayStatusCache;
     
     private FileSystem hdfs;
     
     public ReplayTask(Configuration config, ReplayStatus status, ReplayStatusCache replayStatusCache) throws Exception {
-        this.config = config;
         this.status = status;
         this.replayStatusCache = replayStatusCache;
-        this.hdfs = FileSystem.get(new URI(status.getHdfsUri()), config);
+        this.hdfs = FileSystem.get(new URI(status.getFileUri()), config);
     }
     
     @Override
@@ -53,7 +51,7 @@ public abstract class ReplayTask implements Runnable {
         
         // if we need to, get a list of files
         if (status.getFiles().isEmpty())
-            status.setFiles(listFiles());
+            status.setFiles(listFiles(status.isReplayUnfinished()));
         
         // sort the files to process. 'RUNNING' first, followed by 'QUEUED'
         List<ReplayStatus.FileStatus> filesToProcess = status.getFiles().stream()
@@ -64,7 +62,6 @@ public abstract class ReplayTask implements Runnable {
         for (ReplayStatus.FileStatus fileStatus : filesToProcess) {
             if (!processFile(fileStatus)) {
                 status.setState(ReplayState.FAILED);
-                break;
             } else if (status.getState() != ReplayState.RUNNING) {
                 break;
             }
@@ -82,7 +79,7 @@ public abstract class ReplayTask implements Runnable {
         replayStatusCache.update(status);
     }
     
-    private List<ReplayStatus.FileStatus> listFiles() {
+    private List<ReplayStatus.FileStatus> listFiles(boolean replayUnfinished) {
         List<ReplayStatus.FileStatus> fileStatuses = new ArrayList<>();
         
         try {
@@ -91,12 +88,10 @@ public abstract class ReplayTask implements Runnable {
                 LocatedFileStatus locatedFile = filesIter.next();
                 String fileName = locatedFile.getPath().getName();
                 
-                if (fileName.startsWith("_" + FileState.RUNNING)) {
+                if (replayUnfinished && fileName.startsWith("_" + FileState.RUNNING)) {
                     fileStatuses.add(new ReplayStatus.FileStatus(locatedFile.getPath().toString(), FileState.RUNNING));
-                } else if (fileName.startsWith("_" + FileState.FINISHED)) {
-                    fileStatuses.add(new ReplayStatus.FileStatus(locatedFile.getPath().toString(), FileState.FINISHED));
-                } else if (fileName.startsWith("_" + FileState.FAILED)) {
-                    fileStatuses.add(new ReplayStatus.FileStatus(locatedFile.getPath().toString(), FileState.FAILED));
+                } else if (replayUnfinished && fileName.startsWith("_" + FileState.QUEUED)) {
+                    fileStatuses.add(new ReplayStatus.FileStatus(locatedFile.getPath().toString(), FileState.QUEUED));
                 } else if (!locatedFile.getPath().getName().startsWith("_") && !locatedFile.getPath().getName().startsWith(".")) {
                     Path queuedFile = renameFile(FileState.QUEUED, locatedFile.getPath());
                     if (queuedFile != null) {
@@ -210,7 +205,7 @@ public abstract class ReplayTask implements Runnable {
             
             FileState fileState = (encounteredError) ? FileState.FAILED : FileState.FINISHED;
             Path finalPath = renameFile(fileState, file);
-
+            
             if (finalPath != null) {
                 fileStatus.setState(fileState);
                 fileStatus.setPath(finalPath.toString());

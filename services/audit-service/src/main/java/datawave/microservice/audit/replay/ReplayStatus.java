@@ -3,8 +3,7 @@ package datawave.microservice.audit.replay;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-
-import static datawave.microservice.audit.replay.ReplayStatus.FileState.QUEUED;
+import java.util.stream.Collectors;
 
 public class ReplayStatus {
     
@@ -18,11 +17,12 @@ public class ReplayStatus {
     
     private String id;
     private ReplayState state;
-    private String hdfsUri;
+    private String fileUri;
     private String path;
     private long sendRate;
     private List<FileStatus> files = new ArrayList<>();
     private Date lastUpdated;
+    private boolean replayUnfinished;
     
     public String getId() {
         return id;
@@ -40,12 +40,12 @@ public class ReplayStatus {
         this.state = state;
     }
     
-    public String getHdfsUri() {
-        return hdfsUri;
+    public String getFileUri() {
+        return fileUri;
     }
     
-    public void setHdfsUri(String hdfsUri) {
-        this.hdfsUri = hdfsUri;
+    public void setFileUri(String fileUri) {
+        this.fileUri = fileUri;
     }
     
     public String getPath() {
@@ -78,6 +78,20 @@ public class ReplayStatus {
     
     public void setLastUpdated(Date lastUpdated) {
         this.lastUpdated = lastUpdated;
+    }
+    
+    public boolean isReplayUnfinished() {
+        return replayUnfinished;
+    }
+    
+    public void setReplayUnfinished(boolean replayUnfinished) {
+        this.replayUnfinished = replayUnfinished;
+    }
+    
+    @Override
+    public String toString() {
+        return "{id:" + id + ", state:" + state + ", fileUri:" + fileUri + ", path:" + path + ", sendRate:" + sendRate + ", files:["
+                        + String.join(",", files.stream().map(FileStatus::toString).collect(Collectors.toSet())) + "], lastUpdated:" + lastUpdated + "}";
     }
     
     public static final class FileStatus {
@@ -143,6 +157,12 @@ public class ReplayStatus {
         
         public void setEncounteredError(boolean encounteredError) {
             this.encounteredError = encounteredError;
+        }
+        
+        @Override
+        public String toString() {
+            return "{path:" + path + ", state:" + state + ", linesRead:" + linesRead + ", auditsSent:" + auditsSent + ", auditsFailed" + auditsFailed
+                            + ", encounteredError:" + encounteredError + "}";
         }
     }
 }

@@ -24,7 +24,7 @@
 				<entry key="TestJob">
 					<bean class="datawave.webservice.mr.configuration.MapReduceJobConfiguration">
 						<property name="description" value="MapReduce job that runs a query and either puts the results into a table or files in HDFS" />
-						<property name="hdfsUri" value="hdfs://localhost/"/>
+						<property name="fileUri" value="hdfs://localhost/"/>
 						<property name="jobTracker" value="hdfs://localhost:8021"/>
 						<property name="requiredRoles">
 							<list value-type="java.lang.String">
