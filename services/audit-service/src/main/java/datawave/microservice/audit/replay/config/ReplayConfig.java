@@ -39,11 +39,6 @@ public class ReplayConfig {
     }
     
     @Bean
-    public Map<String,RunningReplay> runningReplays() {
-        return new HashMap<>();
-    }
-    
-    @Bean
     public ReplayStatusCache replayStatusCache(CacheInspector cacheInspector, CacheManager cacheManager) {
         if (cacheManager instanceof ConcurrentMapCacheManager)
             cacheInspector = new SimpleCacheInspector((ConcurrentMapCacheManager) cacheManager);
