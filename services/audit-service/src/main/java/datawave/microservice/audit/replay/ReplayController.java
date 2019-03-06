@@ -10,6 +10,7 @@ import datawave.microservice.audit.replay.status.Status;
 import datawave.microservice.audit.replay.status.StatusCache;
 import datawave.webservice.common.audit.AuditParameters;
 import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -49,11 +50,7 @@ import static datawave.microservice.audit.replay.status.Status.ReplayState.STOPP
 
 /**
  * The ReplayController presents the REST endpoints for audit replay.
- * <p>
- * Before returning success to the caller, the audit controller will verify that the audit message was successfully passed to our messaging infrastructure.
- * Also, if configured, the audit controller will verify that the message passing infrastructure is healthy before returning successfully to the user. If the
- * message passing infrastructure is unhealthy, or if we can't verify that the message was successfully passed to our messaging infrastructure, a 500 Internal
- * Server Error will be returned to the caller.
+ *
  */
 @RestController
 @RolesAllowed({"Administrator", "JBossAdministrator"})
@@ -103,12 +100,26 @@ public class ReplayController {
         for (String resource : auditProperties.getHdfs().getConfigResources())
             config.addResource(new Path(resource));
     }
-    
-    // post to create a replay
+
+    /**
+     * Creates an audit replay request
+     *
+     * @param path
+     *            The path where the audit file(s) to be replayed can be found
+     * @param fileUri
+     *            The file URI to use, if the default is not desired
+     * @param sendRate
+     *            The number of messages to send per second
+     * @param replayUnfinished
+     *            Indicates whether files from an unfinished audit replay should be included
+     * @return the audit replay id
+     */
     @ApiOperation(value = "Creates an audit replay request.")
     @RequestMapping(path = "/create", method = org.springframework.web.bind.annotation.RequestMethod.POST)
-    public String create(@RequestParam String path, @RequestParam(defaultValue = "") String fileUri, @RequestParam(defaultValue = "100") Long sendRate,
-                    @RequestParam(defaultValue = "false") boolean replayUnfinished) {
+    public String create(@ApiParam(value = "The path where the audit file(s) to be replayed can be found", required = true) @RequestParam String path,
+                         @ApiParam("The file URI to use, relative to the path") @RequestParam(defaultValue = "") String fileUri,
+                         @ApiParam(value = "The number of messages to send per second", defaultValue = "100") @RequestParam(defaultValue = "100") Long sendRate,
+                         @ApiParam(value = "Indicates whether files from an unfinished audit replay should be included", defaultValue = "false") @RequestParam(defaultValue = "false") boolean replayUnfinished) {
         
         log.info("Creating audit replay with params: path=" + path + ", fileUri=" + fileUri + ", sendRate=" + sendRate + ", replayUnfinished="
                         + replayUnfinished);
@@ -121,12 +132,26 @@ public class ReplayController {
         
         return status.getId();
     }
-    
-    // post to create and start a replay
+
+    /**
+     * Creates an audit replay request, and starts it
+     *
+     * @param path
+     *            The path where the audit file(s) to be replayed can be found
+     * @param fileUri
+     *            The file URI to use, if the default is not desired
+     * @param sendRate
+     *            The number of messages to send per second
+     * @param replayUnfinished
+     *            Indicates whether files from an unfinished audit replay should be included
+     * @return the audit replay id
+     */
     @ApiOperation(value = "Creates an audit replay request, and starts it.")
     @RequestMapping(path = "/createAndStart", method = org.springframework.web.bind.annotation.RequestMethod.POST)
-    public String createAndStart(@RequestParam String path, @RequestParam(defaultValue = "") String fileUri, @RequestParam(defaultValue = "100") Long sendRate,
-                    @RequestParam(defaultValue = "false") boolean replayUnfinished) {
+    public String createAndStart(@ApiParam(value = "The path where the audit file(s) to be replayed can be found", required = true) @RequestParam String path,
+                                 @ApiParam("The file URI to use, relative to the path") @RequestParam(defaultValue = "") String fileUri,
+                                 @ApiParam(value = "The number of messages to send per second", defaultValue = "100") @RequestParam(defaultValue = "100") Long sendRate,
+                                 @ApiParam(value = "Indicates whether files from an unfinished audit replay should be included", defaultValue = "false") @RequestParam(defaultValue = "false") boolean replayUnfinished) {
         
         log.info("Creating and starting audit replay with params: path=" + path + ", fileUri=" + fileUri + ", sendRate=" + sendRate + ", replayUnfinished="
                         + replayUnfinished);
@@ -138,13 +163,20 @@ public class ReplayController {
         
         log.info("Created and started audit replay [" + status + "]");
         
-        return "Started audit replay with id " + id;
+        return id;
     }
-    
-    // post to start a replay
-    @ApiOperation(value = "Starts an audit replay request.")
+
+
+    /**
+     * Starts an audit replay
+     *
+     * @param id
+     *            The audit replay id
+     * @return status, indicating whether the audit replay was started successfully
+     */
+    @ApiOperation(value = "Starts an audit replay.")
     @RequestMapping(path = "/{id}/start", method = org.springframework.web.bind.annotation.RequestMethod.POST)
-    public String start(@PathVariable String id, HttpServletResponse response) {
+    public String start(@ApiParam(value = "The audit replay id") @PathVariable String id, HttpServletResponse response) {
         
         log.info("Starting audit replay with id " + id);
         
@@ -205,9 +237,13 @@ public class ReplayController {
         
         return null;
     }
-    
-    // post to start all replays
-    @ApiOperation(value = "Starts all audit replay requests.")
+
+    /**
+     * Starts all audit replays
+     *
+     * @return status, indicating the number of audit replays which were successfully started
+     */
+    @ApiOperation(value = "Starts all audit replays.")
     @RequestMapping(path = "/startAll", method = org.springframework.web.bind.annotation.RequestMethod.POST)
     public String startAll() {
         
@@ -230,11 +266,17 @@ public class ReplayController {
         log.info(replaysStarted + " audit replays started");
         return replaysStarted + " audit replays started";
     }
-    
-    // get status of a replay
-    @ApiOperation(value = "Gets the status of the audit replay request.")
+
+    /**
+     * Gets the status of an audit replay
+     *
+     * @param id
+     *            The audit replay id
+     * @return the status of the audit replay
+     */
+    @ApiOperation(value = "Gets the status of an audit replay.")
     @RequestMapping(path = "/{id}/status", method = org.springframework.web.bind.annotation.RequestMethod.GET)
-    public Status status(@PathVariable("id") String id, HttpServletResponse response) throws IOException {
+    public Status status(@ApiParam("The audit replay id") @PathVariable("id") String id, HttpServletResponse response) throws IOException {
         
         log.info("Getting status for audit replay with id " + id);
         
@@ -263,9 +305,13 @@ public class ReplayController {
         
         return status;
     }
-    
-    // get status for all replays
-    @ApiOperation(value = "Lists the status for all audit replay requests.")
+
+    /**
+     * Lists the status for all audit replays
+     *
+     * @return list of statuses for all audit replays
+     */
+    @ApiOperation(value = "Lists the status for all audit replays.")
     @RequestMapping(path = "/statusAll", method = org.springframework.web.bind.annotation.RequestMethod.GET)
     public List<Status> statusAll() {
         
@@ -276,11 +322,20 @@ public class ReplayController {
             statuses = statuses.stream().map(status -> idleCheck(status, replayProperties.isPublishEventsEnabled())).collect(Collectors.toList());
         return statuses;
     }
-    
-    // post to update the send rate
-    @ApiOperation(value = "Updates the audit replay request.")
+
+    /**
+     * Updates an audit replay
+     *
+     * @param id
+     *            The audit replay id
+     * @param sendRate
+     *            The number of messages to send per second
+     * @return status, indicating whether the update was successful
+     */
+    @ApiOperation(value = "Updates an audit replay.")
     @RequestMapping(path = "/{id}/update", method = org.springframework.web.bind.annotation.RequestMethod.POST)
-    public String update(@PathVariable("id") String id, @RequestParam Long sendRate, HttpServletResponse response) {
+    public String update(@ApiParam("The audit replay id") @PathVariable("id") String id,
+                         @ApiParam(value = "The number of messages to send per second", required = true) @RequestParam Long sendRate, HttpServletResponse response) {
         
         log.info("Updating sendRate to " + sendRate + " for audit replay with id " + id);
         
@@ -325,11 +380,17 @@ public class ReplayController {
             statusCache.update(status);
         }
     }
-    
-    // post to stop a replay
-    @ApiOperation(value = "Stops the audit replay request.")
+
+    /**
+     * Stops an audit replay
+     *
+     * @param id
+     *            The audit replay id
+     * @return status, indicating whether the audit replay was successfully stopped
+     */
+    @ApiOperation(value = "Stops an audit replay.")
     @RequestMapping(path = "/{id}/stop", method = org.springframework.web.bind.annotation.RequestMethod.POST)
-    public String stop(@PathVariable("id") String id, HttpServletResponse response) {
+    public String stop(@ApiParam("The audit replay id") @PathVariable("id") String id, HttpServletResponse response) {
         
         log.info("Stopping audit replay with id " + id);
         
@@ -382,9 +443,13 @@ public class ReplayController {
         
         return true;
     }
-    
-    // post to stop all replays
-    @ApiOperation(value = "Stops all audit replay requests.")
+
+    /**
+     * Stops all audit replays
+     *
+     * @return status, indicating the number of audit replays which were successfully stopped
+     */
+    @ApiOperation(value = "Stops all audit replays.")
     @RequestMapping(path = "/stopAll", method = org.springframework.web.bind.annotation.RequestMethod.POST)
     public String stopAll() {
         
@@ -412,11 +477,17 @@ public class ReplayController {
         
         return replaysStopped;
     }
-    
-    // post to cancel a replay
-    @ApiOperation(value = "Cancels the audit replay request.")
+
+    /**
+     * Cancels an audit replay
+     *
+     * @param id
+     *            The audit replay id
+     * @return status, indicating whether the audit replay was successfully canceled
+     */
+    @ApiOperation(value = "Cancels an audit replay.")
     @RequestMapping(path = "/{id}/cancel", method = org.springframework.web.bind.annotation.RequestMethod.POST)
-    public String cancel(@PathVariable("id") String id, HttpServletResponse response) {
+    public String cancel(@ApiParam("The audit replay id") @PathVariable("id") String id, HttpServletResponse response) {
         
         log.info("Canceling audit replay with id " + id);
         
@@ -478,9 +549,13 @@ public class ReplayController {
         
         return success;
     }
-    
-    // post to cancel all replays
-    @ApiOperation(value = "Cancels all audit replay requests.")
+
+    /**
+     * Cancels all audit replays
+     *
+     * @return status, indicating the number of audit replays which were successfully canceled
+     */
+    @ApiOperation(value = "Cancels all audit replays.")
     @RequestMapping(path = "/cancelAll", method = org.springframework.web.bind.annotation.RequestMethod.POST)
     public String cancelAll() {
         
@@ -510,11 +585,17 @@ public class ReplayController {
         
         return replaysCanceled;
     }
-    
-    // post to resume a replay
-    @ApiOperation(value = "Resumes the audit replay request.")
+
+    /**
+     * Resumes an audit replay
+     *
+     * @param id
+     *            The audit replay id
+     * @return status, indicating whether the audit replay was successfully resumed
+     */
+    @ApiOperation(value = "Resumes an audit replay.")
     @RequestMapping(path = "/{id}/resume", method = org.springframework.web.bind.annotation.RequestMethod.POST)
-    public String resume(@PathVariable("id") String id, HttpServletResponse response) {
+    public String resume(@ApiParam("The audit replay id") @PathVariable("id") String id, HttpServletResponse response) {
         
         log.info("Resuming audit replay with id " + id);
         
@@ -545,9 +626,13 @@ public class ReplayController {
         
         return true;
     }
-    
-    // post to resume all replay
-    @ApiOperation(value = "Resumes all audit replay requests.")
+
+    /**
+     * Resumes all audit replays
+     *
+     * @return status, indicating the number of audit replays which were successfully resumed
+     */
+    @ApiOperation(value = "Resumes all audit replays.")
     @RequestMapping(path = "/resumeAll", method = org.springframework.web.bind.annotation.RequestMethod.POST)
     public String resumeAll() {
         
@@ -566,11 +651,17 @@ public class ReplayController {
         log.info(resp);
         return resp;
     }
-    
-    // get status of a replay
-    @ApiOperation(value = "Deletes an audit replay request as long as it is not running.")
+
+    /**
+     * Deletes an audit replay
+     *
+     * @param id
+     *            The audit replay id
+     * @return status, indicating whether the audit replay was successfully deleted
+     */
+    @ApiOperation(value = "Deletes an audit replay.")
     @RequestMapping(path = "/{id}/delete", method = org.springframework.web.bind.annotation.RequestMethod.POST)
-    public String delete(@PathVariable("id") String id, HttpServletResponse response) {
+    public String delete(@ApiParam("The audit replay id") @PathVariable("id") String id, HttpServletResponse response) {
         
         log.info("Deleting audit replay with id " + id);
         
@@ -593,9 +684,13 @@ public class ReplayController {
         log.info(resp);
         return resp;
     }
-    
-    // get status for all replays
-    @ApiOperation(value = "Deletes all audit replay requests as long as they are not running.")
+
+    /**
+     * Deletes all audit replays
+     *
+     * @return status, indicating the number of audit replays which were successfully deleted
+     */
+    @ApiOperation(value = "Deletes all audit replays.")
     @RequestMapping(path = "/deleteAll", method = org.springframework.web.bind.annotation.RequestMethod.POST)
     public String deleteAll() {
         
