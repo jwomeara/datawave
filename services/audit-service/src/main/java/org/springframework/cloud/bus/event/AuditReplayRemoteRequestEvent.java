@@ -1,31 +1,27 @@
 package org.springframework.cloud.bus.event;
 
-import datawave.microservice.audit.replay.RemoteRequest;
-import datawave.microservice.audit.replay.ReplayStatus;
-
-import java.rmi.server.RemoteRef;
-import java.util.List;
+import datawave.microservice.audit.replay.remote.Request;
 
 public class AuditReplayRemoteRequestEvent extends RemoteApplicationEvent {
     
-    private final RemoteRequest remoteRequest;
+    private final Request request;
     
     @SuppressWarnings("unused")
     public AuditReplayRemoteRequestEvent() {
         // this constructor is only for serialization/deserialization
-        remoteRequest = null;
+        request = null;
     }
     
-    public AuditReplayRemoteRequestEvent(Object source, String originService, RemoteRequest remoteRequest) {
-        this(source, originService, null, remoteRequest);
+    public AuditReplayRemoteRequestEvent(Object source, String originService, Request request) {
+        this(source, originService, null, request);
     }
     
-    public AuditReplayRemoteRequestEvent(Object source, String originService, String destinationService, RemoteRequest remoteRequest) {
+    public AuditReplayRemoteRequestEvent(Object source, String originService, String destinationService, Request request) {
         super(source, originService, destinationService);
-        this.remoteRequest = remoteRequest;
+        this.request = request;
     }
-
-    public RemoteRequest getRemoteRequest() {
-        return remoteRequest;
+    
+    public Request getRequest() {
+        return request;
     }
 }

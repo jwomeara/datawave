@@ -1,25 +1,16 @@
 package datawave.microservice.audit.replay.config;
 
-import datawave.microservice.audit.replay.ReplayStatusCache;
-import datawave.microservice.audit.replay.RunningReplay;
+import datawave.microservice.audit.replay.status.StatusCache;
+import datawave.microservice.audit.replay.util.ConcurrentMapCacheInspector;
 import datawave.microservice.cached.CacheInspector;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
-import org.springframework.cache.concurrent.ConcurrentMapCache;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentMap;
-import java.util.stream.Collectors;
 
 @Configuration
 @EnableCaching
@@ -28,66 +19,21 @@ import java.util.stream.Collectors;
 public class ReplayConfig {
     
     @Bean
-    public ThreadPoolTaskExecutor auditReplayExecutor() {
+    public ThreadPoolTaskExecutor auditReplayExecutor(ReplayProperties replayProperties) {
+        ReplayProperties.ExecutorProperties executorProperties = replayProperties.getExecutor();
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(7);
-        executor.setMaxPoolSize(42);
-        executor.setQueueCapacity(11);
-        executor.setThreadNamePrefix("auditReplayExecutor-");
+        executor.setCorePoolSize(executorProperties.getCorePoolSize());
+        executor.setMaxPoolSize(executorProperties.getMaxPoolSize());
+        executor.setQueueCapacity(executorProperties.getQueueCapacity());
+        executor.setThreadNamePrefix(executorProperties.getThreadNamePrefix());
         executor.initialize();
         return executor;
     }
     
     @Bean
-    public ReplayStatusCache replayStatusCache(CacheInspector cacheInspector, CacheManager cacheManager) {
+    public StatusCache replayStatusCache(CacheInspector cacheInspector, CacheManager cacheManager) {
         if (cacheManager instanceof ConcurrentMapCacheManager)
-            cacheInspector = new SimpleCacheInspector((ConcurrentMapCacheManager) cacheManager);
-        return new ReplayStatusCache(cacheInspector);
-    }
-    
-    private static class SimpleCacheInspector implements CacheInspector {
-        
-        private ConcurrentMapCacheManager cacheManager;
-        
-        public SimpleCacheInspector(ConcurrentMapCacheManager cacheManager) {
-            this.cacheManager = cacheManager;
-        }
-        
-        @Override
-        public <T> T list(String cacheName, Class<T> cacheObjectType, String key) {
-            return cacheManager.getCache(cacheName).get(key, cacheObjectType);
-        }
-        
-        @Override
-        public <T> List<? extends T> listAll(String cacheName, Class<T> cacheObjectType) {
-            ConcurrentMapCache mapCache = ((ConcurrentMapCache) cacheManager.getCache(cacheName));
-            if (mapCache != null)
-                return mapCache.getNativeCache().values().stream().map(cacheObjectType::cast).collect(Collectors.toList());
-            else
-                return Collections.emptyList();
-        }
-        
-        @Override
-        public <T> List<? extends T> listMatching(String cacheName, Class<T> cacheObjectType, String substring) {
-            ConcurrentMapCache mapCache = ((ConcurrentMapCache) cacheManager.getCache(cacheName));
-            if (mapCache != null)
-                return mapCache.getNativeCache().entrySet().stream().filter(e -> e.getKey().toString().contains(substring)).map(Map.Entry::getValue)
-                                .map(cacheObjectType::cast).collect(Collectors.toList());
-            else
-                return Collections.emptyList();
-        }
-        
-        @Override
-        public <T> int evictMatching(String cacheName, Class<T> cacheObjectType, String substring) {
-            ConcurrentMapCache mapCache = ((ConcurrentMapCache) cacheManager.getCache(cacheName));
-            if (mapCache != null) {
-                ConcurrentMap<Object,Object> map = mapCache.getNativeCache();
-                Set<Object> keysToRemove = map.keySet().stream().filter(k -> k.toString().contains(substring)).collect(Collectors.toSet());
-                keysToRemove.forEach(map::remove);
-                return keysToRemove.size();
-            } else {
-                return 0;
-            }
-        }
+            cacheInspector = new ConcurrentMapCacheInspector((ConcurrentMapCacheManager) cacheManager);
+        return new StatusCache(cacheInspector);
     }
 }

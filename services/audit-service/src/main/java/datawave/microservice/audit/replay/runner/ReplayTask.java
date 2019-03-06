@@ -1,7 +1,9 @@
-package datawave.microservice.audit.replay;
+package datawave.microservice.audit.replay.runner;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import datawave.microservice.audit.replay.status.Status;
+import datawave.microservice.audit.replay.status.StatusCache;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.LocatedFileStatus;
@@ -23,8 +25,8 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static datawave.microservice.audit.replay.ReplayStatus.ReplayState;
-import static datawave.microservice.audit.replay.ReplayStatus.FileState;
+import static datawave.microservice.audit.replay.status.Status.ReplayState;
+import static datawave.microservice.audit.replay.status.Status.FileState;
 
 public abstract class ReplayTask implements Runnable {
     
@@ -32,14 +34,14 @@ public abstract class ReplayTask implements Runnable {
     
     private final Logger log = LoggerFactory.getLogger(this.getClass());
     
-    private final ReplayStatus status;
-    private final ReplayStatusCache replayStatusCache;
+    private final Status status;
+    private final StatusCache statusCache;
     
     private FileSystem hdfs;
     
-    public ReplayTask(Configuration config, ReplayStatus status, ReplayStatusCache replayStatusCache) throws Exception {
+    public ReplayTask(Configuration config, Status status, StatusCache statusCache) throws Exception {
         this.status = status;
-        this.replayStatusCache = replayStatusCache;
+        this.statusCache = statusCache;
         this.hdfs = FileSystem.get(new URI(status.getFileUri()), config);
     }
     
@@ -54,19 +56,19 @@ public abstract class ReplayTask implements Runnable {
             status.setFiles(listFiles(status.isReplayUnfinished()));
         
         // sort the files to process. 'RUNNING' first, followed by 'QUEUED'
-        List<ReplayStatus.FileStatus> filesToProcess = status.getFiles().stream()
+        List<Status.FileStatus> filesToProcess = status.getFiles().stream()
                         .filter(fileStatus -> fileStatus.getState() == FileState.RUNNING || fileStatus.getState() == FileState.QUEUED)
                         .sorted((o1, o2) -> o2.getState().ordinal() - o1.getState().ordinal()).collect(Collectors.toList());
         
         // then, process any unmarked/remaining files
-        for (ReplayStatus.FileStatus fileStatus : filesToProcess) {
+        for (Status.FileStatus fileStatus : filesToProcess) {
             if (!processFile(fileStatus)) {
                 status.setState(ReplayState.FAILED);
             } else if (status.getState() != ReplayState.RUNNING) {
                 break;
             }
             
-            replayStatusCache.update(status);
+            statusCache.update(status);
         }
         
         // if we're still running, finish the replay
@@ -76,11 +78,11 @@ public abstract class ReplayTask implements Runnable {
                 status.setState(ReplayState.FINISHED);
         }
         
-        replayStatusCache.update(status);
+        statusCache.update(status);
     }
     
-    private List<ReplayStatus.FileStatus> listFiles(boolean replayUnfinished) {
-        List<ReplayStatus.FileStatus> fileStatuses = new ArrayList<>();
+    private List<Status.FileStatus> listFiles(boolean replayUnfinished) {
+        List<Status.FileStatus> fileStatuses = new ArrayList<>();
         
         try {
             RemoteIterator<LocatedFileStatus> filesIter = hdfs.listFiles(new Path(status.getPath()), false);
@@ -89,13 +91,13 @@ public abstract class ReplayTask implements Runnable {
                 String fileName = locatedFile.getPath().getName();
                 
                 if (replayUnfinished && fileName.startsWith("_" + FileState.RUNNING)) {
-                    fileStatuses.add(new ReplayStatus.FileStatus(locatedFile.getPath().toString(), FileState.RUNNING));
+                    fileStatuses.add(new Status.FileStatus(locatedFile.getPath().toString(), FileState.RUNNING));
                 } else if (replayUnfinished && fileName.startsWith("_" + FileState.QUEUED)) {
-                    fileStatuses.add(new ReplayStatus.FileStatus(locatedFile.getPath().toString(), FileState.QUEUED));
+                    fileStatuses.add(new Status.FileStatus(locatedFile.getPath().toString(), FileState.QUEUED));
                 } else if (!locatedFile.getPath().getName().startsWith("_") && !locatedFile.getPath().getName().startsWith(".")) {
                     Path queuedFile = renameFile(FileState.QUEUED, locatedFile.getPath());
                     if (queuedFile != null) {
-                        fileStatuses.add(new ReplayStatus.FileStatus(queuedFile.toString(), FileState.QUEUED));
+                        fileStatuses.add(new Status.FileStatus(queuedFile.toString(), FileState.QUEUED));
                     } else {
                         log.warn("Unable to queue file \"" + locatedFile.getPath() + "\"");
                     }
@@ -108,7 +110,7 @@ public abstract class ReplayTask implements Runnable {
         return fileStatuses;
     }
     
-    private boolean processFile(ReplayStatus.FileStatus fileStatus) {
+    private boolean processFile(Status.FileStatus fileStatus) {
         Path file = new Path(fileStatus.getPath());
         
         long numToSkip = 0;
@@ -121,7 +123,7 @@ public abstract class ReplayTask implements Runnable {
             if (runningFile != null) {
                 file = runningFile;
             } else {
-                log.error("Unable to rename file from \"" + file + "\" to \"" + runningFile + "\"");
+                log.error("Unable to rename file \"" + file + "\" using prefix \"" + FileState.RUNNING + "\"");
                 fileStatus.setState(FileState.FAILED);
                 return false;
             }
@@ -129,7 +131,7 @@ public abstract class ReplayTask implements Runnable {
         
         fileStatus.setPath(file.toString());
         fileStatus.setState(FileState.RUNNING);
-        replayStatusCache.update(status);
+        statusCache.update(status);
         
         boolean encounteredError = false;
         long linesRead = fileStatus.getLinesRead();
@@ -181,7 +183,7 @@ public abstract class ReplayTask implements Runnable {
                     fileStatus.setLinesRead(linesRead);
                     fileStatus.setAuditsSent(auditsSent);
                     fileStatus.setAuditsFailed(auditsFailed);
-                    replayStatusCache.update(status);
+                    statusCache.update(status);
                 }
             }
         } catch (IOException e) {
@@ -211,7 +213,7 @@ public abstract class ReplayTask implements Runnable {
                 fileStatus.setPath(finalPath.toString());
             } else {
                 fileStatus.setState(FileState.FAILED);
-                log.error("Unable to rename file \"" + file + "\" to \"" + finalPath + "\"");
+                log.error("Unable to rename file \"" + file + "\" using prefix \"" + fileState + "\"");
                 return false;
             }
         }
@@ -228,14 +230,12 @@ public abstract class ReplayTask implements Runnable {
             if (hdfs.rename(file, renamedFile))
                 return renamedFile;
         } catch (IOException e) {
-            log.warn("Unable to rename file from \"" + file + "\" to \"" + renamedFile + "\"");
+            log.warn("Unable to rename file from \"" + file + "\" using prefix \"" + newState + "\"");
         }
         return null;
     }
     
-    // TODO: Add ability to do a timed safe stop/cancel
-    
-    protected String urlDecodeString(String value) {
+    private String urlDecodeString(String value) {
         try {
             return URLDecoder.decode(value, "UTF8");
         } catch (UnsupportedEncodingException e) {

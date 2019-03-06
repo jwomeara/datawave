@@ -158,9 +158,9 @@ public class AuditController {
     public String audit(@RequestParam MultiValueMap<String,String> parameters) {
         restAuditParams.clear();
         restAuditParams.validate(parameters);
-
+        
         log.info("[{}] Received audit request with parameters {}", restAuditParams.getAuditId(), restAuditParams);
-
+        
         if (!audit(restAuditParams))
             throw new RuntimeException("Unable to process audit message with id [" + restAuditParams.getAuditId() + "]");
         
@@ -168,7 +168,7 @@ public class AuditController {
     }
     
     public boolean audit(AuditParameters auditParameters) {
-
+        
         boolean success;
         final long auditStartTime = System.currentTimeMillis();
         long currentTime;

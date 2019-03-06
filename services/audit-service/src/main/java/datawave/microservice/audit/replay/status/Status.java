@@ -1,11 +1,11 @@
-package datawave.microservice.audit.replay;
+package datawave.microservice.audit.replay.status;
 
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class ReplayStatus {
+public class Status {
     
     public enum ReplayState {
         CREATED, RUNNING, IDLE, STOPPED, CANCELED, FINISHED, FAILED

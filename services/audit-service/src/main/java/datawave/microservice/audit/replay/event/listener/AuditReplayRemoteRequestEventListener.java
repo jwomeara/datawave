@@ -14,14 +14,14 @@ import org.springframework.stereotype.Component;
 @Component
 @ConditionalOnBusEnabled
 @ConditionalOnProperty(name = "audit.replay.enabled", havingValue = "true")
-public class AuditReplayUpdateEventListener implements ApplicationListener<AuditReplayRemoteRequestEvent> {
+public class AuditReplayRemoteRequestEventListener implements ApplicationListener<AuditReplayRemoteRequestEvent> {
     private Logger log = LoggerFactory.getLogger(getClass());
-
+    
     private final ReplayController replayController;
     private final ServiceMatcher serviceMatcher;
-
+    
     @Autowired
-    public AuditReplayUpdateEventListener(ReplayController replayController, ServiceMatcher serviceMatcher) {
+    public AuditReplayRemoteRequestEventListener(ReplayController replayController, ServiceMatcher serviceMatcher) {
         this.replayController = replayController;
         this.serviceMatcher = serviceMatcher;
     }
@@ -35,6 +35,6 @@ public class AuditReplayUpdateEventListener implements ApplicationListener<Audit
             return;
         }
         
-        replayController.handleRemoteRequest(event.getRemoteRequest());
+        replayController.handleRemoteRequest(event.getRequest());
     }
 }
