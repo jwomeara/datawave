@@ -1,9 +1,8 @@
-package datawave.microservice.audit.auditors.dump.config;
+package datawave.microservice.audit.auditors.file.config;
 
 import datawave.microservice.audit.common.AuditMessage;
 import datawave.microservice.audit.common.AuditMessageHandler;
-import datawave.microservice.audit.auditors.hdfs.HdfsAuditor;
-import datawave.microservice.audit.auditors.hdfs.config.HdfsAuditProperties;
+import datawave.microservice.audit.auditors.file.FileAuditor;
 import datawave.microservice.audit.config.AuditProperties;
 import datawave.webservice.common.audit.AuditParameters;
 import datawave.webservice.common.audit.Auditor;
@@ -21,7 +20,7 @@ import javax.annotation.Resource;
 import java.util.List;
 
 /**
- * Configures an HdfsAuditor to dump messages to HDFS by request. This configuration is activated via the 'audit.dump.enabled' property. When enabled, this
+ * Configures an FileAuditor to dump messages to the filesystem by request. This configuration is activated via the 'audit.auditors.dump.enabled' property. When enabled, this
  * configuration will also enable the appropriate Spring Cloud Stream configuration for the audit dump binding, as specified in the audit config.
  */
 @Configuration
@@ -31,8 +30,8 @@ public class DumpAuditConfig {
     
     @Bean("dumpAuditProperties")
     @ConfigurationProperties("audit.auditors.dump")
-    public HdfsAuditProperties dumpAuditProperties() {
-        return new HdfsAuditProperties();
+    public FileAuditProperties dumpAuditProperties() {
+        return new FileAuditProperties();
     }
     
     @Resource(name = "msgHandlerAuditParams")
@@ -50,14 +49,21 @@ public class DumpAuditConfig {
     }
     
     @Bean
-    public Auditor dumpAuditor(AuditProperties auditProperties, @Qualifier("dumpAuditProperties") HdfsAuditProperties dumpAuditProperties) throws Exception {
-        String hdfsUri = (dumpAuditProperties.getHdfsUri() != null) ? dumpAuditProperties.getHdfsUri() : auditProperties.getHdfs().getHdfsUri();
-        List<String> configResources = (dumpAuditProperties.getConfigResources() != null) ? dumpAuditProperties.getConfigResources()
-                        : auditProperties.getHdfs().getConfigResources();
-        
-        return new HdfsAuditor.Builder().setHdfsUri(hdfsUri).setPath(dumpAuditProperties.getPath())
-                        .setMaxFileAgeMillis(dumpAuditProperties.getMaxFileAgeMillis()).setMaxFileLenBytes(dumpAuditProperties.getMaxFileLenBytes())
-                        .setConfigResources(configResources).setPrefix(dumpAuditProperties().getPrefix()).build();
+    public Auditor dumpAuditor(AuditProperties auditProperties, @Qualifier("dumpAuditProperties") FileAuditProperties dumpAuditProperties) throws Exception {
+        String fileUri = (dumpAuditProperties.getFs().getFileUri() != null) ? dumpAuditProperties.getFs().getFileUri() : auditProperties.getFs().getFileUri();
+        List<String> configResources = (dumpAuditProperties.getFs().getConfigResources() != null) ? dumpAuditProperties.getFs().getConfigResources()
+                        : auditProperties.getFs().getConfigResources();
+
+        // @formatter:off
+        return new FileAuditor.Builder()
+                .setFileUri(fileUri)
+                .setPath(dumpAuditProperties.getPath())
+                .setMaxFileAgeMillis(dumpAuditProperties.getMaxFileAgeMillis())
+                .setMaxFileLenBytes(dumpAuditProperties.getMaxFileLenBytes())
+                .setConfigResources(configResources)
+                .setPrefix((dumpAuditProperties.getPrefix() != null) ? dumpAuditProperties.getPrefix() : "dump")
+                .build();
+        // @formatter:on
     }
     
     public interface AuditDumpBinding {

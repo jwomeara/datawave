@@ -10,8 +10,6 @@ import datawave.webservice.common.audit.Auditor;
 import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiImplicitParams;
 import io.swagger.annotations.ApiOperation;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -70,8 +68,8 @@ public class AuditController {
     private HealthChecker healthChecker;
     
     @Autowired(required = false)
-    @Qualifier("hdfsAuditor")
-    private Auditor hdfsAuditor;
+    @Qualifier("fileAuditor")
+    private Auditor fileAuditor;
     
     private static final Map<String,CountDownLatch> correlationLatchMap = new ConcurrentHashMap<>();
     
@@ -192,17 +190,14 @@ public class AuditController {
             currentTime = System.currentTimeMillis();
         } while (!success && (currentTime - auditStartTime) < retry.getFailTimeoutMillis() && attempts < retry.getMaxAttempts());
         
-        // TODO: Remove this
-        success = false;
-        
-        // last ditch effort to write the audit message to hdfs for subsequent processing
-        if (!success && hdfsAuditor != null) {
+        // last ditch effort to write the audit message to fileSystem for subsequent processing
+        if (!success && fileAuditor != null) {
             success = true;
             try {
                 if (log.isDebugEnabled())
                     log.debug("[" + auditParameters.getAuditId() + "] Attempting to log audit to HDFS");
                 
-                hdfsAuditor.audit(auditParameters);
+                fileAuditor.audit(auditParameters);
             } catch (Exception e) {
                 log.error("[" + auditParameters.getAuditId() + "] Unable to save audit to HDFS", e);
                 success = false;
@@ -211,10 +206,10 @@ public class AuditController {
         
         if (!success)
             log.warn("[" + auditParameters.getAuditId() + "] Audit failed. {attempts = " + attempts + ", elapsedMillis = " + (currentTime - auditStartTime)
-                            + ((hdfsAuditor != null) ? ", hdfsElapsedMillis = " + (System.currentTimeMillis() - currentTime) + "}" : "}"));
+                            + ((fileAuditor != null) ? ", hdfsElapsedMillis = " + (System.currentTimeMillis() - currentTime) + "}" : "}"));
         else
             log.info("[" + auditParameters.getAuditId() + "] Audit successful. {attempts = " + attempts + ", elapsedMillis = " + (currentTime - auditStartTime)
-                            + ((hdfsAuditor != null) ? ", hdfsElapsedMillis = " + (System.currentTimeMillis() - currentTime) + "}" : "}"));
+                            + ((fileAuditor != null) ? ", hdfsElapsedMillis = " + (System.currentTimeMillis() - currentTime) + "}" : "}"));
         
         return success;
     }

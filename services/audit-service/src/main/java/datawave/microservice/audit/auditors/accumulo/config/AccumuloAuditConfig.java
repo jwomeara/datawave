@@ -29,7 +29,7 @@ import org.springframework.messaging.SubscribableChannel;
 import javax.annotation.Resource;
 
 /**
- * Configures the AccumuloAuditor to process messages received by the audit service. This configuration is activated via the 'audit.accumulo.enabled' property.
+ * Configures the AccumuloAuditor to process messages received by the audit service. This configuration is activated via the 'audit.auditors.accumulo.enabled' property.
  * When enabled, this configuration will also enable the appropriate Spring Cloud Stream configuration for the accumulo audit binding, as specified in the audit
  * config.
  */

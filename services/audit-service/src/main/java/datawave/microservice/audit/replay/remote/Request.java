@@ -1,15 +1,14 @@
 package datawave.microservice.audit.replay.remote;
 
-import static datawave.microservice.audit.replay.remote.Request.Method.CANCEL;
-import static datawave.microservice.audit.replay.remote.Request.Method.CANCEL_ALL;
 import static datawave.microservice.audit.replay.remote.Request.Method.STOP;
 import static datawave.microservice.audit.replay.remote.Request.Method.STOP_ALL;
 import static datawave.microservice.audit.replay.remote.Request.Method.UPDATE;
+import static datawave.microservice.audit.replay.remote.Request.Method.UPDATE_ALL;
 
 public class Request {
     
     public enum Method {
-        UPDATE, STOP, STOP_ALL, CANCEL, CANCEL_ALL
+        UPDATE, UPDATE_ALL, STOP, STOP_ALL
     }
     
     private final Method method;
@@ -40,8 +39,8 @@ public class Request {
     public static class UpdateRequest extends Request {
         final private long sendRate;
         
-        private UpdateRequest(String id, long sendRate) {
-            super(UPDATE, id);
+        private UpdateRequest(Method method, String id, long sendRate) {
+            super(method, id);
             this.sendRate = sendRate;
         }
         
@@ -56,22 +55,18 @@ public class Request {
     }
     
     public static Request update(String id, long sendRate) {
-        return new UpdateRequest(id, sendRate);
+        return new UpdateRequest(UPDATE, id, sendRate);
     }
-    
+
+    public static Request updateAll(long sendRate) {
+        return new UpdateRequest(UPDATE_ALL, null, sendRate);
+    }
+
     public static Request stop(String id) {
         return new Request(STOP, id);
     }
     
     public static Request stopAll() {
         return new Request(STOP_ALL);
-    }
-    
-    public static Request cancel(String id) {
-        return new Request(CANCEL, id);
-    }
-    
-    public static Request cancelAll() {
-        return new Request(CANCEL_ALL);
     }
 }

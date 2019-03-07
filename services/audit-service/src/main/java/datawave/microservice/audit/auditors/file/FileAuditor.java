@@ -1,4 +1,4 @@
-package datawave.microservice.audit.auditors.hdfs;
+package datawave.microservice.audit.auditors.file;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import datawave.webservice.common.audit.AuditParameters;
@@ -6,11 +6,16 @@ import datawave.webservice.common.audit.Auditor;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.LocalFileSystem;
 import org.apache.hadoop.fs.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedWriter;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -25,9 +30,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * An implementation for {@link Auditor}, which writes URL encoded, JSON formatted audit messages to a file in HDFS.
+ * An implementation for {@link Auditor}, which writes URL encoded, JSON formatted audit messages to a file.
  */
-public class HdfsAuditor implements Auditor {
+public class FileAuditor implements Auditor {
     
     private final Logger log = LoggerFactory.getLogger(this.getClass());
     
@@ -39,31 +44,33 @@ public class HdfsAuditor implements Auditor {
     protected long maxFileLenBytes;
     protected long maxFileAgeMillis;
     
-    protected FileSystem hdfs;
+    protected FileSystem fileSystem;
     protected Path basePath;
     
     protected Path currentFile = null;
     protected Date creationDate = null;
     
-    protected HdfsAuditor(Builder<?> builder) throws URISyntaxException, IOException {
+    protected FileAuditor(Builder<?> builder) throws URISyntaxException, IOException {
         this.maxFileLenBytes = builder.maxFileLenBytes;
         this.maxFileAgeMillis = builder.maxFileAgeMillis;
         
         Configuration config = new Configuration();
         config.set("fs.hdfs.impl", org.apache.hadoop.hdfs.DistributedFileSystem.class.getName());
         config.set("fs.file.impl", org.apache.hadoop.fs.LocalFileSystem.class.getName());
+
+        if (builder.configResources != null) {
+            for (String resource : builder.configResources)
+                config.addResource(new Path(resource));
+        }
         
-        for (String resource : builder.configResources)
-            config.addResource(new Path(resource));
-        
-        if (builder.hdfsUri != null)
-            hdfs = FileSystem.get(new URI(builder.hdfsUri), config);
+        if (builder.fileUri != null)
+            fileSystem = FileSystem.get(new URI(builder.fileUri), config);
         else
-            hdfs = FileSystem.get(config);
+            fileSystem = FileSystem.get(config);
         
         basePath = new Path(builder.path);
-        if (!hdfs.exists(basePath))
-            hdfs.mkdirs(basePath);
+        if (!fileSystem.exists(basePath))
+            fileSystem.mkdirs(basePath);
         
         this.sdf = new SimpleDateFormat("'" + builder.prefix + "'-yyyyMMdd_HHmmss.SSS'.json'");
     }
@@ -79,7 +86,7 @@ public class HdfsAuditor implements Auditor {
         writeLock.lock();
         try {
             // if the file/stream is null, doesn't exist, or the file is too old/big, create a new file & output stream
-            if (currentFile == null || !hdfs.exists(currentFile) || isFileTooOld() || isFileTooBig())
+            if (currentFile == null || !fileSystem.exists(currentFile) || isFileTooOld() || isFileTooBig())
                 createNewFile();
             
             writeAudit(jsonAuditParams);
@@ -98,7 +105,7 @@ public class HdfsAuditor implements Auditor {
     }
     
     protected void writeAudit(String jsonAuditParams) throws Exception {
-        FSDataOutputStream appendStream = hdfs.append(currentFile);
+        OutputStream appendStream = (fileSystem instanceof LocalFileSystem) ? new FileOutputStream(currentFile.toString(), true) : fileSystem.append(currentFile);
         appendStream.write(jsonAuditParams.getBytes("UTF8"));
         appendStream.close();
     }
@@ -114,8 +121,8 @@ public class HdfsAuditor implements Auditor {
             } catch (InterruptedException e) {
                 // getting interrupted is ok
             }
-        } while (hdfs.exists(currentFile));
-        FSDataOutputStream outStream = hdfs.create(currentFile);
+        } while (fileSystem.exists(currentFile));
+        FSDataOutputStream outStream = fileSystem.create(currentFile);
         outStream.close();
         creationDate = currentDate;
     }
@@ -125,30 +132,32 @@ public class HdfsAuditor implements Auditor {
     }
     
     protected boolean isFileTooBig() throws IOException {
-        return currentFile == null || hdfs.getFileStatus(currentFile).getLen() >= maxFileLenBytes;
+        return currentFile == null || fileSystem.getFileStatus(currentFile).getLen() >= maxFileLenBytes;
     }
-    
+
+    // TODO: we don't need this builder.  let's get rid of it
     public static class Builder<T extends Builder<T>> {
-        protected String hdfsUri;
+        protected String fileUri;
         protected String path;
         protected String prefix;
-        protected long maxFileLenBytes;
-        protected long maxFileAgeMillis;
+        protected Long maxFileLenBytes;
+        protected Long maxFileAgeMillis;
         protected List<String> configResources;
         
         public Builder() {
-            prefix = "audits";
+            prefix = "audit";
             maxFileLenBytes = 1024L * 1024L * 512L;
             maxFileAgeMillis = TimeUnit.MINUTES.toMillis(30);
             configResources = new ArrayList<>();
         }
         
-        public String getHdfsUri() {
-            return hdfsUri;
+        public String getFileUri() {
+            return fileUri;
         }
         
-        public T setHdfsUri(String hdfsUri) {
-            this.hdfsUri = hdfsUri;
+        public T setFileUri(String fileUri) {
+            if (fileUri != null)
+                this.fileUri = fileUri;
             return (T) this;
         }
         
@@ -157,7 +166,8 @@ public class HdfsAuditor implements Auditor {
         }
         
         public T setPath(String path) {
-            this.path = path;
+            if (path != null)
+                this.path = path;
             return (T) this;
         }
         
@@ -166,25 +176,28 @@ public class HdfsAuditor implements Auditor {
         }
         
         public T setPrefix(String prefix) {
-            this.prefix = prefix;
+            if (prefix != null)
+                this.prefix = prefix;
             return (T) this;
         }
         
-        public long getMaxFileLenBytes() {
+        public Long getMaxFileLenBytes() {
             return maxFileLenBytes;
         }
         
-        public T setMaxFileLenBytes(long maxFileLenBytes) {
-            this.maxFileLenBytes = maxFileLenBytes;
+        public T setMaxFileLenBytes(Long maxFileLenBytes) {
+            if (maxFileLenBytes != null)
+                this.maxFileLenBytes = maxFileLenBytes;
             return (T) this;
         }
         
-        public long getMaxFileAgeMillis() {
+        public Long getMaxFileAgeMillis() {
             return maxFileAgeMillis;
         }
         
-        public T setMaxFileAgeMillis(long maxFileAgeMillis) {
-            this.maxFileAgeMillis = maxFileAgeMillis;
+        public T setMaxFileAgeMillis(Long maxFileAgeMillis) {
+            if (maxFileAgeMillis != null)
+                this.maxFileAgeMillis = maxFileAgeMillis;
             return (T) this;
         }
         
@@ -193,12 +206,13 @@ public class HdfsAuditor implements Auditor {
         }
         
         public T setConfigResources(List<String> configResources) {
-            this.configResources = configResources;
+            if (configResources != null)
+                this.configResources = configResources;
             return (T) this;
         }
         
-        public HdfsAuditor build() throws IOException, URISyntaxException {
-            return new HdfsAuditor(this);
+        public FileAuditor build() throws IOException, URISyntaxException {
+            return new FileAuditor(this);
         }
     }
 }

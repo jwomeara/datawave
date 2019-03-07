@@ -40,10 +40,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static datawave.microservice.audit.replay.status.Status.ReplayState.CANCELED;
 import static datawave.microservice.audit.replay.status.Status.ReplayState.CREATED;
-import static datawave.microservice.audit.replay.status.Status.ReplayState.FAILED;
-import static datawave.microservice.audit.replay.status.Status.ReplayState.FINISHED;
 import static datawave.microservice.audit.replay.status.Status.ReplayState.IDLE;
 import static datawave.microservice.audit.replay.status.Status.ReplayState.RUNNING;
 import static datawave.microservice.audit.replay.status.Status.ReplayState.STOPPED;
@@ -97,8 +94,10 @@ public class ReplayController {
     private void init() {
         config.set("fs.hdfs.impl", org.apache.hadoop.hdfs.DistributedFileSystem.class.getName());
         config.set("fs.file.impl", org.apache.hadoop.fs.LocalFileSystem.class.getName());
-        for (String resource : auditProperties.getHdfs().getConfigResources())
-            config.addResource(new Path(resource));
+        if (auditProperties.getFs().getConfigResources() != null) {
+            for (String resource : auditProperties.getFs().getConfigResources())
+                config.addResource(new Path(resource));
+        }
     }
 
     /**
@@ -335,7 +334,7 @@ public class ReplayController {
     @ApiOperation(value = "Updates an audit replay.")
     @RequestMapping(path = "/{id}/update", method = org.springframework.web.bind.annotation.RequestMethod.POST)
     public String update(@ApiParam("The audit replay id") @PathVariable("id") String id,
-                         @ApiParam(value = "The number of messages to send per second", required = true) @RequestParam Long sendRate, HttpServletResponse response) {
+                         @ApiParam(value = "The number of messages to send per second", required = true) @RequestParam long sendRate, HttpServletResponse response) {
         
         log.info("Updating sendRate to " + sendRate + " for audit replay with id " + id);
         
@@ -361,7 +360,7 @@ public class ReplayController {
         return resp;
     }
     
-    private void update(Status status, Long sendRate, boolean publishEvent) {
+    private void update(Status status, long sendRate, boolean publishEvent) {
         // is the replay running?
         if (status.getState() == RUNNING) {
             
@@ -375,10 +374,56 @@ public class ReplayController {
             }
         } else {
             
-            // just update the cache if it's not running
+            // just update the cache if it'Filesystem not running
             status.setSendRate(sendRate);
             statusCache.update(status);
         }
+    }
+
+    /**
+     * Updates all audit replays
+     *
+     * @param sendRate
+     *            The number of messages to send per second
+     * @return status, indicating the number of audit replays which were successfully updated
+     */
+    @ApiOperation(value = "Updates all audit replays.")
+    @RequestMapping(path = "/updateAll", method = org.springframework.web.bind.annotation.RequestMethod.POST)
+    public String updateAll(@ApiParam(value = "The number of messages to send per second", required = true) @RequestParam long sendRate, HttpServletResponse response) {
+
+        log.info("Updating sendRate to " + sendRate + " for all audit replays");
+
+        String resp;
+
+        // only update if the send rate is valid
+        if (sendRate >= 0) {
+            resp = updateAll(sendRate, replayProperties.isPublishEventsEnabled(), false) + "audit replays updated";
+        } else {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            resp = "Send rate must be >= 0";
+        }
+
+        log.info(resp);
+        return resp;
+    }
+
+    private int updateAll(long sendRate, boolean publishEnabled, boolean onlyUpdateRunning) {
+        int replaysUpdated = 0;
+
+        if (publishEnabled)
+            appCtx.publishEvent(new AuditReplayRemoteRequestEvent(this, busProperties.getId(), Request.updateAll(sendRate)));
+
+        // update all of our replays.
+        List<Status> statuses = statusAll();
+        if (onlyUpdateRunning)
+            statuses = statuses.stream().filter(status -> status.getState() == RUNNING).collect(Collectors.toList());
+
+        for (Status status : statuses) {
+            update(status, sendRate, false);
+            replaysUpdated++;
+        }
+
+        return replaysUpdated;
     }
 
     /**
@@ -476,114 +521,6 @@ public class ReplayController {
         }
         
         return replaysStopped;
-    }
-
-    /**
-     * Cancels an audit replay
-     *
-     * @param id
-     *            The audit replay id
-     * @return status, indicating whether the audit replay was successfully canceled
-     */
-    @ApiOperation(value = "Cancels an audit replay.")
-    @RequestMapping(path = "/{id}/cancel", method = org.springframework.web.bind.annotation.RequestMethod.POST)
-    public String cancel(@ApiParam("The audit replay id") @PathVariable("id") String id, HttpServletResponse response) {
-        
-        log.info("Canceling audit replay with id " + id);
-        
-        String resp;
-        Status status = status(id, replayProperties.isPublishEventsEnabled());
-        if (status != null) {
-            if (cancel(status, replayProperties.isPublishEventsEnabled())) {
-                resp = "Canceled audit replay with id " + id;
-            } else {
-                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                resp = "Cannot cancel audit replay with id " + id;
-            }
-        } else {
-            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            resp = "No audit replay found with id " + id;
-        }
-        
-        log.info(resp);
-        return resp;
-    }
-    
-    private boolean cancel(Status status, boolean publishEvent) {
-        boolean success = false;
-        
-        // replays that are canceled, finished, or failed cannot be canceled
-        if (status.getState() != CANCELED && status.getState() != FINISHED && status.getState() != FAILED) {
-            
-            // is the replay running?
-            if (status.getState() == RUNNING) {
-                
-                // if we own it, stop it. otherwise, fire an event to all of the audit services
-                RunningReplay replay = runningReplays.get(status.getId());
-                if (replay != null) {
-                    replay.getStatus().setState(CANCELED);
-                    statusCache.update(replay.getStatus());
-                    
-                    try {
-                        replay.getFuture().get(replayProperties.getStopGracePeriodMillis(), TimeUnit.MILLISECONDS);
-                    } catch (Exception e) {
-                        // interrupts and timeouts are ok. we just want to give some time to cleanup.
-                    }
-                    
-                    // if it's still not done, cancel it
-                    if (!replay.getFuture().isDone())
-                        replay.getFuture().cancel(true);
-                    
-                    runningReplays.remove(status.getId());
-                } else if (publishEvent) {
-                    appCtx.publishEvent(new AuditReplayRemoteRequestEvent(this, busProperties.getId(), Request.cancel(status.getId())));
-                }
-            } else {
-                // just update the cache if it's not running
-                status.setState(CANCELED);
-                statusCache.update(status);
-            }
-            
-            success = true;
-        }
-        
-        return success;
-    }
-
-    /**
-     * Cancels all audit replays
-     *
-     * @return status, indicating the number of audit replays which were successfully canceled
-     */
-    @ApiOperation(value = "Cancels all audit replays.")
-    @RequestMapping(path = "/cancelAll", method = org.springframework.web.bind.annotation.RequestMethod.POST)
-    public String cancelAll() {
-        
-        log.info("Canceling all audit replays");
-        
-        int replaysCanceled = cancelAll(replayProperties.isPublishEventsEnabled());
-        
-        String resp = replaysCanceled + " audit replays canceled";
-        log.info(resp);
-        return resp;
-    }
-    
-    private int cancelAll(boolean publishEvent) {
-        int replaysCanceled = 0;
-        
-        if (publishEvent)
-            appCtx.publishEvent(new AuditReplayRemoteRequestEvent(this, busProperties.getId(), Request.cancelAll()));
-        
-        // cancel all of our replays. then, send an event out to all audit services to cancel all replays
-        List<Status> statuses = statusAll().stream()
-                        .filter(status -> status.getState() != CANCELED && status.getState() != FINISHED && status.getState() != FAILED)
-                        .collect(Collectors.toList());
-        for (Status status : statuses) {
-            if (cancel(status, false))
-                replaysCanceled++;
-        }
-        
-        return replaysCanceled;
     }
 
     /**
@@ -712,18 +649,27 @@ public class ReplayController {
     public void handleRemoteRequest(Request request) {
         
         Status status = (request.getId() != null) ? status(request.getId(), replayProperties.isPublishEventsEnabled()) : null;
-        
+
+        Request.UpdateRequest updateRequest = (request instanceof Request.UpdateRequest) ? (Request.UpdateRequest) request : null;
+
         switch (request.getMethod()) {
             case UPDATE:
-                Request.UpdateRequest updateRequest = (Request.UpdateRequest) request;
-                
-                log.info("Updating sendRate to " + updateRequest.getSendRate() + " for audit replay with id " + updateRequest.getId());
-                if (status != null) {
-                    update(status, updateRequest.getSendRate(), false);
-                    log.info("Updated audit replay with id " + status.getId());
+                if (updateRequest != null) {
+                    log.info("Updating sendRate to " + updateRequest.getSendRate() + " for audit replay with id " + updateRequest.getId());
+                    if (status != null) {
+                        update(status, updateRequest.getSendRate(), false);
+                        log.info("Updated audit replay with id " + status.getId());
+                    }
                 }
                 break;
-            
+
+            case UPDATE_ALL:
+                if (updateRequest != null) {
+                    int replaysUpdated = updateAll(updateRequest.getSendRate(), false, true);
+                    log.info(replaysUpdated + " audit replays updated");
+                }
+                break;
+
             case STOP:
                 if (status != null) {
                     if (stop(status, false)) {
@@ -737,21 +683,6 @@ public class ReplayController {
             case STOP_ALL:
                 int replaysStopped = stopAll(false);
                 log.info(replaysStopped + " audit replays stopped");
-                break;
-            
-            case CANCEL:
-                if (status != null) {
-                    if (cancel(status, false)) {
-                        log.info("Stopped audit replay with id " + status.getId());
-                    } else {
-                        log.info("Cannot stop audit replay with id " + status.getId());
-                    }
-                }
-                break;
-            
-            case CANCEL_ALL:
-                int replaysCanceled = cancelAll(false);
-                log.info(replaysCanceled + " audit replays canceled");
                 break;
             
             default:

@@ -31,18 +31,17 @@ import static datawave.microservice.audit.replay.status.Status.FileState;
 public abstract class ReplayTask implements Runnable {
     
     private static final ObjectMapper mapper = new ObjectMapper();
-    
-    private final Logger log = LoggerFactory.getLogger(this.getClass());
+    private static final Logger log = LoggerFactory.getLogger(ReplayTask.class);
     
     private final Status status;
     private final StatusCache statusCache;
     
-    private FileSystem hdfs;
+    private FileSystem filesystem;
     
     public ReplayTask(Configuration config, Status status, StatusCache statusCache) throws Exception {
         this.status = status;
         this.statusCache = statusCache;
-        this.hdfs = FileSystem.get(new URI(status.getFileUri()), config);
+        this.filesystem = FileSystem.get(new URI(status.getFileUri()), config);
     }
     
     @Override
@@ -85,7 +84,7 @@ public abstract class ReplayTask implements Runnable {
         List<Status.FileStatus> fileStatuses = new ArrayList<>();
         
         try {
-            RemoteIterator<LocatedFileStatus> filesIter = hdfs.listFiles(new Path(status.getPath()), false);
+            RemoteIterator<LocatedFileStatus> filesIter = filesystem.listFiles(new Path(status.getPath()), false);
             while (filesIter.hasNext()) {
                 LocatedFileStatus locatedFile = filesIter.next();
                 String fileName = locatedFile.getPath().getName();
@@ -141,7 +140,7 @@ public abstract class ReplayTask implements Runnable {
         BufferedReader reader = null;
         try {
             // read each audit message, and process via the audit service
-            reader = new BufferedReader(new InputStreamReader(hdfs.open(file)));
+            reader = new BufferedReader(new InputStreamReader(filesystem.open(file)));
             TypeReference<HashMap<String,String>> typeRef = new TypeReference<HashMap<String,String>>() {};
             
             String line = null;
@@ -227,7 +226,7 @@ public abstract class ReplayTask implements Runnable {
         fileName = (fileName.startsWith("_")) ? prefix + fileName.substring(fileName.indexOf('.') + 1) : prefix + fileName;
         Path renamedFile = new Path(file.getParent(), fileName);
         try {
-            if (hdfs.rename(file, renamedFile))
+            if (filesystem.rename(file, renamedFile))
                 return renamedFile;
         } catch (IOException e) {
             log.warn("Unable to rename file from \"" + file + "\" using prefix \"" + newState + "\"");
@@ -235,7 +234,7 @@ public abstract class ReplayTask implements Runnable {
         return null;
     }
     
-    private String urlDecodeString(String value) {
+    public static String urlDecodeString(String value) {
         try {
             return URLDecoder.decode(value, "UTF8");
         } catch (UnsupportedEncodingException e) {

@@ -1,20 +1,29 @@
 package datawave.microservice.audit;
 
 //import datawave.common.test.integration.IntegrationTest;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.io.Files;
+import datawave.microservice.audit.auditors.file.FileAuditor;
+import datawave.microservice.audit.auditors.file.config.FileAuditProperties;
 import datawave.microservice.audit.common.AuditMessage;
 import datawave.microservice.audit.config.AuditProperties;
 import datawave.microservice.audit.config.AuditServiceConfig;
 import datawave.microservice.audit.health.HealthChecker;
+import datawave.microservice.audit.replay.runner.ReplayTask;
 import datawave.microservice.authorization.jwt.JWTRestTemplate;
 import datawave.microservice.authorization.user.ProxiedUserDetails;
 import datawave.security.authorization.DatawaveUser;
 import datawave.security.authorization.SubjectIssuerDNPair;
 import datawave.webservice.common.audit.AuditParameters;
+import datawave.webservice.common.audit.Auditor;
 import datawave.webservice.common.audit.Auditor.AuditType;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.boot.web.server.LocalServerPort;
@@ -36,13 +45,21 @@ import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.util.UriComponents;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static datawave.security.authorization.DatawaveUser.UserType.USER;
+import static junit.framework.TestCase.assertNull;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -69,6 +86,9 @@ public class AuditServiceTest {
     
     @Autowired
     private AuditProperties auditProperties;
+
+    @Autowired
+    private FileAuditProperties fileAuditProperties;
     
     private SubjectIssuerDNPair DN;
     private String userDN = "userDn";
@@ -295,7 +315,60 @@ public class AuditServiceTest {
         assertNotNull(received.remove(AuditParameters.QUERY_DATE));
         assertEquals(0, received.size());
     }
-    
+
+    @Test
+    @DirtiesContext
+    public void testFileAuditMessaging() throws Exception {
+        AuditProperties.Retry retry = new AuditProperties.Retry();
+        retry.setMaxAttempts(1);
+        retry.setBackoffIntervalMillis(0);
+        retry.setFailTimeoutMillis(0);
+        auditProperties.setRetry(retry);
+
+        auditProperties.setConfirmAckEnabled(true);
+        auditProperties.setConfirmAckTimeoutMillis(0);
+
+        Collection<String> roles = Collections.singleton("AuthorizedUser");
+        DatawaveUser uathDWUser = new DatawaveUser(DN, USER, null, roles, null, System.currentTimeMillis());
+        ProxiedUserDetails authUser = new ProxiedUserDetails(Collections.singleton(uathDWUser), uathDWUser.getCreationTime());
+
+        UriComponents uri = UriComponentsBuilder.newInstance().scheme("https").host("localhost").port(webServicePort).path("/audit/v1/audit")
+                .queryParam(AuditParameters.USER_DN, userDN).queryParam(AuditParameters.QUERY_STRING, query)
+                .queryParam(AuditParameters.QUERY_AUTHORIZATIONS, authorizations).queryParam(AuditParameters.QUERY_AUDIT_TYPE, auditType)
+                .queryParam(AuditParameters.QUERY_SECURITY_MARKING_COLVIZ, "ALL").build();
+
+        ResponseEntity<String> response = jwtRestTemplate.exchange(authUser, HttpMethod.POST, uri, String.class);
+        assertEquals(response.getStatusCode().value(), HttpStatus.OK.value());
+
+        @SuppressWarnings("unchecked")
+        Message<AuditMessage> msg = (Message<AuditMessage>) messageCollector.forChannel(auditSourceBinding.auditSource()).poll();
+        assertNotNull(msg);
+
+        Map<String,String> expected = uri.getQueryParams().toSingleValueMap();
+
+        List<File> files = Arrays.stream(new File(fileAuditProperties.getPath()).listFiles()).filter(f -> f.getName().endsWith(".json")).collect(Collectors.toList());
+        assertEquals(1, files.size());
+
+        BufferedReader reader = new BufferedReader(new FileReader(files.get(0)));
+        List<String> lines = new ArrayList<>();
+        String line;
+        while((line = reader.readLine()) != null)
+            lines.add(line);
+        reader.close();
+
+        assertEquals(1, lines.size());
+
+        HashMap<String,String> auditParamsMap = new ObjectMapper().readValue(lines.get(0), new TypeReference<HashMap<String,String>>() {});
+        for (String param : expected.keySet()) {
+            assertEquals(expected.get(param), ReplayTask.urlDecodeString(auditParamsMap.get(param)));
+            auditParamsMap.remove(param);
+        }
+
+        assertNotNull(auditParamsMap.remove(AuditParameters.QUERY_DATE));
+        assertNotNull(auditParamsMap.remove(AuditParameters.AUDIT_ID));
+        assertEquals(0, auditParamsMap.size());
+    }
+
     @Configuration
     @Profile("AuditServiceTest")
     @ComponentScan(basePackages = "datawave.microservice")
@@ -303,6 +376,33 @@ public class AuditServiceTest {
         @Bean
         public HealthChecker healthChecker() {
             return new TestHealthChecker();
+        }
+
+        @Bean("fileAuditProperties")
+        public FileAuditProperties fileAuditProperties() {
+            FileAuditProperties fileAuditProperties = new FileAuditProperties();
+            File tempDir = Files.createTempDir();
+            tempDir.deleteOnExit();
+            fileAuditProperties.setPath(tempDir.getAbsolutePath());
+            return fileAuditProperties;
+        }
+
+        @Bean(name = "fileAuditor")
+        public Auditor fileAuditor(AuditProperties auditProperties, @Qualifier("fileAuditProperties") FileAuditProperties fileAuditProperties) throws Exception {
+            String fileUri = (fileAuditProperties.getFs().getFileUri() != null) ? fileAuditProperties.getFs().getFileUri() : auditProperties.getFs().getFileUri();
+            List<String> configResources = (fileAuditProperties.getFs().getConfigResources() != null) ? fileAuditProperties.getFs().getConfigResources()
+                    : auditProperties.getFs().getConfigResources();
+
+            // @formatter:off
+            return new FileAuditor.Builder()
+                    .setFileUri(fileUri)
+                    .setPath(fileAuditProperties.getPath())
+                    .setMaxFileAgeMillis(fileAuditProperties.getMaxFileAgeMillis())
+                    .setMaxFileLenBytes(fileAuditProperties.getMaxFileLenBytes())
+                    .setConfigResources(configResources)
+                    .setPrefix(fileAuditProperties.getPrefix())
+                    .build();
+            // @formatter:on
         }
     }
     

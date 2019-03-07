@@ -13,7 +13,7 @@ public class AuditProperties {
     private long confirmAckTimeoutMillis = 500L;
     
     private Retry retry = new Retry();
-    private Hdfs hdfs = new Hdfs();
+    private Filesystem fs = new Filesystem();
     
     public boolean isConfirmAckEnabled() {
         return confirmAckEnabled;
@@ -41,12 +41,12 @@ public class AuditProperties {
         this.retry = retry;
     }
     
-    public Hdfs getHdfs() {
-        return hdfs;
+    public Filesystem getFs() {
+        return fs;
     }
     
-    public void setHdfs(Hdfs hdfs) {
-        this.hdfs = hdfs;
+    public void setFs(Filesystem fs) {
+        this.fs = fs;
     }
     
     public static class Retry {
@@ -79,16 +79,16 @@ public class AuditProperties {
         }
     }
     
-    public static class Hdfs {
-        protected String hdfsUri;
+    public static class Filesystem {
+        protected String fileUri;
         protected List<String> configResources;
         
-        public String getHdfsUri() {
-            return hdfsUri;
+        public String getFileUri() {
+            return fileUri;
         }
         
-        public void setHdfsUri(String hdfsUri) {
-            this.hdfsUri = hdfsUri;
+        public void setFileUri(String fileUri) {
+            this.fileUri = fileUri;
         }
         
         public List<String> getConfigResources() {
