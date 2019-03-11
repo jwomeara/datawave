@@ -7,7 +7,7 @@ import java.util.concurrent.TimeUnit;
 @ConfigurationProperties(prefix = "audit.replay")
 public class ReplayProperties {
     private boolean enabled;
-    private boolean publishEventsEnabled = true;
+    private boolean publishEvents = true;
     private long idleTimeoutMillis = TimeUnit.SECONDS.toMillis(30);
     private long stopGracePeriodMillis = 500L;
     
@@ -21,12 +21,12 @@ public class ReplayProperties {
         this.enabled = enabled;
     }
     
-    public boolean isPublishEventsEnabled() {
-        return publishEventsEnabled;
+    public boolean isPublishEvents() {
+        return publishEvents;
     }
     
-    public void setPublishEventsEnabled(boolean publishEventsEnabled) {
-        this.publishEventsEnabled = publishEventsEnabled;
+    public void setPublishEvents(boolean publishEvents) {
+        this.publishEvents = publishEvents;
     }
     
     public long getIdleTimeoutMillis() {

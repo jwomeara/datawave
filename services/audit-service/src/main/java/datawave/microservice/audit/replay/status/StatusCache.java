@@ -29,7 +29,7 @@ public class StatusCache {
         status.setFileUri(fileUri);
         status.setSendRate(sendRate);
         status.setLastUpdated(new Date());
-        status.setReplayUnfinished(replayUnfinished);
+        status.setReplayUnfinishedFiles(replayUnfinished);
         return status;
     }
     

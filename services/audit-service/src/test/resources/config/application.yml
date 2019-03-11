@@ -165,3 +165,11 @@ audit:
         port: 15672
         uri: '/api/'
 
+---
+spring:
+  profiles: replay-config
+
+audit:
+  replay:
+    enabled: true
+    publishEvents: false

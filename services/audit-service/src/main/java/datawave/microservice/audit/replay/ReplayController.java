@@ -109,7 +109,7 @@ public class ReplayController {
      *            The file URI to use, if the default is not desired
      * @param sendRate
      *            The number of messages to send per second
-     * @param replayUnfinished
+     * @param replayUnfinishedFiles
      *            Indicates whether files from an unfinished audit replay should be included
      * @return the audit replay id
      */
@@ -118,14 +118,14 @@ public class ReplayController {
     public String create(@ApiParam(value = "The path where the audit file(s) to be replayed can be found", required = true) @RequestParam String path,
                          @ApiParam("The file URI to use, relative to the path") @RequestParam(defaultValue = "") String fileUri,
                          @ApiParam(value = "The number of messages to send per second", defaultValue = "100") @RequestParam(defaultValue = "100") Long sendRate,
-                         @ApiParam(value = "Indicates whether files from an unfinished audit replay should be included", defaultValue = "false") @RequestParam(defaultValue = "false") boolean replayUnfinished) {
+                         @ApiParam(value = "Indicates whether files from an unfinished audit replay should be included", defaultValue = "false") @RequestParam(defaultValue = "false") boolean replayUnfinishedFiles) {
         
-        log.info("Creating audit replay with params: path=" + path + ", fileUri=" + fileUri + ", sendRate=" + sendRate + ", replayUnfinished="
-                        + replayUnfinished);
+        log.info("Creating audit replay with params: path=" + path + ", fileUri=" + fileUri + ", sendRate=" + sendRate + ", replayUnfinishedFiles="
+                        + replayUnfinishedFiles);
         
         String id = UUID.randomUUID().toString();
         
-        Status status = statusCache.create(id, path, (!fileUri.isEmpty()) ? fileUri : FileSystem.getDefaultUri(config).toString(), sendRate, replayUnfinished);
+        Status status = statusCache.create(id, path, (!fileUri.isEmpty()) ? fileUri : FileSystem.getDefaultUri(config).toString(), sendRate, replayUnfinishedFiles);
         
         log.info("Created audit replay [" + status + "]");
         
@@ -141,7 +141,7 @@ public class ReplayController {
      *            The file URI to use, if the default is not desired
      * @param sendRate
      *            The number of messages to send per second
-     * @param replayUnfinished
+     * @param replayUnfinishedFiles
      *            Indicates whether files from an unfinished audit replay should be included
      * @return the audit replay id
      */
@@ -150,14 +150,14 @@ public class ReplayController {
     public String createAndStart(@ApiParam(value = "The path where the audit file(s) to be replayed can be found", required = true) @RequestParam String path,
                                  @ApiParam("The file URI to use, relative to the path") @RequestParam(defaultValue = "") String fileUri,
                                  @ApiParam(value = "The number of messages to send per second", defaultValue = "100") @RequestParam(defaultValue = "100") Long sendRate,
-                                 @ApiParam(value = "Indicates whether files from an unfinished audit replay should be included", defaultValue = "false") @RequestParam(defaultValue = "false") boolean replayUnfinished) {
+                                 @ApiParam(value = "Indicates whether files from an unfinished audit replay should be included", defaultValue = "false") @RequestParam(defaultValue = "false") boolean replayUnfinishedFiles) {
         
-        log.info("Creating and starting audit replay with params: path=" + path + ", fileUri=" + fileUri + ", sendRate=" + sendRate + ", replayUnfinished="
-                        + replayUnfinished);
+        log.info("Creating and starting audit replay with params: path=" + path + ", fileUri=" + fileUri + ", sendRate=" + sendRate + ", replayUnfinishedFiles="
+                        + replayUnfinishedFiles);
         
         String id = UUID.randomUUID().toString();
         
-        Status status = statusCache.create(id, path, (!fileUri.isEmpty()) ? fileUri : FileSystem.getDefaultUri(config).toString(), sendRate, replayUnfinished);
+        Status status = statusCache.create(id, path, (!fileUri.isEmpty()) ? fileUri : FileSystem.getDefaultUri(config).toString(), sendRate, replayUnfinishedFiles);
         runningReplays.put(id, start(status));
         
         log.info("Created and started audit replay [" + status + "]");
@@ -179,7 +179,7 @@ public class ReplayController {
         
         log.info("Starting audit replay with id " + id);
         
-        Status status = status(id, replayProperties.isPublishEventsEnabled());
+        Status status = status(id, replayProperties.isPublishEvents());
         
         String resp;
         // if the state is 'created' or 'stopped', we can run the replay
@@ -279,7 +279,7 @@ public class ReplayController {
         
         log.info("Getting status for audit replay with id " + id);
         
-        Status status = status(id, replayProperties.isPublishEventsEnabled());
+        Status status = status(id, replayProperties.isPublishEvents());
         
         if (status == null)
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "No audit replay found with id " + id);
@@ -318,7 +318,7 @@ public class ReplayController {
         
         List<Status> statuses = statusCache.retrieveAll();
         if (statuses != null)
-            statuses = statuses.stream().map(status -> idleCheck(status, replayProperties.isPublishEventsEnabled())).collect(Collectors.toList());
+            statuses = statuses.stream().map(status -> idleCheck(status, replayProperties.isPublishEvents())).collect(Collectors.toList());
         return statuses;
     }
 
@@ -343,9 +343,9 @@ public class ReplayController {
         // only update if the send rate is valid
         if (sendRate >= 0) {
             // pull the replay status from cache to ensure it exists
-            Status status = status(id, replayProperties.isPublishEventsEnabled());
+            Status status = status(id, replayProperties.isPublishEvents());
             if (status != null) {
-                update(status, sendRate, replayProperties.isPublishEventsEnabled());
+                update(status, sendRate, replayProperties.isPublishEvents());
                 resp = "Updated audit replay with id " + id;
             } else {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -397,7 +397,7 @@ public class ReplayController {
 
         // only update if the send rate is valid
         if (sendRate >= 0) {
-            resp = updateAll(sendRate, replayProperties.isPublishEventsEnabled(), false) + "audit replays updated";
+            resp = updateAll(sendRate, replayProperties.isPublishEvents(), false) + "audit replays updated";
         } else {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             resp = "Send rate must be >= 0";
@@ -441,9 +441,9 @@ public class ReplayController {
         
         String resp;
         
-        Status status = status(id, replayProperties.isPublishEventsEnabled());
+        Status status = status(id, replayProperties.isPublishEvents());
         if (status != null) {
-            if (stop(status, replayProperties.isPublishEventsEnabled())) {
+            if (stop(status, replayProperties.isPublishEvents())) {
                 resp = "Stopped audit replay with id " + id;
             } else {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -500,7 +500,7 @@ public class ReplayController {
         
         log.info("Stopping all audit replays");
         
-        int replaysStopped = stopAll(replayProperties.isPublishEventsEnabled());
+        int replaysStopped = stopAll(replayProperties.isPublishEvents());
         
         String resp = replaysStopped + " audit replays stopped";
         log.info(resp);
@@ -537,7 +537,7 @@ public class ReplayController {
         log.info("Resuming audit replay with id " + id);
         
         String resp;
-        Status status = status(id, replayProperties.isPublishEventsEnabled());
+        Status status = status(id, replayProperties.isPublishEvents());
         if (status != null) {
             if (resume(status)) {
                 resp = "Resumed audit replay with id " + id;
@@ -603,7 +603,7 @@ public class ReplayController {
         log.info("Deleting audit replay with id " + id);
         
         String resp;
-        Status status = status(id, replayProperties.isPublishEventsEnabled());
+        Status status = status(id, replayProperties.isPublishEvents());
         
         if (status != null) {
             if (status.getState() != RUNNING) {
@@ -648,7 +648,7 @@ public class ReplayController {
     
     public void handleRemoteRequest(Request request) {
         
-        Status status = (request.getId() != null) ? status(request.getId(), replayProperties.isPublishEventsEnabled()) : null;
+        Status status = (request.getId() != null) ? status(request.getId(), replayProperties.isPublishEvents()) : null;
 
         Request.UpdateRequest updateRequest = (request instanceof Request.UpdateRequest) ? (Request.UpdateRequest) request : null;
 

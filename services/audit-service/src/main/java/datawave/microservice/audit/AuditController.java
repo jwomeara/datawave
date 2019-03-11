@@ -195,11 +195,11 @@ public class AuditController {
             success = true;
             try {
                 if (log.isDebugEnabled())
-                    log.debug("[" + auditParameters.getAuditId() + "] Attempting to log audit to HDFS");
+                    log.debug("[" + auditParameters.getAuditId() + "] Attempting to log audit to the filesystem");
                 
                 fileAuditor.audit(auditParameters);
             } catch (Exception e) {
-                log.error("[" + auditParameters.getAuditId() + "] Unable to save audit to HDFS", e);
+                log.error("[" + auditParameters.getAuditId() + "] Unable to save audit to the filesystem", e);
                 success = false;
             }
         }

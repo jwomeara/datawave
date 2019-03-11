@@ -8,7 +8,7 @@ import java.util.stream.Collectors;
 public class Status {
     
     public enum ReplayState {
-        CREATED, RUNNING, IDLE, STOPPED, CANCELED, FINISHED, FAILED
+        CREATED, RUNNING, IDLE, STOPPED, FINISHED, FAILED
     }
     
     public enum FileState {
@@ -22,7 +22,7 @@ public class Status {
     private long sendRate;
     private List<FileStatus> files = new ArrayList<>();
     private Date lastUpdated;
-    private boolean replayUnfinished;
+    private boolean replayUnfinishedFiles;
     
     public String getId() {
         return id;
@@ -80,18 +80,18 @@ public class Status {
         this.lastUpdated = lastUpdated;
     }
     
-    public boolean isReplayUnfinished() {
-        return replayUnfinished;
+    public boolean isReplayUnfinishedFiles() {
+        return replayUnfinishedFiles;
     }
     
-    public void setReplayUnfinished(boolean replayUnfinished) {
-        this.replayUnfinished = replayUnfinished;
+    public void setReplayUnfinishedFiles(boolean replayUnfinishedFiles) {
+        this.replayUnfinishedFiles = replayUnfinishedFiles;
     }
     
     @Override
     public String toString() {
         return "{id:" + id + ", state:" + state + ", fileUri:" + fileUri + ", path:" + path + ", sendRate:" + sendRate + ", files:["
-                        + String.join(",", files.stream().map(FileStatus::toString).collect(Collectors.toSet())) + "], lastUpdated:" + lastUpdated + "}";
+                        + String.join(",", files.stream().map(FileStatus::toString).collect(Collectors.toSet())) + "], lastUpdated:" + lastUpdated + ", replayUnfinishedFiles:" + replayUnfinishedFiles + "}";
     }
     
     public static final class FileStatus {

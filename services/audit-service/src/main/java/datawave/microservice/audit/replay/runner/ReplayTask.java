@@ -52,7 +52,7 @@ public abstract class ReplayTask implements Runnable {
         
         // if we need to, get a list of files
         if (status.getFiles().isEmpty())
-            status.setFiles(listFiles(status.isReplayUnfinished()));
+            status.setFiles(listFiles(status.isReplayUnfinishedFiles()));
         
         // sort the files to process. 'RUNNING' first, followed by 'QUEUED'
         List<Status.FileStatus> filesToProcess = status.getFiles().stream()

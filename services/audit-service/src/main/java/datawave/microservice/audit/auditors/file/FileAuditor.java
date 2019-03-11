@@ -11,9 +11,7 @@ import org.apache.hadoop.fs.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedWriter;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
@@ -135,7 +133,6 @@ public class FileAuditor implements Auditor {
         return currentFile == null || fileSystem.getFileStatus(currentFile).getLen() >= maxFileLenBytes;
     }
 
-    // TODO: we don't need this builder.  let's get rid of it
     public static class Builder<T extends Builder<T>> {
         protected String fileUri;
         protected String path;
