@@ -11,6 +11,8 @@ public class ReplayProperties {
     private long idleTimeoutMillis = TimeUnit.SECONDS.toMillis(10);
     private long stopGracePeriodMillis = 500L;
     private long statusUpdateIntervalMillis = TimeUnit.SECONDS.toMillis(1);
+    private long lockWaitTimeMillis = TimeUnit.SECONDS.toMillis(5);
+    private long lockLeaseTimeMillis = TimeUnit.SECONDS.toMillis(5);
     
     private ExecutorProperties executor = new ExecutorProperties();
     
@@ -53,7 +55,23 @@ public class ReplayProperties {
     public void setStatusUpdateIntervalMillis(long statusUpdateIntervalMillis) {
         this.statusUpdateIntervalMillis = statusUpdateIntervalMillis;
     }
-    
+
+    public long getLockWaitTimeMillis() {
+        return lockWaitTimeMillis;
+    }
+
+    public void setLockWaitTimeMillis(long lockWaitTimeMillis) {
+        this.lockWaitTimeMillis = lockWaitTimeMillis;
+    }
+
+    public long getLockLeaseTimeMillis() {
+        return lockLeaseTimeMillis;
+    }
+
+    public void setLockLeaseTimeMillis(long lockLeaseTimeMillis) {
+        this.lockLeaseTimeMillis = lockLeaseTimeMillis;
+    }
+
     public ExecutorProperties getExecutor() {
         return executor;
     }

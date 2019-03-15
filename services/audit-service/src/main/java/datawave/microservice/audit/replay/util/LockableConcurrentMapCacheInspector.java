@@ -5,20 +5,25 @@ import org.springframework.cache.concurrent.ConcurrentMapCache;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 /**
  * This cache inspector can be used when using Spring's simple (i.e. default) cache implementation.
  */
-public class ConcurrentMapCacheInspector implements CacheInspector {
+public class LockableConcurrentMapCacheInspector implements CacheInspector, LockableCacheInspector {
     
     private ConcurrentMapCacheManager cacheManager;
-    
-    public ConcurrentMapCacheInspector(ConcurrentMapCacheManager cacheManager) {
+
+    private Map<String, ReentrantLock> lockMap = new HashMap<>();
+
+    public LockableConcurrentMapCacheInspector(ConcurrentMapCacheManager cacheManager) {
         this.cacheManager = cacheManager;
     }
     
@@ -57,5 +62,46 @@ public class ConcurrentMapCacheInspector implements CacheInspector {
         } else {
             return 0;
         }
+    }
+
+    @Override
+    public void lock(String cacheName, String key) {
+        getLock(cacheName).lock();
+    }
+
+    @Override
+    public void lock(String cacheName, String key, long leaseTime, TimeUnit leaseTimeUnit) {
+        getLock(cacheName).lock();
+    }
+
+    @Override
+    public boolean tryLock(String cacheName, String key) {
+        return getLock(cacheName).tryLock();
+    }
+
+    @Override
+    public boolean tryLock(String cacheName, String key, long waitTime, TimeUnit waitTimeUnit) throws InterruptedException {
+        return getLock(cacheName).tryLock(waitTime, waitTimeUnit);
+    }
+
+    @Override
+    public boolean tryLock(String cacheName, String key, long waitTime, TimeUnit waitTimeUnit, long leaseTime, TimeUnit leaseTimeUnit) throws InterruptedException {
+        return getLock(cacheName).tryLock(waitTime, waitTimeUnit);
+    }
+
+    @Override
+    public void unlock(String cacheName, String key) {
+        getLock(cacheName).unlock();
+    }
+
+    @Override
+    public void forceUnlock(String cacheName, String key) {
+        getLock(cacheName).unlock();
+    }
+
+    private ReentrantLock getLock(String cacheName) {
+        if (lockMap.get(cacheName) == null)
+            lockMap.put(cacheName, new ReentrantLock(true));
+        return lockMap.get(cacheName);
     }
 }

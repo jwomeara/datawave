@@ -108,12 +108,12 @@ public abstract class ReplayTask implements Runnable {
                     if (queuedFile != null) {
                         fileStatuses.add(new Status.FileStatus(queuedFile.toString(), FileState.QUEUED));
                     } else {
-                        log.warn("Unable to queue file \"" + locatedFile.getPath() + "\"");
+                        log.warn("Unable to queue file \"{}\"", locatedFile.getPath());
                     }
                 }
             }
         } catch (Exception e) {
-            log.warn("Encountered an error while listing files at [" + status.getPath() + "]");
+            log.warn("Encountered an error while listing files at [{}]", status.getPath());
         }
         
         return fileStatuses;
@@ -132,7 +132,7 @@ public abstract class ReplayTask implements Runnable {
             if (runningFile != null) {
                 file = runningFile;
             } else {
-                log.error("Unable to rename file \"" + file + "\" using prefix \"" + FileState.RUNNING + "\"");
+                log.error("Unable to rename file \"{}\" using prefix \"{}\"", file, FileState.RUNNING);
                 fileStatus.setState(FileState.FAILED);
                 return false;
             }
@@ -176,7 +176,7 @@ public abstract class ReplayTask implements Runnable {
                         auditParamsMap.put("replayId", status.getId());
                         
                         if (!audit(auditParamsMap)) {
-                            log.warn("Failed to audit: " + auditParamsMap.get(AUDIT_ID));
+                            log.warn("Failed to audit: {}", auditParamsMap.get(AUDIT_ID));
                             encounteredError = true;
                             auditsFailed++;
                         }
@@ -188,7 +188,7 @@ public abstract class ReplayTask implements Runnable {
                             // not a problem if we exit a little early
                         }
                     } catch (IOException e) {
-                        log.warn("Unable to parse a JSON audit message from [" + line + "]");
+                        log.warn("Unable to parse a JSON audit message from [{}]", line);
                         encounteredError = true;
                         parseFailures++;
                     }
@@ -205,7 +205,7 @@ public abstract class ReplayTask implements Runnable {
             }
         } catch (IOException e) {
             encounteredError = true;
-            log.error("Unable to read from file [" + file + "]");
+            log.error("Unable to read from file [{}]", file);
         }
         
         fileStatus.setLinesRead(linesRead);
@@ -217,7 +217,7 @@ public abstract class ReplayTask implements Runnable {
             try {
                 reader.close();
             } catch (IOException e) {
-                log.error("Unable to close file [" + file + "]");
+                log.error("Unable to close file [{}]", file);
             }
         }
         
@@ -231,7 +231,7 @@ public abstract class ReplayTask implements Runnable {
                 fileStatus.setPath(finalPath.toString());
             } else {
                 fileStatus.setState(FileState.FAILED);
-                log.error("Unable to rename file \"" + file + "\" using prefix \"" + fileState + "\"");
+                log.error("Unable to rename file \"{}\" using prefix \"{}\"", file, fileState);
                 return false;
             }
         }
@@ -248,7 +248,7 @@ public abstract class ReplayTask implements Runnable {
             if (filesystem.rename(file, renamedFile))
                 return renamedFile;
         } catch (IOException e) {
-            log.warn("Unable to rename file from \"" + file + "\" using prefix \"" + newState + "\"");
+            log.warn("Unable to rename file from \"{}\" using prefix \"{}\"", file, newState);
         }
         return null;
     }
@@ -257,7 +257,7 @@ public abstract class ReplayTask implements Runnable {
         try {
             return URLDecoder.decode(value, "UTF8");
         } catch (UnsupportedEncodingException e) {
-            log.error("Unable to decode URL value: " + value);
+            log.error("Unable to decode URL value: {}", value);
         }
         return value;
     }

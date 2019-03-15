@@ -1,7 +1,7 @@
 package datawave.microservice.audit.replay.config;
 
 import datawave.microservice.audit.replay.status.StatusCache;
-import datawave.microservice.audit.replay.util.ConcurrentMapCacheInspector;
+import datawave.microservice.audit.replay.util.LockableConcurrentMapCacheInspector;
 import datawave.microservice.cached.CacheInspector;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -33,7 +33,7 @@ public class ReplayConfig {
     @Bean
     public StatusCache replayStatusCache(CacheInspector cacheInspector, CacheManager cacheManager) {
         if (cacheManager instanceof ConcurrentMapCacheManager)
-            cacheInspector = new ConcurrentMapCacheInspector((ConcurrentMapCacheManager) cacheManager);
+            cacheInspector = new LockableConcurrentMapCacheInspector((ConcurrentMapCacheManager) cacheManager);
         return new StatusCache(cacheInspector);
     }
 }

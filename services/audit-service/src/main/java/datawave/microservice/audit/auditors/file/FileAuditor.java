@@ -97,7 +97,7 @@ public class FileAuditor implements Auditor {
         try {
             return URLEncoder.encode(value, "UTF8");
         } catch (UnsupportedEncodingException e) {
-            log.error("Unable to URL encode value: " + value);
+            log.error("Unable to URL encode value: {}", value);
         }
         return value;
     }
