@@ -205,9 +205,11 @@ public class AuditController {
         }
         
         if (!success)
-            log.warn("[{}] Audit failed. {attempts = {}, elapsedMillis = {}{}}", auditParameters.getAuditId(), attempts, (currentTime - auditStartTime), ((fileAuditor != null) ? ", hdfsElapsedMillis = " + (System.currentTimeMillis() - currentTime) : ""));
+            log.warn("[{}] Audit failed. {attempts = {}, elapsedMillis = {}{}}", auditParameters.getAuditId(), attempts, (currentTime - auditStartTime),
+                            ((fileAuditor != null) ? ", hdfsElapsedMillis = " + (System.currentTimeMillis() - currentTime) : ""));
         else
-            log.info("[{}] Audit successful. {attempts = {}, elapsedMillis = {}{}}", auditParameters.getAuditId(), attempts, (currentTime - auditStartTime), ((fileAuditor != null) ? ", hdfsElapsedMillis = " + (System.currentTimeMillis() - currentTime) : ""));
+            log.info("[{}] Audit successful. {attempts = {}, elapsedMillis = {}{}}", auditParameters.getAuditId(), attempts, (currentTime - auditStartTime),
+                            ((fileAuditor != null) ? ", hdfsElapsedMillis = " + (System.currentTimeMillis() - currentTime) : ""));
         
         return success;
     }

@@ -49,7 +49,7 @@ public abstract class ReplayTask implements Runnable {
         this.status = status;
         this.statusCache = statusCache;
         this.replayProperties = replayProperties;
-        this.filesystem = FileSystem.get(new URI(status.getFileUri()), config);
+        this.filesystem = FileSystem.get(new URI(status.getPathUri()), config);
     }
     
     @Override
@@ -65,7 +65,7 @@ public abstract class ReplayTask implements Runnable {
         // sort the files to process. 'RUNNING' first, followed by 'QUEUED'
         List<Status.FileStatus> filesToProcess = status.getFiles().stream()
                         .filter(fileStatus -> fileStatus.getState() == FileState.RUNNING || fileStatus.getState() == FileState.QUEUED)
-                        .sorted((o1, o2) -> (o1.getState() == o2.getState()) ? o1.getPath().compareTo(o2.getPath())
+                        .sorted((o1, o2) -> (o1.getState() == o2.getState()) ? o1.getPathUri().compareTo(o2.getPathUri())
                                         : o2.getState().ordinal() - o1.getState().ordinal())
                         .collect(Collectors.toList());
         
@@ -87,6 +87,7 @@ public abstract class ReplayTask implements Runnable {
                 status.setState(ReplayState.FINISHED);
         }
         
+        // status cache is updated here in the event that we stop gracefully
         statusCache.update(status);
     }
     
@@ -94,7 +95,7 @@ public abstract class ReplayTask implements Runnable {
         List<Status.FileStatus> fileStatuses = new ArrayList<>();
         
         try {
-            RemoteIterator<LocatedFileStatus> filesIter = filesystem.listFiles(new Path(status.getPath()), false);
+            RemoteIterator<LocatedFileStatus> filesIter = filesystem.listFiles(new Path(status.getPathUri()), false);
             while (filesIter.hasNext()) {
                 LocatedFileStatus locatedFile = filesIter.next();
                 String fileName = locatedFile.getPath().getName();
@@ -113,14 +114,14 @@ public abstract class ReplayTask implements Runnable {
                 }
             }
         } catch (Exception e) {
-            log.warn("Encountered an error while listing files at [{}]", status.getPath());
+            log.warn("Encountered an error while listing files at [{}]", status.getPathUri());
         }
         
         return fileStatuses;
     }
     
     private boolean processFile(Status.FileStatus fileStatus) {
-        Path file = new Path(fileStatus.getPath());
+        Path file = new Path(fileStatus.getPathUri());
         
         long numToSkip = 0;
         if (fileStatus.getState() == FileState.RUNNING) {
@@ -138,7 +139,7 @@ public abstract class ReplayTask implements Runnable {
             }
         }
         
-        fileStatus.setPath(file.toString());
+        fileStatus.setPathUri(file.toString());
         fileStatus.setState(FileState.RUNNING);
         statusCache.update(status);
         
@@ -228,7 +229,7 @@ public abstract class ReplayTask implements Runnable {
             
             if (finalPath != null) {
                 fileStatus.setState(fileState);
-                fileStatus.setPath(finalPath.toString());
+                fileStatus.setPathUri(finalPath.toString());
             } else {
                 fileStatus.setState(FileState.FAILED);
                 log.error("Unable to rename file \"{}\" using prefix \"{}\"", file, fileState);

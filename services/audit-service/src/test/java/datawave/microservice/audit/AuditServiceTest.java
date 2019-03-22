@@ -48,6 +48,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -96,6 +97,7 @@ public class AuditServiceTest {
     private String query = "some query";
     private String authorizations = "AUTH1,AUTH2";
     private AuditType auditType = AuditType.ACTIVE;
+    private String subpath;
     
     private static Boolean isHealthy = Boolean.TRUE;
     private static Boolean isFileAuditEnabled = Boolean.TRUE;
@@ -260,8 +262,8 @@ public class AuditServiceTest {
         
         Map<String,String> expected = uri.getQueryParams().toSingleValueMap();
         
-        List<File> files = Arrays.stream(new File(fileAuditProperties.getPath()).listFiles()).filter(f -> f.getName().endsWith(".json"))
-                        .collect(Collectors.toList());
+        List<File> files = Arrays.stream(new File(new File(new URI(fileAuditProperties.getPathUri())), fileAuditProperties.getSubpath()).listFiles())
+                        .filter(f -> f.getName().endsWith(".json")).collect(Collectors.toList());
         assertEquals(1, files.size());
         
         BufferedReader reader = new BufferedReader(new FileReader(files.get(0)));
@@ -350,8 +352,8 @@ public class AuditServiceTest {
         
         Map<String,String> expected = uri.getQueryParams().toSingleValueMap();
         
-        List<File> files = Arrays.stream(new File(fileAuditProperties.getPath()).listFiles()).filter(f -> f.getName().endsWith(".json"))
-                        .collect(Collectors.toList());
+        List<File> files = Arrays.stream(new File(new File(new URI(fileAuditProperties.getPathUri())), fileAuditProperties.getSubpath()).listFiles())
+                        .filter(f -> f.getName().endsWith(".json")).collect(Collectors.toList());
         assertEquals(1, files.size());
         
         BufferedReader reader = new BufferedReader(new FileReader(files.get(0)));
@@ -438,8 +440,8 @@ public class AuditServiceTest {
         
         Map<String,String> expected = uri.getQueryParams().toSingleValueMap();
         
-        List<File> files = Arrays.stream(new File(fileAuditProperties.getPath()).listFiles()).filter(f -> f.getName().endsWith(".json"))
-                        .collect(Collectors.toList());
+        List<File> files = Arrays.stream(new File(new File(new URI(fileAuditProperties.getPathUri())), fileAuditProperties.getSubpath()).listFiles())
+                        .filter(f -> f.getName().endsWith(".json")).collect(Collectors.toList());
         assertEquals(1, files.size());
         
         BufferedReader reader = new BufferedReader(new FileReader(files.get(0)));
@@ -522,8 +524,8 @@ public class AuditServiceTest {
         
         Map<String,String> expected = uri.getQueryParams().toSingleValueMap();
         
-        List<File> files = Arrays.stream(new File(fileAuditProperties.getPath()).listFiles()).filter(f -> f.getName().endsWith(".json"))
-                        .collect(Collectors.toList());
+        List<File> files = Arrays.stream(new File(new File(new URI(fileAuditProperties.getPathUri())), fileAuditProperties.getSubpath()).listFiles())
+                        .filter(f -> f.getName().endsWith(".json")).collect(Collectors.toList());
         assertEquals(1, files.size());
         
         BufferedReader reader = new BufferedReader(new FileReader(files.get(0)));
@@ -560,22 +562,20 @@ public class AuditServiceTest {
             FileAuditProperties fileAuditProperties = new FileAuditProperties();
             File tempDir = Files.createTempDir();
             tempDir.deleteOnExit();
-            fileAuditProperties.setPath(tempDir.getAbsolutePath());
+            fileAuditProperties.setPathUri(tempDir.toURI().toString());
+            fileAuditProperties.setSubpath("audit");
             return fileAuditProperties;
         }
         
         @Bean(name = "fileAuditor")
         public Auditor fileAuditor(AuditProperties auditProperties, @Qualifier("fileAuditProperties") FileAuditProperties fileAuditProperties)
                         throws Exception {
-            String fileUri = (fileAuditProperties.getFs().getFileUri() != null) ? fileAuditProperties.getFs().getFileUri()
-                            : auditProperties.getFs().getFileUri();
             List<String> configResources = (fileAuditProperties.getFs().getConfigResources() != null) ? fileAuditProperties.getFs().getConfigResources()
                             : auditProperties.getFs().getConfigResources();
             
             // @formatter:off
             return new TestFileAuditor.Builder()
-                    .setFileUri(fileUri)
-                    .setPath(fileAuditProperties.getPath())
+                    .setPath(fileAuditProperties.getPathUri())
                     .setMaxFileAgeMillis(fileAuditProperties.getMaxFileAgeMillis())
                     .setMaxFileLenBytes(fileAuditProperties.getMaxFileLenBytes())
                     .setConfigResources(configResources)

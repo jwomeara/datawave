@@ -20,9 +20,9 @@ import java.util.stream.Collectors;
 public class LockableConcurrentMapCacheInspector implements CacheInspector, LockableCacheInspector {
     
     private ConcurrentMapCacheManager cacheManager;
-
-    private Map<String, ReentrantLock> lockMap = new HashMap<>();
-
+    
+    private Map<String,ReentrantLock> lockMap = new HashMap<>();
+    
     public LockableConcurrentMapCacheInspector(ConcurrentMapCacheManager cacheManager) {
         this.cacheManager = cacheManager;
     }
@@ -63,42 +63,43 @@ public class LockableConcurrentMapCacheInspector implements CacheInspector, Lock
             return 0;
         }
     }
-
+    
     @Override
     public void lock(String cacheName, String key) {
         getLock(cacheName).lock();
     }
-
+    
     @Override
     public void lock(String cacheName, String key, long leaseTime, TimeUnit leaseTimeUnit) {
         getLock(cacheName).lock();
     }
-
+    
     @Override
     public boolean tryLock(String cacheName, String key) {
         return getLock(cacheName).tryLock();
     }
-
+    
     @Override
     public boolean tryLock(String cacheName, String key, long waitTime, TimeUnit waitTimeUnit) throws InterruptedException {
         return getLock(cacheName).tryLock(waitTime, waitTimeUnit);
     }
-
+    
     @Override
-    public boolean tryLock(String cacheName, String key, long waitTime, TimeUnit waitTimeUnit, long leaseTime, TimeUnit leaseTimeUnit) throws InterruptedException {
+    public boolean tryLock(String cacheName, String key, long waitTime, TimeUnit waitTimeUnit, long leaseTime, TimeUnit leaseTimeUnit)
+                    throws InterruptedException {
         return getLock(cacheName).tryLock(waitTime, waitTimeUnit);
     }
-
+    
     @Override
     public void unlock(String cacheName, String key) {
         getLock(cacheName).unlock();
     }
-
+    
     @Override
     public void forceUnlock(String cacheName, String key) {
         getLock(cacheName).unlock();
     }
-
+    
     private ReentrantLock getLock(String cacheName) {
         if (lockMap.get(cacheName) == null)
             lockMap.put(cacheName, new ReentrantLock(true));

@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 /**
  * A {@link CacheInspector} that is capable of inspecting a {@link com.hazelcast.spring.cache.HazelcastCache}.
  */
-class LockableHazelcastCacheInspector implements CacheInspector, LockableCacheInspector {
+public class LockableHazelcastCacheInspector implements CacheInspector, LockableCacheInspector {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private final CacheManager cacheManager;
     
@@ -78,7 +78,7 @@ class LockableHazelcastCacheInspector implements CacheInspector, LockableCacheIn
             return 0;
         }
     }
-
+    
     @Override
     public void lock(String cacheName, String key) {
         Cache cache = cacheManager.getCache(cacheName);
@@ -88,7 +88,7 @@ class LockableHazelcastCacheInspector implements CacheInspector, LockableCacheIn
             imap.lock(key);
         }
     }
-
+    
     @Override
     public void lock(String cacheName, String key, long leaseTime, TimeUnit leaseTimeUnit) {
         Cache cache = cacheManager.getCache(cacheName);
@@ -98,7 +98,7 @@ class LockableHazelcastCacheInspector implements CacheInspector, LockableCacheIn
             imap.lock(key, leaseTime, leaseTimeUnit);
         }
     }
-
+    
     @Override
     public boolean tryLock(String cacheName, String key) {
         Cache cache = cacheManager.getCache(cacheName);
@@ -109,7 +109,7 @@ class LockableHazelcastCacheInspector implements CacheInspector, LockableCacheIn
         }
         return false;
     }
-
+    
     @Override
     public boolean tryLock(String cacheName, String key, long waitTime, TimeUnit waitTimeUnit) throws InterruptedException {
         Cache cache = cacheManager.getCache(cacheName);
@@ -120,9 +120,10 @@ class LockableHazelcastCacheInspector implements CacheInspector, LockableCacheIn
         }
         return false;
     }
-
+    
     @Override
-    public boolean tryLock(String cacheName, String key, long waitTime, TimeUnit waitTimeUnit, long leaseTime, TimeUnit leaseTimeUnit) throws InterruptedException {
+    public boolean tryLock(String cacheName, String key, long waitTime, TimeUnit waitTimeUnit, long leaseTime, TimeUnit leaseTimeUnit)
+                    throws InterruptedException {
         Cache cache = cacheManager.getCache(cacheName);
         if (cache.getNativeCache() instanceof IMap) {
             @SuppressWarnings("unchecked")
@@ -131,7 +132,7 @@ class LockableHazelcastCacheInspector implements CacheInspector, LockableCacheIn
         }
         return false;
     }
-
+    
     @Override
     public void unlock(String cacheName, String key) {
         Cache cache = cacheManager.getCache(cacheName);
@@ -141,7 +142,7 @@ class LockableHazelcastCacheInspector implements CacheInspector, LockableCacheIn
             imap.unlock(key);
         }
     }
-
+    
     @Override
     public void forceUnlock(String cacheName, String key) {
         Cache cache = cacheManager.getCache(cacheName);

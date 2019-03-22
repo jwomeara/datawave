@@ -1,8 +1,6 @@
 package datawave.microservice.audit.replay.status;
 
 import datawave.microservice.audit.replay.util.LockableCacheInspector;
-import datawave.microservice.cached.CacheInspector;
-import io.fabric8.kubernetes.client.dsl.Lockable;
 import org.springframework.cache.annotation.CacheConfig;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
@@ -29,22 +27,21 @@ public class StatusCache {
     }
     
     @CachePut(key = "#id")
-    public Status create(String id, String path, String fileUri, long sendRate, boolean replayUnfinished) {
+    public Status create(String id, String path, long sendRate, boolean replayUnfinished) {
         Status status = new Status();
         status.setId(id);
         status.setState(Status.ReplayState.CREATED);
-        status.setPath(path);
-        status.setFileUri(fileUri);
+        status.setPathUri(path);
         status.setSendRate(sendRate);
         status.setLastUpdated(new Date());
         status.setReplayUnfinishedFiles(replayUnfinished);
         return status;
     }
-
+    
     public Status retrieve(String id) {
         return cacheInspector.list(CACHE_NAME, Status.class, id);
     }
-
+    
     public List<String> retrieveAllIds() {
         return cacheInspector.listAll(CACHE_NAME, Status.class).stream().map(Status::getId).collect(Collectors.toList());
     }
@@ -64,19 +61,19 @@ public class StatusCache {
     public String deleteAll() {
         return "Evicted all entries";
     }
-
+    
     public void lock(String id) {
         cacheInspector.lock(CACHE_NAME, id);
     }
-
+    
     public void lock(String id, long leaseTimeMillis) {
         cacheInspector.lock(CACHE_NAME, id, leaseTimeMillis, TimeUnit.MILLISECONDS);
     }
-
+    
     public boolean tryLock(String id) {
         return cacheInspector.tryLock(CACHE_NAME, id);
     }
-
+    
     public boolean tryLock(String id, long waitTimeMillis) {
         try {
             return cacheInspector.tryLock(CACHE_NAME, id, waitTimeMillis, TimeUnit.MILLISECONDS);
@@ -84,7 +81,7 @@ public class StatusCache {
             return false;
         }
     }
-
+    
     public boolean tryLock(String id, long waitTimeMillis, long leaseTimeMillis) {
         try {
             return cacheInspector.tryLock(CACHE_NAME, id, waitTimeMillis, TimeUnit.MILLISECONDS, leaseTimeMillis, TimeUnit.MILLISECONDS);
@@ -92,11 +89,11 @@ public class StatusCache {
             return false;
         }
     }
-
+    
     public void unlock(String id) {
         cacheInspector.unlock(CACHE_NAME, id);
     }
-
+    
     public void forceUnlock(String id) {
         cacheInspector.forceUnlock(CACHE_NAME, id);
     }
