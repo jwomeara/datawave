@@ -248,6 +248,7 @@ public class ShardQueryConfiguration extends GenericQueryConfiguration implement
     private int maxUnfieldedExpansionThreshold = 500;
     private int maxValueExpansionThreshold = 5000;
     private int maxOrExpansionThreshold = 500;
+    private int maxOrRangeThreshold = 1;
     private int maxOrExpansionFstThreshold = 750;
     private long yieldThresholdMs = Long.MAX_VALUE;
     private String hdfsSiteConfigURLs = null;
@@ -413,6 +414,7 @@ public class ShardQueryConfiguration extends GenericQueryConfiguration implement
         this.setMaxUnfieldedExpansionThreshold(other.getMaxUnfieldedExpansionThreshold());
         this.setMaxValueExpansionThreshold(other.getMaxValueExpansionThreshold());
         this.setMaxOrExpansionThreshold(other.getMaxOrExpansionThreshold());
+        this.setMaxOrRangeThreshold(other.getMaxOrRangeThreshold());
         this.setMaxOrExpansionFstThreshold(other.getMaxOrExpansionFstThreshold());
         this.setYieldThresholdMs(other.getYieldThresholdMs());
         this.setHdfsSiteConfigURLs(other.getHdfsSiteConfigURLs());
@@ -1005,6 +1007,14 @@ public class ShardQueryConfiguration extends GenericQueryConfiguration implement
     
     public void setMaxOrExpansionThreshold(int maxOrExpansionThreshold) {
         this.maxOrExpansionThreshold = maxOrExpansionThreshold;
+    }
+    
+    public int getMaxOrRangeThreshold() {
+        return maxOrRangeThreshold;
+    }
+    
+    public void setMaxOrRangeThreshold(int maxOrRangeThreshold) {
+        this.maxOrRangeThreshold = maxOrRangeThreshold;
     }
     
     public int getMaxOrExpansionFstThreshold() {
