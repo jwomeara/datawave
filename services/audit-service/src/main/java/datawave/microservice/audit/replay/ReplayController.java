@@ -89,14 +89,6 @@ public class ReplayController {
         this.statusCache = statusCache;
         this.appCtx = appCtx;
         this.busProperties = busProperties;
-        init();
-    }
-    
-    private void init() {
-        if (auditProperties.getFs().getConfigResources() != null) {
-            for (String resource : auditProperties.getFs().getConfigResources())
-                config.addResource(new Path(resource));
-        }
     }
     
     /**
