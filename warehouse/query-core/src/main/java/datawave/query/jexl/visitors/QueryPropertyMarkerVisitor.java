@@ -99,7 +99,7 @@ public class QueryPropertyMarkerVisitor extends BaseVisitor {
         }
         return null;
     }
-
+    
     @Override
     public Object visit(ASTOrNode node, Object data) {
         return null;
@@ -111,15 +111,15 @@ public class QueryPropertyMarkerVisitor extends BaseVisitor {
         // the first one we've found, it is our potential candidate
         if (data == null) {
             List<JexlNode> siblingNodes = new ArrayList<>();
-
+            
             Deque<JexlNode> siblings = new ArrayDeque<>();
             Deque<JexlNode> stack = new ArrayDeque<>();
             stack.push(node);
-
+            
             //
             while (!stack.isEmpty()) {
                 JexlNode descendant = stack.pop();
-
+                
                 if (descendant instanceof ASTAndNode) {
                     for (JexlNode sibling : children(descendant))
                         stack.push(sibling);
@@ -127,28 +127,28 @@ public class QueryPropertyMarkerVisitor extends BaseVisitor {
                     siblings.push(descendant);
                 }
             }
-
+            
             // check each child to see if we found our identifier, and
             // save off the siblings as potential source nodes
             for (JexlNode child : siblings) {
-
+                
                 // don't look for identifiers if we already found what we were looking for
                 if (!identifierFound) {
                     Set<String> foundIdentifiers = new HashSet<>();
                     child.jjtAccept(this, foundIdentifiers);
-
+                    
                     foundIdentifiers.retainAll(typeIdentifiers);
-
+                    
                     // if we found our identifier, proceed to the next child node
                     if (!foundIdentifiers.isEmpty()) {
                         identifierFound = true;
                         continue;
                     }
                 }
-
+                
                 siblingNodes.add(child);
             }
-
+            
             if (identifierFound)
                 sourceNodes = siblingNodes;
         }

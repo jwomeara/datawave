@@ -155,7 +155,7 @@ public class TreeFlatteningRebuildingVisitorTest {
     
     @Test
     public void depthNoStackTraceOrTest() throws Exception {
-        final int numTerms = 2000;
+        final int numTerms = 10000;
         final StringBuilder sb = new StringBuilder(13 * numTerms); // 13 == "abc_" + 5 + " OR "
         sb.append("abc_" + StringUtils.leftPad(Integer.toString(numTerms, 10), 5, '0'));
         for (int i = 2; i <= numTerms; i++) {

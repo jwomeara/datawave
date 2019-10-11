@@ -264,6 +264,7 @@ public class ExecutableExpansionVisitor extends BaseVisitor {
             // clear the child, its the same as the orNode and there is nothing to bridge
             andNodeChild = null;
         } else if (orNode.jjtGetParent().jjtGetNumChildren() == 1) {
+            // TODO: SOMETHING IS WRONG HERE!!!!!!!
             // replace the orNode with a null so it won't be copied below
             JexlNodes.children(orNode.jjtGetParent(), new JexlNode[0]);
         } else {

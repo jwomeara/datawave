@@ -76,7 +76,7 @@ public class UniqueExpressionTermsVisitorTest {
     @Test
     public void testDuplicateInNestedConjunction() throws ParseException {
         String original = "FOO == 'bar' || (FOO == 'baz' && FOO == 'baz')";
-        String expected = "FOO == 'bar' || (FOO == 'baz')";
+        String expected = "FOO == 'bar' || FOO == 'baz'";
         visitAndValidate(original, expected);
     }
     
@@ -84,10 +84,17 @@ public class UniqueExpressionTermsVisitorTest {
     public void testDuplicateInNestedDisjunction() throws ParseException {
         // All expression terms are unique, no change.
         String original = "FOO == 'bar' && (FOO == 'baz' || FOO == 'baz')";
-        String expected = "FOO == 'bar' && (FOO == 'baz')";
+        String expected = "FOO == 'bar' && FOO == 'baz'";
         visitAndValidate(original, expected);
     }
-    
+
+    @Test
+    public void testThis() throws Exception {
+        String original = "UUID == 'capone' && (filter:includeRegex(QUOTE, '.*kind.*') || QUOTE == 'kind' || BIRTH_DATE == '123')";
+        String expected = "UUID == 'capone' && (filter:includeRegex(QUOTE, '.*kind.*') || QUOTE == 'kind' || BIRTH_DATE == '123')";
+        visitAndValidate(original, expected);
+    }
+
     @Test
     public void testDuplicateInNestedConjunctionWithThreeUniqueTerms() throws ParseException {
         String original = "FOO == 'bar' || (FOO == 'baz' && FOO == 'baz' && FOO == 'boo')";
@@ -147,14 +154,14 @@ public class UniqueExpressionTermsVisitorTest {
     @Test
     public void testDuplicateMirroredDisjunctionWithTwoUniqueTerms() throws ParseException {
         String original = "(FOO == 'bar' || FOO == 'bar') && (FOO == 'baz' || FOO == 'baz')";
-        String expected = "(FOO == 'bar') && (FOO == 'baz')";
+        String expected = "FOO == 'bar' && FOO == 'baz'";
         visitAndValidate(original, expected);
     }
     
     @Test
     public void testDuplicateMirroredConjunctionWithTwoUniqueTerms() throws ParseException {
         String original = "(FOO == 'bar' && FOO == 'bar') || (FOO == 'baz' && FOO == 'baz')";
-        String expected = "(FOO == 'bar') || (FOO == 'baz')";
+        String expected = "FOO == 'bar' || FOO == 'baz'";
         visitAndValidate(original, expected);
     }
     
@@ -248,6 +255,9 @@ public class UniqueExpressionTermsVisitorTest {
         
         // Remove duplicate terms from within expressions.
         ASTJexlScript visitedScript = UniqueExpressionTermsVisitor.enforce(originalScript);
+        
+        // Since we flattened the expected script, we need to flatten the visited script
+        visitedScript = TreeFlatteningRebuildingVisitor.flatten(visitedScript);
         
         // De-duped query should match expected
         assertEquals(expected, JexlStringBuildingVisitor.buildQuery(visitedScript));
