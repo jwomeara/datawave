@@ -75,7 +75,6 @@ import com.google.common.base.Function;
 
 /**
  * Base Visitor class that returns a new AST. Each visit method should return a copy of the visited node.
- *
  */
 @SuppressWarnings("deprecation")
 public class RebuildingVisitor extends BaseVisitor implements Function<ASTJexlScript,ASTJexlScript> {
@@ -121,7 +120,7 @@ public class RebuildingVisitor extends BaseVisitor implements Function<ASTJexlSc
         return target;
     }
     
-    private <T extends JexlNode> T copy(T node, Object data) {
+    protected <T extends JexlNode> T copy(T node, Object data) {
         T newNode = newInstanceOfType(node);
         newNode.image = node.image;
         ArrayList<JexlNode> children = newArrayList();
