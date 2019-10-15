@@ -30,7 +30,7 @@ import org.apache.log4j.Logger;
  * expressions and references, this will adversly affect the jexl evaluation of the query.
  */
 public class TreeFlatteningRebuildingVisitorOld extends RebuildingVisitor {
-    private static final Logger log = Logger.getLogger(TreeFlatteningRebuildingVisitor.class);
+    private static final Logger log = Logger.getLogger(TreeFlatteningRebuildingVisitorOld.class);
     private boolean removeReferences = false;
     
     public TreeFlatteningRebuildingVisitorOld(boolean removeReferences) {
@@ -60,7 +60,7 @@ public class TreeFlatteningRebuildingVisitorOld extends RebuildingVisitor {
      */
     @SuppressWarnings("unchecked")
     private static <T extends JexlNode> T flatten(T node, boolean removeReferences) {
-        TreeFlatteningRebuildingVisitor visitor = new TreeFlatteningRebuildingVisitor(removeReferences);
+        TreeFlatteningRebuildingVisitorOld visitor = new TreeFlatteningRebuildingVisitorOld(removeReferences);
         
         return (T) node.jjtAccept(visitor, null);
     }
