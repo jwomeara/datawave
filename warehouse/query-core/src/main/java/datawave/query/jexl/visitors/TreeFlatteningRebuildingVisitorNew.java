@@ -12,6 +12,7 @@ import org.apache.commons.jexl2.parser.ASTReference;
 import org.apache.commons.jexl2.parser.ASTReferenceExpression;
 import org.apache.commons.jexl2.parser.JexlNode;
 import org.apache.commons.jexl2.parser.JexlNodes;
+import org.apache.commons.jexl2.parser.ParserTreeConstants;
 import org.apache.log4j.Logger;
 
 import java.util.ArrayList;
@@ -64,6 +65,7 @@ public class TreeFlatteningRebuildingVisitorNew extends RebuildingVisitor {
     }
     
     protected <T extends JexlNode> T flattenInternal(T rootNode) {
+        
         // add all the nodes to the stack and iterate...
         Deque<JexlNode> postOrderStack = new LinkedList<>();
         Deque<JexlNode> workingStack = new LinkedList<>();
@@ -77,7 +79,11 @@ public class TreeFlatteningRebuildingVisitorNew extends RebuildingVisitor {
             
             if (node.jjtGetNumChildren() > 0) {
                 for (JexlNode child : children(node)) {
-                    workingStack.push(child);
+                    if (child != null) {
+                        if (child.jjtGetParent() == null || !child.jjtGetParent().equals(node))
+                            child.jjtSetParent(node);
+                        workingStack.push(child);
+                    }
                 }
             }
         }
@@ -92,22 +98,23 @@ public class TreeFlatteningRebuildingVisitorNew extends RebuildingVisitor {
             JexlNode node = postOrderStack.pop();
             
             boolean lastNode = node.equals(rootNode);
+            boolean hasChildren = node.jjtGetNumChildren() > 0;
             
             JexlNode newNode = null;
-            if (node instanceof ASTReference) {
-                newNode = (JexlNode) visitRef(createNodeWithChildren(parentStack.pop(), childrenStack.pop()), null);
-            } else if (node instanceof ASTReferenceExpression) {
-                newNode = (JexlNode) visitRef(createNodeWithChildren(parentStack.pop(), childrenStack.pop()), null);
-            } else if (node instanceof ASTOrNode) {
+            if (hasChildren && node instanceof ASTReference) {
+                newNode = flattenASTReference((ASTReference) parentStack.pop(), childrenStack.pop());
+            } else if (hasChildren && node instanceof ASTReferenceExpression) {
+                newNode = flattenASTReferenceExpression((ASTReferenceExpression) parentStack.pop(), childrenStack.pop());
+            } else if (hasChildren && node instanceof ASTOrNode) {
                 newNode = flattenTreeIterative(parentStack.pop(), childrenStack.pop(), null);
-            } else if (node instanceof ASTAndNode) {
+            } else if (hasChildren && node instanceof ASTAndNode) {
                 newNode = flattenTreeIterative(parentStack.pop(), childrenStack.pop(), null);
+            } else if (hasChildren && node.equals(parentStack.peek())) {
+                newNode = createNodeWithChildren(parentStack.pop(), childrenStack.pop());
             } else {
-                if (node.equals(parentStack.peek())) {
-                    newNode = createNodeWithChildren(parentStack.pop(), childrenStack.pop());
-                } else {
-                    newNode = copy(node);
-                }
+                if (node.jjtGetNumChildren() != 0)
+                    throw new RuntimeException("Only leaf nodes should hit this block of code.");
+                newNode = copy(node);
             }
             
             if (!lastNode) {
@@ -137,8 +144,6 @@ public class TreeFlatteningRebuildingVisitorNew extends RebuildingVisitor {
             newNode.jjtAddChild(child, nodeIdx++);
         }
         
-        newNode.jjtSetParent(prevNode.jjtGetParent());
-        
         return newNode;
     }
     
@@ -151,32 +156,75 @@ public class TreeFlatteningRebuildingVisitorNew extends RebuildingVisitor {
         return false;
     }
     
-    private Object visitRef(JexlNode node, Object data) {
+    private JexlNode flattenASTReference(ASTReference currentNode, List<JexlNode> childNodes) {
+        JexlNode parent = currentNode.jjtGetParent();
+        JexlNode newNode = createNodeWithChildren(currentNode, childNodes);
+        
+        // if we are told not to remove references, keep them all
         if (!removeReferences) {
-            return node;
-        } else if (JexlASTHelper.dereference(node) instanceof ASTAssignment) {
-            return node;
-        } else if (node.jjtGetParent() instanceof ASTAndNode || node.jjtGetParent() instanceof ASTOrNode) {
-            return createNodeWithChildren(node.jjtGetParent(), Arrays.asList(children(node)));
-        } else if (node.jjtGetParent() instanceof ASTNotNode) {
-            // ensure we keep negated expressions
-            return node;
-        } else {
-            // let this node's child take it's place
-            JexlNode parent = node.jjtGetParent();
-            JexlNode newChild = node.jjtGetChild(0);
-            
-            newChild.jjtSetParent(parent);
-            
-            for (int nodeIdx = 0; nodeIdx < parent.jjtGetNumChildren(); nodeIdx++) {
-                if (parent.jjtGetChild(nodeIdx).equals(node)) {
-                    parent.jjtAddChild(newChild, nodeIdx);
-                    break;
-                }
-            }
-            
-            return newChild;
+            return newNode;
         }
+        // if this is a marked node, keep the reference
+        else if (QueryPropertyMarker.instanceOf(currentNode, null)) {
+            return newNode;
+        }
+        // if this is an assignment node, keep the reference
+        else if (JexlASTHelper.dereference(currentNode) instanceof ASTAssignment) {
+            return newNode;
+        }
+        // if the parent is a NOT node, keep the reference
+        else if (parent instanceof ASTNotNode) {
+            // ensure we keep negated expressions
+            return newNode;
+        }
+        // if this is a (reference -> reference expression) combo with a single child, remove the reference and reference expression
+        else if (newNode.jjtGetNumChildren() == 1 && newNode.jjtGetChild(0) instanceof ASTReferenceExpression
+                        && newNode.jjtGetChild(0).jjtGetNumChildren() == 1) {
+            return newNode.jjtGetChild(0).jjtGetChild(0);
+        }
+        
+        // otherwise, keep the reference
+        return newNode;
+    }
+    
+    private JexlNode flattenASTReferenceExpression(ASTReferenceExpression currentNode, List<JexlNode> childNodes) {
+        return createNodeWithChildren(currentNode, childNodes);
+    }
+    
+    /**
+     * Advances a child reference expression, if one is embedded Ex. {@code Ref RefExpr <-- this way we at Ref RefExpr}
+     *
+     * will become
+     *
+     * {@code Ref RefExpr <-- this still way we at}
+     *
+     * @param jexlNode
+     *            Incoming JexlNode
+     * @return
+     */
+    protected ASTReferenceExpression advanceReferenceExpression(JexlNode jexlNode) {
+        
+        if (jexlNode instanceof ASTReference) {
+            
+            if (jexlNode.jjtGetNumChildren() == 1 && jexlNode.jjtGetChild(0) instanceof ASTReferenceExpression) {
+                ASTReferenceExpression expression = new ASTReferenceExpression(ParserTreeConstants.JJTREFERENCEEXPRESSION);
+                if (null != jexlNode.jjtGetParent())
+                    expression.image = jexlNode.jjtGetParent().image;
+                else
+                    expression.image = null;
+                
+                JexlNode node = jexlNode.jjtGetChild(0);
+                
+                for (int i = 0; i < node.jjtGetNumChildren(); i++) {
+                    JexlNode newNode = (JexlNode) node.jjtGetChild(i).jjtAccept(this, null);
+                    newNode.jjtSetParent(expression);
+                    expression.jjtAddChild(newNode, expression.jjtGetNumChildren());
+                }
+                
+                return expression;
+            }
+        }
+        return null;
     }
     
     protected JexlNode flattenTreeIterative(JexlNode currentNode, List<JexlNode> childNodes, Object data) {
