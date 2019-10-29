@@ -7,6 +7,7 @@ import datawave.query.QueryTestTableHelper;
 import datawave.query.attributes.Attribute;
 import datawave.query.attributes.Document;
 import datawave.query.config.ShardQueryConfiguration;
+import datawave.query.iterator.ivarator.IvaratorCacheDirConfig;
 import datawave.query.jexl.JexlASTHelper;
 import datawave.query.jexl.nodes.ExceededValueThresholdMarkerJexlNode;
 import datawave.query.jexl.visitors.TreeEqualityVisitor;
@@ -42,7 +43,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.ComparisonFailure;
-import org.junit.Rule;
+
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -62,6 +63,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Provides the basic initialization required to initialize and execute queries. This class will initialize the following runtime settings:
@@ -539,7 +541,7 @@ public abstract class AbstractFunctionalQuery implements QueryLogicTestHarness.T
             // avoid threading issues by using a random number as part of the directory path to create a distinct directory
             int rand = rVal.nextInt(Integer.MAX_VALUE);
             Path ivCache = Files.createTempDirectory("ivarator.cache-" + rand);
-            dirs.add(ivCache.toAbsolutePath().toString());
+            dirs.add(ivCache.toUri().toString());
             if (fst) {
                 ivCache = Files.createTempDirectory("ivarator.cache-" + "fst-" + rand);
                 fstDirs.add(ivCache.toAbsolutePath().toString());
@@ -547,7 +549,7 @@ public abstract class AbstractFunctionalQuery implements QueryLogicTestHarness.T
         }
         String uriList = String.join(",", dirs);
         log.info("hdfs dirs(" + uriList + ")");
-        this.logic.setIvaratorCacheBaseURIs(uriList);
+        this.logic.setIvaratorCacheDirConfigs(dirs.stream().map(IvaratorCacheDirConfig::new).collect(Collectors.toList()));
         if (fst) {
             uriList = String.join(",", fstDirs);
             log.info("fst dirs(" + uriList + ")");
